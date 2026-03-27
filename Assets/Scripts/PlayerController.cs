@@ -4,43 +4,39 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement Settings")]
-    [Tooltip("The current movement speed of the player.")]
     public float moveSpeed = 8f;
-    
-    [Tooltip("How fast the player character model rotates to face the moving direction.")]
     public float rotationSpeed = 15f;
 
     [Header("Jump Settings")]
-    [Tooltip("Can the player jump? Toggle off if you want a strict top-down experience.")]
     public bool canJump = true;
-
-    [Tooltip("How high the player can jump in meters.")]
     public float jumpHeight = 2f;
 
     [Header("Gravity Settings")]
-    [Tooltip("The gravity force. Kept higher than Earth's (-9.81) for snappier, less floaty jumps.")]
     public float gravity = -25f; 
 
-    [Header("Player Stats (Preview)")]
-    [Tooltip("Maximum health of the player.")]
+    [Header("Player Stats")]
     public float maxHealth = 100f;
-    
-    [Tooltip("Current health of the player.")]
     public float currentHealth;
 
-    // Component references
+    [Header("Visual Effects")]
+    private CameraFollow cameraFollow;
+    private BloodFlashEffect bloodEffect;
+
     private CharacterController characterController;
-    
-    // Internal variables
     private Vector3 velocity;
     private Vector3 moveInput;
 
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
-        
-        // Initialize health
         currentHealth = maxHealth;
+
+        // Auto-find updated components
+        if (Camera.main != null)
+        {
+            cameraFollow = Camera.main.GetComponent<CameraFollow>();
+        }
+        bloodEffect = FindObjectOfType<BloodFlashEffect>();
     }
 
     private void Update()
@@ -51,19 +47,26 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMovement()
     {
-        // Read input from WASD or Arrows
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
+        Vector3 inputDir = new Vector3(horizontal, 0f, vertical).normalized;
 
-        // Normalize so diagonal movement isn't faster
-        moveInput = new Vector3(horizontal, 0f, vertical).normalized;
-
-        if (moveInput.magnitude >= 0.1f)
+        if (inputDir.magnitude >= 0.1f)
         {
-            // Move the player horizontally
-            characterController.Move(moveInput * moveSpeed * Time.deltaTime);
+            // Отримуємо напрямок, куди зараз дивиться камера
+            Vector3 camForward = Camera.main.transform.forward;
+            Vector3 camRight = Camera.main.transform.right;
+            
+            // Ігноруємо нахил камери по висоті, щоб гравець не намагався втиснутися в землю
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
 
-            // Rotate the player model to face the movement direction
+            // Рухаємо гравця ВІДНОСНО камери
+            moveInput = (camForward * inputDir.z + camRight * inputDir.x).normalized;
+
+            characterController.Move(moveInput * moveSpeed * Time.deltaTime);
             Quaternion targetRotation = Quaternion.LookRotation(moveInput);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
@@ -71,42 +74,27 @@ public class PlayerController : MonoBehaviour
 
     private void HandleJumpAndGravity()
     {
-        // Reset downward velocity if grounded to prevent gravity from building up infinitely
-        if (characterController.isGrounded && velocity.y < 0)
-        {
-            velocity.y = -2f; 
-        }
-
-        // Check for jump input (Spacebar by default)
-        if (canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
-        {
-            // Physics formula to calculate the exact velocity needed to reach 'jumpHeight'
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
-
-        // Apply gravity over time
+        if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f; 
+        if (canJump && Input.GetButtonDown("Jump") && characterController.isGrounded) velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         velocity.y += gravity * Time.deltaTime;
-        
-        // Apply vertical movement to the controller
         characterController.Move(velocity * Time.deltaTime);
     }
 
-    // --- DAMAGE SYSTEM ---
     public void TakeDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
-        Debug.Log("Player hit! Current health: " + currentHealth);
+        Debug.Log("Player health: " + currentHealth);
 
-        if (currentHealth <= 0)
-        {
-            Die();
-        }
+        // Call effects
+        if (cameraFollow != null) cameraFollow.StartShake();
+        if (bloodEffect != null) bloodEffect.Flash();
+
+        if (currentHealth <= 0) Die();
     }
 
     private void Die()
     {
-        Debug.Log("PLAYER IS DEAD! Game Over.");
-        // We will add UI and game restart logic here later
-        gameObject.SetActive(false); // Temporarily hide the player to simulate death
+        Debug.Log("GAME OVER.");
+        gameObject.SetActive(false); 
     }
 }

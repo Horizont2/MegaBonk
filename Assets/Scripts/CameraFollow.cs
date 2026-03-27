@@ -3,44 +3,59 @@ using UnityEngine;
 public class CameraFollow : MonoBehaviour
 {
     [Header("Target Settings")]
-    [Tooltip("The player or object the camera should follow.")]
     public Transform target;
+    public Vector3 targetOffset = new Vector3(0, 1.5f, 0); // Щоб камера дивилася на спину/голову, а не в ноги
+    public float distance = 8f; // Віддаленість камери
 
-    [Tooltip("The positional offset from the target. (Y is height, Z is distance backwards)")]
-    public Vector3 offset = new Vector3(0f, 10f, -10f);
+    [Header("Mouse Control")]
+    public float mouseSensitivity = 3f;
+    public float minYAngle = -20f; // Наскільки низько можна опустити камеру
+    public float maxYAngle = 80f;  // Наскільки високо можна підняти
 
-    [Tooltip("The starting rotation of the camera (X is tilt down).")]
-    public Vector3 startRotation = new Vector3(45f, 0f, 0f);
+    [Header("Shake Settings")]
+    public float shakeIntensity = 0.3f;
+    public float shakeDuration = 0.2f;
 
-    [Header("Movement Settings")]
-    [Tooltip("How smoothly the camera catches up to the target. Higher is faster.")]
-    public float smoothSpeed = 5f;
+    private float currentX = 0f;
+    private float currentY = 45f;
+    private float shakeTimer;
 
     private void Start()
     {
-        // Detach camera from any parent to prevent weird movement bugs
         transform.parent = null;
-
-        // Snap the camera to the correct position and rotation immediately when the game starts
-        if (target != null)
-        {
-            transform.position = target.position + offset;
-            transform.rotation = Quaternion.Euler(startRotation);
-        }
-        else
-        {
-            Debug.LogWarning("CameraFollow: Target is not assigned in the Inspector!");
-        }
+        // Ховаємо курсор миші для зручного керування (натисни ESC в Unity, щоб повернути його)
+        Cursor.lockState = CursorLockMode.Locked; 
     }
 
     private void LateUpdate()
     {
         if (target == null) return;
 
-        // Calculate where the camera should be in world space
-        Vector3 desiredPosition = target.position + offset;
+        // Зчитуємо рух миші
+        currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
+        currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+        
+        // Обмежуємо кут нахилу, щоб камера не переверталася догори дригом
+        currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
 
-        // Smoothly move the camera to that position
-        transform.position = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed * Time.deltaTime);
+        // Вираховуємо нову позицію по колу
+        Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
+        Vector3 desiredPosition = target.position + targetOffset - (rotation * Vector3.forward * distance);
+
+        // Трясіння
+        if (shakeTimer > 0)
+        {
+            desiredPosition += Random.insideUnitSphere * shakeIntensity;
+            shakeTimer -= Time.deltaTime;
+        }
+
+        // Застосовуємо позицію і змушуємо камеру дивитися на гравця
+        transform.position = desiredPosition;
+        transform.LookAt(target.position + targetOffset);
+    }
+
+    public void StartShake()
+    {
+        shakeTimer = shakeDuration;
     }
 }
