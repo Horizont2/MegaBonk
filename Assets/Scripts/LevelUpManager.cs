@@ -17,7 +17,7 @@ public class UpgradeData
 {
     public string upgradeName;
     [TextArea(2, 3)] public string description;
-    public string statDisplay; // ДОДАНО: Текст типу "+20" або "+15%"
+    public string statDisplay;
     public Sprite icon;
     public UpgradeType type;
     public float amount;
@@ -35,11 +35,13 @@ public class LevelUpManager : MonoBehaviour
 
     private PlayerController player;
     private HammerDamage hammer;
+    private WeaponOrbit weaponOrbit; // ДОДАНО: Для управління швидкістю обертання молота
 
     private void Start()
     {
         player = FindObjectOfType<PlayerController>();
         hammer = FindObjectOfType<HammerDamage>();
+        weaponOrbit = FindObjectOfType<WeaponOrbit>();
         levelUpPanel.SetActive(false);
     }
 
@@ -56,41 +58,37 @@ public class LevelUpManager : MonoBehaviour
 
     private void GenerateRandomChoices()
     {
-        // Робимо тимчасову копію нашого списку, щоб вибирати унікальні варіанти
         List<UpgradeData> availablePool = new List<UpgradeData>(allPossibleUpgrades);
 
         for (int i = 0; i < uiButtons.Length; i++)
         {
-            // Якщо покращення в базі закінчилися (наприклад, їх всього 2), виходимо
             if (availablePool.Count == 0) break;
 
-            // Вибираємо випадковий індекс
             int randomIndex = Random.Range(0, availablePool.Count);
             UpgradeData chosenUpgrade = availablePool[randomIndex];
 
-            // Налаштовуємо UI кнопки
-            uiButtons[i].titleText.text = chosenUpgrade.upgradeName;
-            uiButtons[i].descriptionText.text = chosenUpgrade.description;
-            uiButtons[i].statText.text = chosenUpgrade.statDisplay;
-            if (chosenUpgrade.icon != null) uiButtons[i].iconImage.sprite = chosenUpgrade.icon;
+            // ВАЖЛИВО: Робимо локальну копію, щоб уникнути багу перекриття подій у кнопках (Closure Bug)
+            UpgradeData upgradeToApply = chosenUpgrade;
 
-            // Очищаємо старі команди кнопки і додаємо нову
+            uiButtons[i].titleText.text = upgradeToApply.upgradeName;
+            uiButtons[i].descriptionText.text = upgradeToApply.description;
+            uiButtons[i].statText.text = upgradeToApply.statDisplay;
+            if (upgradeToApply.icon != null) uiButtons[i].iconImage.sprite = upgradeToApply.icon;
+
             uiButtons[i].buttonComponent.onClick.RemoveAllListeners();
-            uiButtons[i].buttonComponent.onClick.AddListener(() => ApplyUpgrade(chosenUpgrade));
+            uiButtons[i].buttonComponent.onClick.AddListener(() => ApplyUpgrade(upgradeToApply));
 
-            // Видаляємо вибране покращення з пулу, щоб воно не випало двічі за один раз
             availablePool.RemoveAt(randomIndex);
         }
     }
 
-    // Цей метод викликається, коли гравець натискає на кнопку
     public void ApplyUpgrade(UpgradeData upgrade)
     {
         switch (upgrade.type)
         {
             case UpgradeType.Health:
                 player.maxHealth += upgrade.amount;
-                player.currentHealth = player.maxHealth; // Лікуємо
+                player.currentHealth = player.maxHealth;
                 break;
             case UpgradeType.Speed:
                 player.moveSpeed += upgrade.amount;
@@ -99,10 +97,19 @@ public class LevelUpManager : MonoBehaviour
                 if (hammer != null) hammer.damage += upgrade.amount;
                 break;
             case UpgradeType.PickupRadius:
-                // Ми додамо цей функціонал кристалам пізніше!
-                Debug.Log("Pickup Radius upgraded!");
+                if (player != null) player.pickupRadius += upgrade.amount;
+                break;
+            case UpgradeType.AttackSpeed:
+                // Збільшуємо швидкість обертання молота!
+                if (weaponOrbit != null) weaponOrbit.rotationSpeed += upgrade.amount;
+                break;
+            case UpgradeType.HealthRegen:
+                if (player != null) player.healthRegenRate += upgrade.amount;
                 break;
         }
+
+        // Оновлюємо інтерфейс гравця одразу після апгрейду (щоб нове ХП одразу відмалювалося)
+        if (player != null) player.UpdateHUD();
 
         ResumeGame();
     }

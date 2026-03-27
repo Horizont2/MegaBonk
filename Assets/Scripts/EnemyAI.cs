@@ -13,21 +13,24 @@ public class EnemyAI : MonoBehaviour
     public float attackCooldown = 1f;
     private float lastAttackTime;
 
-    [Header("Drops")]
+    [Header("Drops & UI")]
     public GameObject xpCrystalPrefab;
+    public GameObject damagePopupPrefab; // NEW: Reference for the floating text
 
     [Header("Targeting")]
     public Transform target;
 
+    [HideInInspector] public float xpRewardMultiplier = 1f; // Controlled by EnemySpawner
+
     private float currentHealth;
     private MeshRenderer meshRenderer;
     private Color originalColor;
-    private Rigidbody rb; // ������ ��������� �� ������
+    private Rigidbody rb;
 
     private void Start()
     {
         currentHealth = maxHealth;
-        rb = GetComponent<Rigidbody>(); // �������� Rigidbody
+        rb = GetComponent<Rigidbody>();
 
         meshRenderer = GetComponent<MeshRenderer>();
         if (meshRenderer != null) originalColor = meshRenderer.material.color;
@@ -39,7 +42,6 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    // �������: Գ���� ������ ����� ������ � FixedUpdate, � �� Update
     private void FixedUpdate()
     {
         FollowTarget();
@@ -52,7 +54,7 @@ public class EnemyAI : MonoBehaviour
         Vector3 direction = (target.position - transform.position).normalized;
         direction.y = 0f;
 
-        // ����� ������ �� ������� ����� �������� (velocity)
+        // Move using physics velocity
         rb.linearVelocity = new Vector3(direction.x * moveSpeed, rb.linearVelocity.y, direction.z * moveSpeed);
 
         if (direction != Vector3.zero)
@@ -65,6 +67,15 @@ public class EnemyAI : MonoBehaviour
     public void TakeDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
+
+        // --- SPAWN DAMAGE POPUP ---
+        if (damagePopupPrefab != null)
+        {
+            GameObject popup = Instantiate(damagePopupPrefab, transform.position, Quaternion.identity);
+            DamagePopup popupScript = popup.GetComponent<DamagePopup>();
+            if (popupScript != null) popupScript.Setup(damageAmount);
+        }
+
         StartCoroutine(FlashEffect());
         if (currentHealth <= 0) Die();
     }
@@ -81,7 +92,16 @@ public class EnemyAI : MonoBehaviour
 
     private void Die()
     {
-        if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
+        if (xpCrystalPrefab != null)
+        {
+            GameObject crystalObj = Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
+
+            XpCrystal crystalScript = crystalObj.GetComponent<XpCrystal>();
+            if (crystalScript != null)
+            {
+                crystalScript.xpAmount *= xpRewardMultiplier; // Apply economy scaling
+            }
+        }
         Destroy(gameObject);
     }
 

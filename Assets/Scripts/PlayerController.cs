@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro; 
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
@@ -17,11 +19,21 @@ public class PlayerController : MonoBehaviour
     [Header("Player Stats")]
     public float maxHealth = 100f;
     public float currentHealth;
+    public float healthRegenRate = 0f; 
+    public float pickupRadius = 4f;
 
     [Header("RPG Stats")]
     public int currentLevel = 1;
     public float currentXP = 0f;
     public float xpToNextLevel = 50f;
+    public int crystalsCollected = 0;
+
+    [Header("HUD UI References")]
+    public Slider hpSlider;
+    public Slider xpSlider;
+    public TextMeshProUGUI levelText;
+    public TextMeshProUGUI crystalText;
+    public TextMeshProUGUI hpText;
 
     private CameraFollow cameraFollow;
     private BloodFlashEffect bloodEffect;
@@ -37,9 +49,17 @@ public class PlayerController : MonoBehaviour
         bloodEffect = FindObjectOfType<BloodFlashEffect>();
     }
 
+    private void Start()
+    {
+        UpdateHUD(); // Your existing code
+
+        // Find the diamond glimmer script and start it
+        UIIconGlimmer glimmer = FindObjectOfType<UIIconGlimmer>();
+        if (glimmer != null) glimmer.StartEffect();
+    }
+
     private void Update()
     {
-        // 1. Рахуємо вектор руху по землі
         Vector3 movement = Vector3.zero;
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
@@ -58,22 +78,23 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // 2. Рахуємо гравітацію та стрибок
-        if (characterController.isGrounded && velocity.y < 0)
-        {
-            velocity.y = -2f;
-        }
-
+        if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
         if (canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
-
         velocity.y += gravity * Time.deltaTime;
 
-        // 3. ОБ'ЄДНУЄМО І РУХАЄМОСЯ ОДИН РАЗ
         Vector3 finalMove = movement + velocity;
         characterController.Move(finalMove * Time.deltaTime);
+
+        // 2. Регенерація здоров'я
+        if (currentHealth < maxHealth && healthRegenRate > 0)
+        {
+            currentHealth += healthRegenRate * Time.deltaTime;
+            currentHealth = Mathf.Min(currentHealth, maxHealth);
+            UpdateHUD();
+        }
     }
 
     public void TakeDamage(float damageAmount)
@@ -82,17 +103,16 @@ public class PlayerController : MonoBehaviour
         if (cameraFollow != null) cameraFollow.StartShake();
         if (bloodEffect != null) bloodEffect.Flash();
 
+        UpdateHUD();
+
         if (currentHealth <= 0) Die();
     }
 
     private void Die()
     {
-        Debug.Log("GAME OVER.");
-
         GameManager gm = FindObjectOfType<GameManager>();
         if (gm != null) gm.TriggerGameOver();
 
-        // Знаходимо нашу орбітальну зброю і ховаємо її разом із нами
         WeaponOrbit weapon = FindObjectOfType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
@@ -102,9 +122,11 @@ public class PlayerController : MonoBehaviour
     public void GainXP(float amount)
     {
         currentXP += amount;
-        Debug.Log($"Collected XP! Current: {currentXP} / {xpToNextLevel}");
+        crystalsCollected++;
 
         if (currentXP >= xpToNextLevel) LevelUp();
+
+        UpdateHUD();
     }
 
     private void LevelUp()
@@ -112,10 +134,33 @@ public class PlayerController : MonoBehaviour
         currentLevel++;
         currentXP -= xpToNextLevel;
         xpToNextLevel *= 1.5f;
-        Debug.Log($"LEVEL UP! You are now level {currentLevel}!");
 
-        // Знаходимо менеджер і викликаємо меню
         LevelUpManager lum = FindObjectOfType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
+
+        UpdateHUD();
+    }
+
+    public void UpdateHUD()
+    {
+        if (hpSlider != null)
+        {
+            hpSlider.maxValue = maxHealth;
+            hpSlider.value = currentHealth;
+        }
+
+        if (hpText != null)
+        {
+            hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
+        }
+
+        if (xpSlider != null)
+        {
+            xpSlider.maxValue = xpToNextLevel;
+            xpSlider.value = currentXP;
+        }
+
+        if (levelText != null) levelText.text = "LVL: " + currentLevel;
+        if (crystalText != null) crystalText.text = crystalsCollected.ToString();
     }
 }

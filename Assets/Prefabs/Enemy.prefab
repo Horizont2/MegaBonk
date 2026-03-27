@@ -131,7 +131,9 @@ MonoBehaviour:
   damage: 10
   attackCooldown: 1
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
+  damagePopupPrefab: {fileID: 8592393487426644071, guid: 03a2312f805a3404c8cda59e89140aad, type: 3}
   target: {fileID: 0}
+  xpRewardMultiplier: 1
 --- !u!54 &8154194412166926141
 Rigidbody:
   m_ObjectHideFlags: 0

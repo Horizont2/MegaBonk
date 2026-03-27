@@ -2,18 +2,20 @@ using UnityEngine;
 
 public class HammerDamage : MonoBehaviour
 {
-    [Header("Weapon Stats")]
-    [Tooltip("How much damage the hammer deals to enemies.")]
-    public float damage = 25f;
+    public float damage = 10f;
 
+    // This method is called automatically when another collider enters this trigger
     private void OnTriggerEnter(Collider other)
     {
-        // Check if we hit an enemy
+        // Check if the object we hit has the tag "Enemy"
         if (other.CompareTag("Enemy"))
         {
+            // Try to get the EnemyAI script from the hit object
             EnemyAI enemy = other.GetComponent<EnemyAI>();
+
             if (enemy != null)
             {
+                // Apply damage
                 enemy.TakeDamage(damage);
             }
         }
