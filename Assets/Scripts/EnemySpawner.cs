@@ -31,9 +31,9 @@ public class EnemySpawner : MonoBehaviour
     {
         // Вибираємо випадкову точку на колі навколо гравця
         Vector2 randomCircle = Random.insideUnitCircle.normalized * spawnRadius;
-        
+
         // Переводимо 2D коло в 3D координати (X та Z)
-        Vector3 spawnPos = player.position + new Vector3(randomCircle.x, 0f, randomCircle.y);
+        Vector3 spawnPos = new Vector3(player.position.x + randomCircle.x, 0.5f, player.position.z + randomCircle.y);
 
         // Створюємо ворога у цій точці
         Instantiate(enemyPrefab, spawnPos, Quaternion.identity);

@@ -1,5 +1,7 @@
 using UnityEngine;
+using System.Collections;
 
+[RequireComponent(typeof(Rigidbody))]
 public class EnemyAI : MonoBehaviour
 {
     [Header("Enemy Stats")]
@@ -11,15 +13,25 @@ public class EnemyAI : MonoBehaviour
     public float attackCooldown = 1f;
     private float lastAttackTime;
 
+    [Header("Drops")]
+    public GameObject xpCrystalPrefab;
+
     [Header("Targeting")]
     public Transform target;
 
-    // Internal variables
     private float currentHealth;
+    private MeshRenderer meshRenderer;
+    private Color originalColor;
+    private Rigidbody rb; // ������ ��������� �� ������
 
     private void Start()
     {
         currentHealth = maxHealth;
+        rb = GetComponent<Rigidbody>(); // �������� Rigidbody
+
+        meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer != null) originalColor = meshRenderer.material.color;
+
         if (target == null)
         {
             GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
@@ -27,7 +39,8 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    private void Update()
+    // �������: Գ���� ������ ����� ������ � FixedUpdate, � �� Update
+    private void FixedUpdate()
     {
         FollowTarget();
     }
@@ -35,31 +48,41 @@ public class EnemyAI : MonoBehaviour
     private void FollowTarget()
     {
         if (target == null) return;
+
         Vector3 direction = (target.position - transform.position).normalized;
-        direction.y = 0f; 
-        transform.position += direction * moveSpeed * Time.deltaTime;
+        direction.y = 0f;
+
+        // ����� ������ �� ������� ����� �������� (velocity)
+        rb.linearVelocity = new Vector3(direction.x * moveSpeed, rb.linearVelocity.y, direction.z * moveSpeed);
 
         if (direction != Vector3.zero)
         {
             Quaternion targetRotation = Quaternion.LookRotation(direction);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.deltaTime);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.fixedDeltaTime);
         }
     }
 
-    // --- ENEMY DAMAGE SYSTEM ---
     public void TakeDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
-        Debug.Log("Enemy hit! Health: " + currentHealth);
-
+        StartCoroutine(FlashEffect());
         if (currentHealth <= 0) Die();
+    }
+
+    private IEnumerator FlashEffect()
+    {
+        if (meshRenderer != null)
+        {
+            meshRenderer.material.color = Color.white;
+            yield return new WaitForSeconds(0.1f);
+            meshRenderer.material.color = originalColor;
+        }
     }
 
     private void Die()
     {
-        Debug.Log("Enemy destroyed!");
-        // Temporarily destroy, we will replace with pooling later
-        Destroy(gameObject); 
+        if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
+        Destroy(gameObject);
     }
 
     private void OnCollisionStay(Collision collision)
