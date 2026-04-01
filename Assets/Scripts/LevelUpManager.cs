@@ -94,7 +94,7 @@ public class LevelUpManager : MonoBehaviour
                 player.moveSpeed += upgrade.amount;
                 break;
             case UpgradeType.Damage:
-                if (hammer != null) hammer.damage += upgrade.amount;
+                if (hammer != null) hammer.baseDamage += upgrade.amount;
                 break;
             case UpgradeType.PickupRadius:
                 if (player != null) player.pickupRadius += upgrade.amount;

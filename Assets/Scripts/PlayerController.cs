@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro; 
+using TMPro;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
@@ -19,7 +19,7 @@ public class PlayerController : MonoBehaviour
     [Header("Player Stats")]
     public float maxHealth = 100f;
     public float currentHealth;
-    public float healthRegenRate = 0f; 
+    public float healthRegenRate = 0f;
     public float pickupRadius = 4f;
 
     [Header("RPG Stats")]
@@ -35,6 +35,10 @@ public class PlayerController : MonoBehaviour
     public TextMeshProUGUI crystalText;
     public TextMeshProUGUI hpText;
 
+    [Header("Meta Upgrades")]
+    [HideInInspector] public float globalDamageMultiplier = 1f; // Weapons will read this
+    private float damageReduction = 0f; // Armor percentage
+
     private CameraFollow cameraFollow;
     private BloodFlashEffect bloodEffect;
     private CharacterController characterController;
@@ -43,7 +47,6 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
-        currentHealth = maxHealth;
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
         bloodEffect = FindObjectOfType<BloodFlashEffect>();
@@ -51,11 +54,38 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
-        UpdateHUD(); // Your existing code
+        // Apply permanent stats from Main Menu before setting current health
+        ApplyMetaUpgrades();
+
+        currentHealth = maxHealth;
+        UpdateHUD();
 
         // Find the diamond glimmer script and start it
         UIIconGlimmer glimmer = FindObjectOfType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
+    }
+
+    private void ApplyMetaUpgrades()
+    {
+        // Health: +10% per level
+        int healthLvl = SaveManager.GetUpgradeLevel("MetaHealth");
+        maxHealth += maxHealth * (healthLvl * 0.1f);
+
+        // Speed: +5% per level
+        int speedLvl = SaveManager.GetUpgradeLevel("MetaSpeed");
+        moveSpeed += moveSpeed * (speedLvl * 0.05f);
+
+        // Magnet: +20% radius per level
+        int magnetLvl = SaveManager.GetUpgradeLevel("MetaMagnet");
+        pickupRadius += pickupRadius * (magnetLvl * 0.2f);
+
+        // Armor: 5% damage reduction per level
+        int armorLvl = SaveManager.GetUpgradeLevel("MetaArmor");
+        damageReduction = armorLvl * 0.05f;
+
+        // Damage: +10% global damage per level
+        int dmgLvl = SaveManager.GetUpgradeLevel("MetaDamage");
+        globalDamageMultiplier = 1f + (dmgLvl * 0.1f);
     }
 
     private void Update()
@@ -88,7 +118,7 @@ public class PlayerController : MonoBehaviour
         Vector3 finalMove = movement + velocity;
         characterController.Move(finalMove * Time.deltaTime);
 
-        // 2. Регенерація здоров'я
+        // Health regeneration
         if (currentHealth < maxHealth && healthRegenRate > 0)
         {
             currentHealth += healthRegenRate * Time.deltaTime;
@@ -99,7 +129,10 @@ public class PlayerController : MonoBehaviour
 
     public void TakeDamage(float damageAmount)
     {
-        currentHealth -= damageAmount;
+        // Apply Armor reduction
+        float finalDamage = damageAmount * (1f - damageReduction);
+
+        currentHealth -= finalDamage;
         if (cameraFollow != null) cameraFollow.StartShake();
         if (bloodEffect != null) bloodEffect.Flash();
 
@@ -110,6 +143,9 @@ public class PlayerController : MonoBehaviour
 
     private void Die()
     {
+        // SAVE METAPROGRESSION: Add collected crystals to the global bank
+        SaveManager.AddCrystals(crystalsCollected);
+
         GameManager gm = FindObjectOfType<GameManager>();
         if (gm != null) gm.TriggerGameOver();
 

@@ -2,21 +2,31 @@ using UnityEngine;
 
 public class HammerDamage : MonoBehaviour
 {
-    public float damage = 10f;
+    public float baseDamage = 10f;
+    private PlayerController player;
 
-    // This method is called automatically when another collider enters this trigger
+    private void Start()
+    {
+        // Find the player once to read the damage multiplier
+        GameObject p = GameObject.FindGameObjectWithTag("Player");
+        if (p != null)
+        {
+            player = p.GetComponent<PlayerController>();
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        // Check if the object we hit has the tag "Enemy"
         if (other.CompareTag("Enemy"))
         {
-            // Try to get the EnemyAI script from the hit object
             EnemyAI enemy = other.GetComponent<EnemyAI>();
-
             if (enemy != null)
             {
-                // Apply damage
-                enemy.TakeDamage(damage);
+                // Calculate total damage: Base Weapon Damage * Meta Progression Multiplier
+                float actualDamage = baseDamage;
+                if (player != null) actualDamage *= player.globalDamageMultiplier;
+
+                enemy.TakeDamage(actualDamage);
             }
         }
     }

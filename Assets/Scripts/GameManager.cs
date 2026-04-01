@@ -24,6 +24,12 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
+        // ESC Key logic: Return to main menu
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            ReturnToMenu();
+        }
+
         if (isGameOver) return;
 
         survivalTime += Time.deltaTime;
@@ -39,6 +45,11 @@ public class GameManager : MonoBehaviour
     public void TriggerGameOver()
     {
         isGameOver = true;
+
+        // Mark that there is no active run anymore (0 = false)
+        PlayerPrefs.SetInt("IsRunActive", 0);
+        PlayerPrefs.Save();
+
         StartCoroutine(GameOverSequence());
     }
 
@@ -52,6 +63,17 @@ public class GameManager : MonoBehaviour
             yield return null;
         }
         yield return new WaitForSeconds(waitBeforeRestart);
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+
+        // Load the Main Menu scene instead of restarting the current scene
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public void ReturnToMenu()
+    {
+        // If we quit via ESC, we keep "IsRunActive" as 1 (true) so the player can "Continue"
+        PlayerPrefs.SetInt("IsRunActive", 1);
+        PlayerPrefs.Save();
+
+        SceneManager.LoadScene("MainMenu");
     }
 }
