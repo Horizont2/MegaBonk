@@ -198,5 +198,40 @@ public class PlayerController : MonoBehaviour
 
         if (levelText != null) levelText.text = "LVL: " + currentLevel;
         if (crystalText != null) crystalText.text = crystalsCollected.ToString();
+
+        if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
+        {
+            float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
+            float savedY = PlayerPrefs.GetFloat("PlayerPosY", transform.position.y);
+            float savedZ = PlayerPrefs.GetFloat("PlayerPosZ", transform.position.z);
+
+            // You MUST disable CharacterController to manually teleport the player in Unity
+            if (characterController != null) characterController.enabled = false;
+
+            transform.position = new Vector3(savedX, savedY, savedZ);
+
+            if (characterController != null) characterController.enabled = true;
+        }
+        else
+        {
+            // NEW RUN: Спавн рівно по центру карти на поверхні землі
+            if (characterController != null) characterController.enabled = false;
+
+            float spawnX = 0f;
+            float spawnZ = 0f;
+            float spawnY = 5f; // Базова висота на випадок помилки
+
+            // Шукаємо точну висоту згенерованого ландшафту в координатах (0, 0)
+            if (Terrain.activeTerrain != null)
+            {
+                Vector3 terrainLocalPos = new Vector3(spawnX, 0, spawnZ) - Terrain.activeTerrain.transform.position;
+                // Отримуємо висоту гори і додаємо 2 метри, щоб гравець безпечно впав на землю
+                spawnY = Terrain.activeTerrain.SampleHeight(terrainLocalPos) + Terrain.activeTerrain.transform.position.y + 2f;
+            }
+
+            transform.position = new Vector3(spawnX, spawnY, spawnZ);
+
+            if (characterController != null) characterController.enabled = true;
+        }
     }
 }

@@ -70,10 +70,18 @@ public class GameManager : MonoBehaviour
 
     public void ReturnToMenu()
     {
-        // If we quit via ESC, we keep "IsRunActive" as 1 (true) so the player can "Continue"
         PlayerPrefs.SetInt("IsRunActive", 1);
-        PlayerPrefs.Save();
 
+        // NEW: Save the exact player position before leaving
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            PlayerPrefs.SetFloat("PlayerPosX", player.transform.position.x);
+            PlayerPrefs.SetFloat("PlayerPosY", player.transform.position.y);
+            PlayerPrefs.SetFloat("PlayerPosZ", player.transform.position.z);
+        }
+
+        PlayerPrefs.Save();
         SceneManager.LoadScene("MainMenu");
     }
 }

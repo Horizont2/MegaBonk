@@ -16,7 +16,7 @@ public class EnemySpawner : MonoBehaviour
 
         timer += Time.deltaTime;
 
-        // Кожну хвилину спавн стає на 20% швидшим. Мінімальний інтервал - 0.3 сек (дуже багато ворогів)
+        // Spawn becomes 20% faster every minute. Minimum interval is 0.3 sec (heavy swarm)
         float minutes = GameManager.survivalTime / 60f;
         float currentSpawnInterval = Mathf.Max(0.3f, baseSpawnInterval / (1f + minutes * 0.2f));
 
@@ -30,24 +30,37 @@ public class EnemySpawner : MonoBehaviour
     private void SpawnEnemy(float minutesSurvived)
     {
         Vector2 randomCircle = Random.insideUnitCircle.normalized * spawnRadius;
-        Vector3 spawnPos = new Vector3(player.position.x + randomCircle.x, 0.5f, player.position.z + randomCircle.y);
+        float spawnX = player.position.x + randomCircle.x;
+        float spawnZ = player.position.z + randomCircle.y;
 
+        float spawnY = 0.5f; // Fallback height
+
+        if (Terrain.activeTerrain != null)
+        {
+            // spawnX and spawnZ are already world coordinates! Just pass them directly.
+            Vector3 worldPos = new Vector3(spawnX, 0, spawnZ);
+
+            // SampleHeight returns local Y. We add terrain's world Y, plus 1.5f so they drop safely onto the ground
+            spawnY = Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y + 1.5f;
+        }
+
+        Vector3 spawnPos = new Vector3(spawnX, spawnY, spawnZ);
         GameObject newEnemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
 
-        // --- ЕКОНОМІКА (СИСТЕМА МНОЖНИКІВ) ---
+        // --- ECONOMY (MULTIPLIER SYSTEM) ---
         EnemyAI enemyScript = newEnemy.GetComponent<EnemyAI>();
         if (enemyScript != null)
         {
-            // Здоров'я росте на 40% щохвилини
+            // Health increases by 40% every minute
             enemyScript.maxHealth *= (1f + minutesSurvived * 0.4f);
 
-            // Шкода росте на 15% щохвилини
+            // Damage increases by 15% every minute
             enemyScript.damage *= (1f + minutesSurvived * 0.15f);
 
-            // Швидкість росте на 5% щохвилини (але не більше ніж в 1.5 рази від базової)
+            // Speed increases by 5% every minute (capped at 1.5x base speed)
             enemyScript.moveSpeed *= Mathf.Min(1.5f, 1f + minutesSurvived * 0.05f);
 
-            // Кристали з цього ворога будуть давати на 20% більше досвіду щохвилини
+            // Crystals from this enemy will give 20% more XP every minute
             enemyScript.xpRewardMultiplier = 1f + (minutesSurvived * 0.2f);
         }
     }

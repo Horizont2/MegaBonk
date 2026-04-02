@@ -14,6 +14,8 @@ public class MainMenuManager : MonoBehaviour
 
     private void Start()
     {
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
         UpdateCrystalsUI();
         CheckContinueStatus();
     }
@@ -43,21 +45,18 @@ public class MainMenuManager : MonoBehaviour
     // Called when "NEW RUN" (or the big PLAY button) is clicked
     public void StartNewRun()
     {
-        // Start a new active run
         PlayerPrefs.SetInt("IsRunActive", 1);
+        PlayerPrefs.SetInt("IsContinuing", 0); // NEW: Mark as fresh run
         PlayerPrefs.Save();
 
-        // Reset the survival timer for the new run
         GameManager.survivalTime = 0f;
-
-        // Load the main gameplay scene
         SceneManager.LoadScene(gameSceneName);
     }
 
-    // Called when "CONTINUE" is clicked
     public void ContinueGame()
     {
-        // Load the scene to continue the run
+        PlayerPrefs.SetInt("IsContinuing", 1); // NEW: Mark as a continued run
+        PlayerPrefs.Save();
         SceneManager.LoadScene(gameSceneName);
     }
 

@@ -4,38 +4,42 @@ public class XpCrystal : MonoBehaviour
 {
     [Header("Settings")]
     public float xpAmount = 10f;
-    public float flySpeed = 12f;
+    public float magnetSpeed = 15f;
 
-    private Transform playerTransform;
+    private Transform player;
     private PlayerController playerController;
-    private bool isFlying = false;
+    private bool isMagnetized = false;
 
     private void Start()
     {
+        // «находимо гравц€ один раз при по€в≥ кристала
         GameObject p = GameObject.FindGameObjectWithTag("Player");
         if (p != null)
         {
-            playerTransform = p.transform;
+            player = p.transform;
             playerController = p.GetComponent<PlayerController>();
         }
     }
 
     private void Update()
     {
-        if (playerTransform == null || playerController == null) return;
+        if (player == null || playerController == null) return;
 
-        float dist = Vector3.Distance(transform.position, playerTransform.position);
-
-        if (!isFlying && dist <= playerController.pickupRadius)
+        // 1. ѕерев≥р€Їмо, чи гравець зайшов у рад≥ус збору (ћагн≥т)
+        if (!isMagnetized && Vector3.Distance(transform.position, player.position) <= playerController.pickupRadius)
         {
-            isFlying = true;
+            isMagnetized = true;
         }
 
-        if (isFlying)
+        // 2. якщо магн≥т активний, кристал летить до гравц€
+        if (isMagnetized)
         {
-            transform.position = Vector3.MoveTowards(transform.position, playerTransform.position, flySpeed * Time.deltaTime);
+            // Ћетимо до центру гравц€ (трохи вище його н≥г)
+            Vector3 targetPos = player.position + Vector3.up * 1f;
+            transform.position = Vector3.MoveTowards(transform.position, targetPos, magnetSpeed * Time.deltaTime);
 
-            if (dist < 0.5f)
+            // 3. «бираЇмо досв≥д, коли кристал майже торкнувс€ гравц€
+            if (Vector3.Distance(transform.position, targetPos) < 0.5f)
             {
                 playerController.GainXP(xpAmount);
                 Destroy(gameObject);

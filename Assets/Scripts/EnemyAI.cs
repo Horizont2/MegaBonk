@@ -15,12 +15,12 @@ public class EnemyAI : MonoBehaviour
 
     [Header("Drops & UI")]
     public GameObject xpCrystalPrefab;
-    public GameObject damagePopupPrefab; // NEW: Reference for the floating text
+    public GameObject damagePopupPrefab;
 
     [Header("Targeting")]
     public Transform target;
 
-    [HideInInspector] public float xpRewardMultiplier = 1f; // Controlled by EnemySpawner
+    [HideInInspector] public float xpRewardMultiplier = 1f;
 
     private float currentHealth;
     private MeshRenderer meshRenderer;
@@ -31,6 +31,9 @@ public class EnemyAI : MonoBehaviour
     {
         currentHealth = maxHealth;
         rb = GetComponent<Rigidbody>();
+
+        // IMPORTANT: Must be Kinematic to avoid physics glitches
+        rb.isKinematic = true;
 
         meshRenderer = GetComponent<MeshRenderer>();
         if (meshRenderer != null) originalColor = meshRenderer.material.color;
@@ -51,16 +54,30 @@ public class EnemyAI : MonoBehaviour
     {
         if (target == null) return;
 
+        // 1. Direction to player
         Vector3 direction = (target.position - transform.position).normalized;
         direction.y = 0f;
 
-        // Move using physics velocity
-        rb.linearVelocity = new Vector3(direction.x * moveSpeed, rb.linearVelocity.y, direction.z * moveSpeed);
+        // 2. Calculate next horizontal move
+        Vector3 nextPosition = transform.position + direction * moveSpeed * Time.fixedDeltaTime;
+
+        // 3. GROUND SNAPPING (Fixes floating and climbing)
+        if (Terrain.activeTerrain != null)
+        {
+            // Sample the terrain height at the next point
+            float terrainHeight = Terrain.activeTerrain.SampleHeight(nextPosition) + Terrain.activeTerrain.transform.position.y;
+
+            // Snap Y to terrain height + a small offset (0.5 to 1.0 depending on your model)
+            nextPosition.y = terrainHeight + 0.7f;
+        }
+
+        // 4. Move and Rotate using Rigidbody (Kinematic mode)
+        rb.MovePosition(nextPosition);
 
         if (direction != Vector3.zero)
         {
             Quaternion targetRotation = Quaternion.LookRotation(direction);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.fixedDeltaTime);
+            rb.MoveRotation(Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.fixedDeltaTime));
         }
     }
 
@@ -68,7 +85,6 @@ public class EnemyAI : MonoBehaviour
     {
         currentHealth -= damageAmount;
 
-        // --- SPAWN DAMAGE POPUP ---
         if (damagePopupPrefab != null)
         {
             GameObject popup = Instantiate(damagePopupPrefab, transform.position, Quaternion.identity);
@@ -95,23 +111,20 @@ public class EnemyAI : MonoBehaviour
         if (xpCrystalPrefab != null)
         {
             GameObject crystalObj = Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
-
             XpCrystal crystalScript = crystalObj.GetComponent<XpCrystal>();
-            if (crystalScript != null)
-            {
-                crystalScript.xpAmount *= xpRewardMultiplier; // Apply economy scaling
-            }
+            if (crystalScript != null) crystalScript.xpAmount *= xpRewardMultiplier;
         }
         Destroy(gameObject);
     }
 
-    private void OnCollisionStay(Collision collision)
+    // Trigger detection for damage (since we are kinematic/trigger now)
+    private void OnTriggerStay(Collider other)
     {
-        if (collision.gameObject.CompareTag("Player"))
+        if (other.CompareTag("Player"))
         {
             if (Time.time >= lastAttackTime + attackCooldown)
             {
-                PlayerController player = collision.gameObject.GetComponent<PlayerController>();
+                PlayerController player = other.GetComponent<PlayerController>();
                 if (player != null)
                 {
                     player.TakeDamage(damage);
