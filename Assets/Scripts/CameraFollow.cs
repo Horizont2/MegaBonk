@@ -52,6 +52,23 @@ public class CameraFollow : MonoBehaviour
         // Застосовуємо позицію і змушуємо камеру дивитися на гравця
         transform.position = desiredPosition;
         transform.LookAt(target.position + targetOffset);
+
+        // --- ANTI-CLIPPING (Keep camera above ground) ---
+        if (Terrain.activeTerrain != null)
+        {
+            // Find the height of the mountain exactly under the camera
+            float terrainHeight = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y;
+
+            // The camera must always be at least 1.5 meters above the dirt
+            float minCameraHeight = terrainHeight + 1.5f;
+
+            if (transform.position.y < minCameraHeight)
+            {
+                Vector3 safePos = transform.position;
+                safePos.y = minCameraHeight;
+                transform.position = safePos;
+            }
+        }
     }
 
     public void StartShake()

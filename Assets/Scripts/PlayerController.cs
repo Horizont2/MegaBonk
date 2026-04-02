@@ -28,6 +28,9 @@ public class PlayerController : MonoBehaviour
     public float xpToNextLevel = 50f;
     public int crystalsCollected = 0;
 
+    [Header("Visual Effects")]
+    public Image damageFlashImage; // Reference to the same BloodVignette
+
     [Header("HUD UI References")]
     public Slider hpSlider;
     public Slider xpSlider;
@@ -35,9 +38,16 @@ public class PlayerController : MonoBehaviour
     public TextMeshProUGUI crystalText;
     public TextMeshProUGUI hpText;
 
+    [Header("Dash Settings")]
+    public float dashSpeed = 25f;
+    public float dashDuration = 0.2f;
+    public float dashCooldown = 1.5f;
+    private bool isDashing = false;
+    private float lastDashTime = -100f;
+
     [Header("Meta Upgrades")]
-    [HideInInspector] public float globalDamageMultiplier = 1f; // Weapons will read this
-    private float damageReduction = 0f; // Armor percentage
+    [HideInInspector] public float globalDamageMultiplier = 1f;
+    private float damageReduction = 0f;
 
     private CameraFollow cameraFollow;
     private BloodFlashEffect bloodEffect;
@@ -46,6 +56,11 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
+        // --- 100% ФІКС ФІЗИКИ: Примусове налаштування шарів через код ---
+        // Ставимо гравця на 8 шар, а все інше на 9, і наказуємо їм ігнорувати одне одного
+        gameObject.layer = 8;
+        Physics.IgnoreLayerCollision(8, 9, true);
+
         characterController = GetComponent<CharacterController>();
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
@@ -54,36 +69,71 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
-        // Apply permanent stats from Main Menu before setting current health
         ApplyMetaUpgrades();
-
         currentHealth = maxHealth;
         UpdateHUD();
 
-        // Find the diamond glimmer script and start it
         UIIconGlimmer glimmer = FindObjectOfType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
+
+        // FIX: Start a coroutine to wait for the terrain to generate before dropping the player
+        StartCoroutine(SpawnSafely());
+    }
+
+    private System.Collections.IEnumerator SpawnSafely()
+    {
+        // 1. Disable CharacterController so it doesn't block our teleportation
+        if (characterController != null) characterController.enabled = false;
+
+        // 2. Wait exactly 2 frames for Unity to fully bake the Terrain physics collider
+        yield return null;
+        yield return null;
+
+        if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
+        {
+            // Load saved coordinates if continuing
+            float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
+            float savedY = PlayerPrefs.GetFloat("PlayerPosY", transform.position.y);
+            float savedZ = PlayerPrefs.GetFloat("PlayerPosZ", transform.position.z);
+            transform.position = new Vector3(savedX, savedY, savedZ);
+        }
+        else
+        {
+            // New Run: Shoot a raycast from the sky (Y = 1000) straight down to find the true ground
+            float spawnX = 0f;
+            float spawnZ = 0f;
+            float spawnY = 20f; // Fallback height
+
+            Vector3 skyPos = new Vector3(spawnX, 1000f, spawnZ);
+
+            if (Physics.Raycast(skyPos, Vector3.down, out RaycastHit hit, 2000f))
+            {
+                // Ground found! Add 2 meters so the player drops safely
+                spawnY = hit.point.y + 2f;
+            }
+            else if (Terrain.activeTerrain != null)
+            {
+                // Fallback method just in case
+                spawnY = Terrain.activeTerrain.SampleHeight(new Vector3(spawnX, 0, spawnZ)) + Terrain.activeTerrain.transform.position.y + 2f;
+            }
+
+            transform.position = new Vector3(spawnX, spawnY, spawnZ);
+        }
+
+        // 3. Re-enable CharacterController after teleporting
+        if (characterController != null) characterController.enabled = true;
     }
 
     private void ApplyMetaUpgrades()
     {
-        // Health: +10% per level
         int healthLvl = SaveManager.GetUpgradeLevel("MetaHealth");
         maxHealth += maxHealth * (healthLvl * 0.1f);
-
-        // Speed: +5% per level
         int speedLvl = SaveManager.GetUpgradeLevel("MetaSpeed");
         moveSpeed += moveSpeed * (speedLvl * 0.05f);
-
-        // Magnet: +20% radius per level
         int magnetLvl = SaveManager.GetUpgradeLevel("MetaMagnet");
         pickupRadius += pickupRadius * (magnetLvl * 0.2f);
-
-        // Armor: 5% damage reduction per level
         int armorLvl = SaveManager.GetUpgradeLevel("MetaArmor");
         damageReduction = armorLvl * 0.05f;
-
-        // Damage: +10% global damage per level
         int dmgLvl = SaveManager.GetUpgradeLevel("MetaDamage");
         globalDamageMultiplier = 1f + (dmgLvl * 0.1f);
     }
@@ -94,6 +144,15 @@ public class PlayerController : MonoBehaviour
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 inputDir = new Vector3(horizontal, 0f, vertical).normalized;
+
+        // --- DASH MECHANIC ---
+        if (Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= lastDashTime + dashCooldown)
+        {
+            StartCoroutine(DashRoutine(inputDir));
+        }
+
+        // If we are currently dashing, block normal movement
+        if (isDashing) return;
 
         if (inputDir.magnitude >= 0.1f)
         {
@@ -108,50 +167,91 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
+        // --- ЗАХИСТ ВІД ЛАГІВ (Lag Spike Fix) ---
+        // Якщо гра підвисне під час спавну кристалів, фізика не зійде з розуму
+        float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
+
         if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
         if (canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
-        velocity.y += gravity * Time.deltaTime;
+        velocity.y += gravity * safeDeltaTime;
 
         Vector3 finalMove = movement + velocity;
-        characterController.Move(finalMove * Time.deltaTime);
+        characterController.Move(finalMove * safeDeltaTime);
 
-        // Health regeneration
         if (currentHealth < maxHealth && healthRegenRate > 0)
         {
             currentHealth += healthRegenRate * Time.deltaTime;
             currentHealth = Mathf.Min(currentHealth, maxHealth);
             UpdateHUD();
         }
+
+        // --- ULTIMATE FAILSAFE: Anti-Void Protection ---
+        // If the player somehow falls through the ground (e.g., terrain hasn't baked yet),
+        // we catch them at Y = -20 and teleport them safely back into the sky.
+        if (transform.position.y < -20f)
+        {
+            if (characterController != null) characterController.enabled = false;
+
+            // Find a safe height, or just drop them from 100m if terrain is still loading
+            float safeY = 100f;
+            if (Terrain.activeTerrain != null)
+            {
+                safeY = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y + 20f;
+            }
+
+            transform.position = new Vector3(transform.position.x, safeY, transform.position.z);
+            velocity = Vector3.zero; // Reset falling speed so they don't slam into the ground
+
+            if (characterController != null) characterController.enabled = true;
+        }
     }
 
     public void TakeDamage(float damageAmount)
     {
-        // Apply Armor reduction
         float finalDamage = damageAmount * (1f - damageReduction);
 
         currentHealth -= finalDamage;
         if (cameraFollow != null) cameraFollow.StartShake();
         if (bloodEffect != null) bloodEffect.Flash();
 
-        UpdateHUD();
+        if (damageFlashImage != null)
+        {
+            StopAllCoroutines(); // Reset previous flashes
+            StartCoroutine(FlashRoutine());
+        }
 
+        // Ці два рядки мають бути ВСЕРЕДИНІ методу TakeDamage!
+        UpdateHUD();
         if (currentHealth <= 0) Die();
+    }
+
+    private System.Collections.IEnumerator FlashRoutine()
+    {
+        // Quickly show red, then fade out
+        float t = 0.4f; // Flash duration
+        Color c = damageFlashImage.color;
+
+        c.a = 0.5f; // Initial flash transparency
+        damageFlashImage.color = c;
+
+        while (c.a > 0)
+        {
+            c.a -= Time.deltaTime / t;
+            damageFlashImage.color = c;
+            yield return null;
+        }
     }
 
     private void Die()
     {
-        // SAVE METAPROGRESSION: Add collected crystals to the global bank
         SaveManager.AddCrystals(crystalsCollected);
-
         GameManager gm = FindObjectOfType<GameManager>();
         if (gm != null) gm.TriggerGameOver();
-
         WeaponOrbit weapon = FindObjectOfType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
-
         gameObject.SetActive(false);
     }
 
@@ -159,9 +259,7 @@ public class PlayerController : MonoBehaviour
     {
         currentXP += amount;
         crystalsCollected++;
-
         if (currentXP >= xpToNextLevel) LevelUp();
-
         UpdateHUD();
     }
 
@@ -170,68 +268,44 @@ public class PlayerController : MonoBehaviour
         currentLevel++;
         currentXP -= xpToNextLevel;
         xpToNextLevel *= 1.5f;
-
         LevelUpManager lum = FindObjectOfType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
-
         UpdateHUD();
     }
 
     public void UpdateHUD()
     {
-        if (hpSlider != null)
-        {
-            hpSlider.maxValue = maxHealth;
-            hpSlider.value = currentHealth;
-        }
-
-        if (hpText != null)
-        {
-            hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
-        }
-
-        if (xpSlider != null)
-        {
-            xpSlider.maxValue = xpToNextLevel;
-            xpSlider.value = currentXP;
-        }
-
+        if (hpSlider != null) { hpSlider.maxValue = maxHealth; hpSlider.value = currentHealth; }
+        if (hpText != null) hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
+        if (xpSlider != null) { xpSlider.maxValue = xpToNextLevel; xpSlider.value = currentXP; }
         if (levelText != null) levelText.text = "LVL: " + currentLevel;
         if (crystalText != null) crystalText.text = crystalsCollected.ToString();
+    }
 
-        if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
-        {
-            float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
-            float savedY = PlayerPrefs.GetFloat("PlayerPosY", transform.position.y);
-            float savedZ = PlayerPrefs.GetFloat("PlayerPosZ", transform.position.z);
+    private System.Collections.IEnumerator DashRoutine(Vector3 direction)
+    {
+        isDashing = true;
+        lastDashTime = Time.time;
+        float startTime = Time.time;
 
-            // You MUST disable CharacterController to manually teleport the player in Unity
-            if (characterController != null) characterController.enabled = false;
-
-            transform.position = new Vector3(savedX, savedY, savedZ);
-
-            if (characterController != null) characterController.enabled = true;
-        }
+        // If the player isn't pressing any movement keys, dash straight forward
+        if (direction == Vector3.zero) direction = transform.forward;
         else
         {
-            // NEW RUN: Спавн рівно по центру карти на поверхні землі
-            if (characterController != null) characterController.enabled = false;
-
-            float spawnX = 0f;
-            float spawnZ = 0f;
-            float spawnY = 5f; // Базова висота на випадок помилки
-
-            // Шукаємо точну висоту згенерованого ландшафту в координатах (0, 0)
-            if (Terrain.activeTerrain != null)
-            {
-                Vector3 terrainLocalPos = new Vector3(spawnX, 0, spawnZ) - Terrain.activeTerrain.transform.position;
-                // Отримуємо висоту гори і додаємо 2 метри, щоб гравець безпечно впав на землю
-                spawnY = Terrain.activeTerrain.SampleHeight(terrainLocalPos) + Terrain.activeTerrain.transform.position.y + 2f;
-            }
-
-            transform.position = new Vector3(spawnX, spawnY, spawnZ);
-
-            if (characterController != null) characterController.enabled = true;
+            // Convert input direction to world space camera direction
+            Vector3 camForward = Camera.main.transform.forward;
+            Vector3 camRight = Camera.main.transform.right;
+            camForward.y = 0f; camRight.y = 0f;
+            direction = (camForward * direction.z + camRight * direction.x).normalized;
         }
+
+        while (Time.time < startTime + dashDuration)
+        {
+            // Move the player super fast
+            characterController.Move(direction * dashSpeed * Time.deltaTime);
+            yield return null; // Wait for the next frame
+        }
+
+        isDashing = false;
     }
 }

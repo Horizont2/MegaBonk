@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections;
 
-[RequireComponent(typeof(Rigidbody))]
 public class EnemyAI : MonoBehaviour
 {
     [Header("Enemy Stats")]
@@ -10,6 +9,7 @@ public class EnemyAI : MonoBehaviour
     public float damage = 10f;
 
     [Header("Combat Settings")]
+    public float attackRange = 1.6f;
     public float attackCooldown = 1f;
     private float lastAttackTime;
 
@@ -20,71 +20,91 @@ public class EnemyAI : MonoBehaviour
     [Header("Targeting")]
     public Transform target;
 
+    [Header("Ground Settings")]
+    public float verticalOffset = 0.5f;
+
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
     private float currentHealth;
     private MeshRenderer meshRenderer;
     private Color originalColor;
-    private Rigidbody rb;
+    private PlayerController playerController;
+
+    private void Awake()
+    {
+        // 100% ФІКС: Примусово переносимо ворога ТА ВСІ ЙОГО ЧАСТИНИ на 9 шар (шар привидів)
+        gameObject.layer = 9;
+        foreach (Transform t in GetComponentsInChildren<Transform>(true))
+        {
+            t.gameObject.layer = 9;
+        }
+
+        Collider[] enemyCols = GetComponentsInChildren<Collider>(true);
+        foreach (Collider eCol in enemyCols)
+        {
+            eCol.isTrigger = true;
+        }
+
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
+        rb.isKinematic = true;
+        rb.useGravity = false;
+    }
 
     private void Start()
     {
         currentHealth = maxHealth;
-        rb = GetComponent<Rigidbody>();
 
-        // IMPORTANT: Must be Kinematic to avoid physics glitches
-        rb.isKinematic = true;
-
-        meshRenderer = GetComponent<MeshRenderer>();
+        meshRenderer = GetComponentInChildren<MeshRenderer>();
         if (meshRenderer != null) originalColor = meshRenderer.material.color;
 
-        if (target == null)
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
         {
-            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-            if (playerObj != null) target = playerObj.transform;
+            target = playerObj.transform;
+            playerController = playerObj.GetComponent<PlayerController>();
         }
     }
 
-    private void FixedUpdate()
-    {
-        FollowTarget();
-    }
-
-    private void FollowTarget()
+    private void Update()
     {
         if (target == null) return;
 
-        // 1. Direction to player
-        Vector3 direction = (target.position - transform.position).normalized;
+        Vector3 currentPos = transform.position;
+        Vector3 direction = (target.position - currentPos).normalized;
         direction.y = 0f;
 
-        // 2. Calculate next horizontal move
-        Vector3 nextPosition = transform.position + direction * moveSpeed * Time.fixedDeltaTime;
+        Vector3 nextPos = currentPos + direction * moveSpeed * Time.deltaTime;
 
-        // 3. GROUND SNAPPING (Fixes floating and climbing)
         if (Terrain.activeTerrain != null)
         {
-            // Sample the terrain height at the next point
-            float terrainHeight = Terrain.activeTerrain.SampleHeight(nextPosition) + Terrain.activeTerrain.transform.position.y;
-
-            // Snap Y to terrain height + a small offset (0.5 to 1.0 depending on your model)
-            nextPosition.y = terrainHeight + 0.7f;
+            float terrainHeight = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y;
+            nextPos.y = terrainHeight + verticalOffset;
         }
 
-        // 4. Move and Rotate using Rigidbody (Kinematic mode)
-        rb.MovePosition(nextPosition);
+        transform.position = nextPos;
 
         if (direction != Vector3.zero)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            rb.MoveRotation(Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.fixedDeltaTime));
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 10f * Time.deltaTime);
+        }
+
+        if (Vector3.Distance(transform.position, target.position) <= attackRange)
+        {
+            if (Time.time >= lastAttackTime + attackCooldown)
+            {
+                if (playerController != null)
+                {
+                    playerController.TakeDamage(damage);
+                    lastAttackTime = Time.time;
+                }
+            }
         }
     }
 
     public void TakeDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
-
         if (damagePopupPrefab != null)
         {
             GameObject popup = Instantiate(damagePopupPrefab, transform.position, Quaternion.identity);
@@ -110,27 +130,8 @@ public class EnemyAI : MonoBehaviour
     {
         if (xpCrystalPrefab != null)
         {
-            GameObject crystalObj = Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
-            XpCrystal crystalScript = crystalObj.GetComponent<XpCrystal>();
-            if (crystalScript != null) crystalScript.xpAmount *= xpRewardMultiplier;
+            Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
         }
         Destroy(gameObject);
-    }
-
-    // Trigger detection for damage (since we are kinematic/trigger now)
-    private void OnTriggerStay(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            if (Time.time >= lastAttackTime + attackCooldown)
-            {
-                PlayerController player = other.GetComponent<PlayerController>();
-                if (player != null)
-                {
-                    player.TakeDamage(damage);
-                    lastAttackTime = Time.time;
-                }
-            }
-        }
     }
 }

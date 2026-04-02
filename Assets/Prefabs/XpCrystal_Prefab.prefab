@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 1567002358129677183}
   - component: {fileID: 4742072957177026893}
   - component: {fileID: 760241756426077300}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: XpCrystal_Prefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
