@@ -11,41 +11,52 @@ public class DamagePopup : MonoBehaviour
 
     private Color textColor;
     private Transform camTransform;
+    private float timer;
 
-    // Call this method right after instantiating the popup
     public void Setup(float damageAmount)
     {
-        // Round the damage to a whole number
         textMesh.text = Mathf.CeilToInt(damageAmount).ToString();
         textColor = textMesh.color;
+        textColor.a = 1f;
+        textMesh.color = textColor;
+        timer = 0f;
 
-        // Add a random offset so multiple hits don't overlap perfectly
+        // Random offset so multiple hits don't overlap
         float randomX = Random.Range(-0.5f, 0.5f);
         float randomZ = Random.Range(-0.5f, 0.5f);
         transform.position += new Vector3(randomX, 1f, randomZ);
     }
 
-    private void Start()
+    private void OnEnable()
     {
         if (Camera.main != null) camTransform = Camera.main.transform;
-
-        // Automatically destroy the popup after 'lifetime' seconds
-        Destroy(gameObject, lifetime);
+        timer = 0f;
     }
 
     private void Update()
     {
-        // Move the text upwards
+        timer += Time.deltaTime;
+
+        // Move upwards
         transform.position += Vector3.up * moveSpeed * Time.deltaTime;
 
-        // Force the text to always face the camera
+        // Always face camera
         if (camTransform != null)
         {
             transform.rotation = Quaternion.LookRotation(transform.position - camTransform.position);
         }
 
-        // Smoothly fade out the text alpha
+        // Fade out
         textColor.a -= fadeSpeed * Time.deltaTime;
         textMesh.color = textColor;
+
+        // Return to pool when lifetime expires
+        if (timer >= lifetime)
+        {
+            if (ObjectPool.Instance != null)
+                ObjectPool.Instance.ReturnToPool(gameObject);
+            else
+                Destroy(gameObject);
+        }
     }
 }

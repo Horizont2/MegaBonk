@@ -9,9 +9,11 @@ public class GameManager : MonoBehaviour
     public CanvasGroup gameOverPanel;
     public TextMeshProUGUI timerText;
 
+    [Header("Death Stats")]
+    public DeathStatsScreen deathStatsScreen;
+
     [Header("Settings")]
     public float fadeDuration = 2f;
-    public float waitBeforeRestart = 1.5f;
 
     public static float survivalTime = 0f;
     private bool isGameOver = false;
@@ -20,6 +22,7 @@ public class GameManager : MonoBehaviour
     {
         survivalTime = 0f;
         isGameOver = false;
+        GameStats.Reset();
     }
 
     private void Update()
@@ -50,29 +53,58 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.SetInt("IsRunActive", 0);
         PlayerPrefs.Save();
 
+        // Sync final stats from player
+        PlayerController pc = FindObjectOfType<PlayerController>();
+        if (pc != null)
+        {
+            GameStats.highestLevel = pc.currentLevel;
+            GameStats.crystalsCollected = pc.crystalsCollected;
+        }
+
         StartCoroutine(GameOverSequence());
     }
 
     private IEnumerator GameOverSequence()
     {
+        // Fade in dark overlay
         float timer = 0f;
         while (timer < fadeDuration)
         {
             timer += Time.deltaTime;
-            gameOverPanel.alpha = Mathf.Clamp01(timer / fadeDuration);
+            if (gameOverPanel != null)
+                gameOverPanel.alpha = Mathf.Clamp01(timer / fadeDuration);
             yield return null;
         }
-        yield return new WaitForSeconds(waitBeforeRestart);
 
-        // Load the Main Menu scene instead of restarting the current scene
-        SceneManager.LoadScene("MainMenu");
+        // Pause the game so stats screen works in frozen time
+        Time.timeScale = 0f;
+
+        // Show death stats screen
+        if (deathStatsScreen != null)
+        {
+            deathStatsScreen.Show(
+                survivalTime,
+                GameStats.totalKills,
+                GameStats.totalDamageDealt,
+                GameStats.totalDamageTaken,
+                GameStats.highestLevel,
+                GameStats.crystalsCollected
+            );
+        }
+        else
+        {
+            // Fallback: go straight to menu if no stats screen is assigned
+            yield return new WaitForSecondsRealtime(1.5f);
+            Time.timeScale = 1f;
+            SceneManager.LoadScene("MainMenu");
+        }
     }
 
     public void ReturnToMenu()
     {
         PlayerPrefs.SetInt("IsRunActive", 1);
 
-        // NEW: Save the exact player position before leaving
+        // Save the exact player position before leaving
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {

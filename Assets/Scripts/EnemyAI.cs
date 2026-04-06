@@ -25,6 +25,11 @@ public class EnemyAI : MonoBehaviour
 
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
+    // Base stats (set from prefab, used for reset)
+    private float baseMaxHealth;
+    private float baseMoveSpeed;
+    private float baseDamage;
+
     private float currentHealth;
     private MeshRenderer meshRenderer;
     private Color originalColor;
@@ -32,7 +37,7 @@ public class EnemyAI : MonoBehaviour
 
     private void Awake()
     {
-        // 100% ФІКС: Примусово переносимо ворога ТА ВСІ ЙОГО ЧАСТИНИ на 9 шар (шар привидів)
+        // 100% FIX: Force all child objects to Layer 9 (enemy layer)
         gameObject.layer = 9;
         foreach (Transform t in GetComponentsInChildren<Transform>(true))
         {
@@ -49,9 +54,24 @@ public class EnemyAI : MonoBehaviour
         if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
         rb.isKinematic = true;
         rb.useGravity = false;
+
+        // Cache base stats from prefab defaults
+        baseMaxHealth = maxHealth;
+        baseMoveSpeed = moveSpeed;
+        baseDamage = damage;
     }
 
     private void Start()
+    {
+        Init();
+    }
+
+    private void OnEnable()
+    {
+        Init();
+    }
+
+    private void Init()
     {
         currentHealth = maxHealth;
 
@@ -64,6 +84,20 @@ public class EnemyAI : MonoBehaviour
             target = playerObj.transform;
             playerController = playerObj.GetComponent<PlayerController>();
         }
+
+        lastAttackTime = -attackCooldown;
+    }
+
+    /// <summary>
+    /// Reset stats to prefab defaults before applying new scaling.
+    /// Called by EnemySpawner before applying difficulty multipliers.
+    /// </summary>
+    public void ResetStats()
+    {
+        maxHealth = baseMaxHealth;
+        moveSpeed = baseMoveSpeed;
+        damage = baseDamage;
+        xpRewardMultiplier = 1f;
     }
 
     private void Update()
@@ -105,9 +139,18 @@ public class EnemyAI : MonoBehaviour
     public void TakeDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
+
+        // Track total damage dealt
+        GameStats.totalDamageDealt += damageAmount;
+
         if (damagePopupPrefab != null)
         {
-            GameObject popup = Instantiate(damagePopupPrefab, transform.position, Quaternion.identity);
+            GameObject popup;
+            if (ObjectPool.Instance != null)
+                popup = ObjectPool.Instance.Get(damagePopupPrefab, transform.position, Quaternion.identity);
+            else
+                popup = Instantiate(damagePopupPrefab, transform.position, Quaternion.identity);
+
             DamagePopup popupScript = popup.GetComponent<DamagePopup>();
             if (popupScript != null) popupScript.Setup(damageAmount);
         }
@@ -130,8 +173,18 @@ public class EnemyAI : MonoBehaviour
     {
         if (xpCrystalPrefab != null)
         {
-            Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
+            if (ObjectPool.Instance != null)
+                ObjectPool.Instance.Get(xpCrystalPrefab, transform.position, Quaternion.identity);
+            else
+                Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
         }
-        Destroy(gameObject);
+
+        // Track kill stats
+        GameStats.totalKills++;
+
+        if (ObjectPool.Instance != null)
+            ObjectPool.Instance.ReturnToPool(gameObject);
+        else
+            Destroy(gameObject);
     }
 }

@@ -6,18 +6,32 @@ public class XpCrystal : MonoBehaviour
     public float magnetSpeed = 15f;
 
     [Header("Spawn Pop Animation")]
-    public float popRadius = 3f; // Наскільки далеко розлітається лут від ворога
-    public float popSpeed = 12f; // Швидкість розльоту
+    public float popRadius = 3f;
+    public float popSpeed = 12f;
     private Vector3 popTarget;
-    private bool isPopping = true; // Чи летить кристал зараз
+    private bool isPopping = true;
 
     private Transform player;
     private PlayerController playerController;
     private bool isMagnetized = false;
+    private bool collidersStripped = false;
 
     private void Awake()
     {
-        // --- ЗАХИСТ ВІД БАГІВ ФІЗИКИ (Синдром Ліфта) ---
+        StripPhysics();
+    }
+
+    private void OnEnable()
+    {
+        StripPhysics();
+        ResetState();
+    }
+
+    private void StripPhysics()
+    {
+        if (collidersStripped) return;
+
+        // Remove physics so crystals don't interfere with gameplay
         gameObject.layer = 9;
         foreach (Transform t in GetComponentsInChildren<Transform>(true)) t.gameObject.layer = 9;
 
@@ -30,10 +44,15 @@ public class XpCrystal : MonoBehaviour
 
         Rigidbody[] rbs = GetComponentsInChildren<Rigidbody>(true);
         foreach (Rigidbody rb in rbs) Destroy(rb);
+
+        collidersStripped = true;
     }
 
-    private void Start()
+    private void ResetState()
     {
+        isMagnetized = false;
+        isPopping = true;
+
         GameObject p = GameObject.FindGameObjectWithTag("Player");
         if (p != null)
         {
@@ -41,12 +60,10 @@ public class XpCrystal : MonoBehaviour
             playerController = p.GetComponent<PlayerController>();
         }
 
-        // --- РОЗРАХУНОК ТОЧКИ ВІДСКОКУ ---
-        // Вибираємо випадковий напрямок навколо місця спавну
+        // Pop animation: scatter in random direction from spawn point
         Vector2 randomCircle = Random.insideUnitCircle.normalized * Random.Range(1.5f, popRadius);
         popTarget = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
 
-        // Шукаємо ідеальну висоту землі для цієї нової точки
         if (Terrain.activeTerrain != null)
         {
             popTarget.y = Terrain.activeTerrain.SampleHeight(popTarget) + Terrain.activeTerrain.transform.position.y + 0.8f;
@@ -55,21 +72,19 @@ public class XpCrystal : MonoBehaviour
 
     private void Update()
     {
-        // 1. АНІМАЦІЯ РОЗЛЬОТУ (Відбувається до увімкнення магніту)
+        // 1. Pop animation (fly out from death point)
         if (isPopping)
         {
-            // Рухаємо кристал до цільової точки відскоку
             transform.position = Vector3.MoveTowards(transform.position, popTarget, popSpeed * Time.deltaTime);
 
-            // Якщо кристал долетів до точки - вимикаємо політ
             if (Vector3.Distance(transform.position, popTarget) < 0.1f)
             {
                 isPopping = false;
             }
-            return; // Блокуємо код нижче, поки лут не приземлиться
+            return;
         }
 
-        // 2. СИСТЕМА МАГНІТУ
+        // 2. Magnet pickup
         if (player == null || playerController == null) return;
 
         float distance = Vector3.Distance(transform.position, player.position);
@@ -87,7 +102,11 @@ public class XpCrystal : MonoBehaviour
             if (Vector3.Distance(transform.position, targetPos) < 0.5f)
             {
                 playerController.GainXP(xpAmount);
-                Destroy(gameObject);
+
+                if (ObjectPool.Instance != null)
+                    ObjectPool.Instance.ReturnToPool(gameObject);
+                else
+                    Destroy(gameObject);
             }
         }
     }

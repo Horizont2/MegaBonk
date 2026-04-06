@@ -8,7 +8,16 @@ public class EnemySpawner : MonoBehaviour
     public float baseSpawnInterval = 1.5f;
     public float spawnRadius = 15f;
 
+    [Header("Pooling")]
+    public int prewarmCount = 20;
+
     private float timer;
+
+    private void Start()
+    {
+        if (ObjectPool.Instance != null && enemyPrefab != null)
+            ObjectPool.Instance.Prewarm(enemyPrefab, prewarmCount);
+    }
 
     private void Update()
     {
@@ -37,20 +46,25 @@ public class EnemySpawner : MonoBehaviour
 
         if (Terrain.activeTerrain != null)
         {
-            // spawnX and spawnZ are already world coordinates! Just pass them directly.
             Vector3 worldPos = new Vector3(spawnX, 0, spawnZ);
-
-            // SampleHeight returns local Y. We add terrain's world Y, plus 1.5f so they drop safely onto the ground
             spawnY = Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y + 1.5f;
         }
 
         Vector3 spawnPos = new Vector3(spawnX, spawnY, spawnZ);
-        GameObject newEnemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
+
+        GameObject newEnemy;
+        if (ObjectPool.Instance != null)
+            newEnemy = ObjectPool.Instance.Get(enemyPrefab, spawnPos, Quaternion.identity);
+        else
+            newEnemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
 
         // --- ECONOMY (MULTIPLIER SYSTEM) ---
         EnemyAI enemyScript = newEnemy.GetComponent<EnemyAI>();
         if (enemyScript != null)
         {
+            // Reset to base stats before applying new scaling
+            enemyScript.ResetStats();
+
             // Health increases by 40% every minute
             enemyScript.maxHealth *= (1f + minutesSurvived * 0.4f);
 

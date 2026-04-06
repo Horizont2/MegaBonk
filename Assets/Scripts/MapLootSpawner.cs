@@ -4,12 +4,16 @@ public class MapLootSpawner : MonoBehaviour
 {
     [Header("Loot Settings")]
     public GameObject xpCrystalPrefab;
-    public int amountToSpawn = 150; // Кількість луту на карті
-    public float scatterRadius = 150f; // На якій відстані розкидати лут
+    public int amountToSpawn = 150;
+    public float scatterRadius = 150f;
 
     private void Start()
     {
-        // Чекаємо півсекунди, щоб ландшафт 100% встиг згенеруватися, а потім розкидаємо лут
+        // Pre-warm crystal pool
+        if (ObjectPool.Instance != null && xpCrystalPrefab != null)
+            ObjectPool.Instance.Prewarm(xpCrystalPrefab, amountToSpawn);
+
+        // Delay spawn to ensure terrain is fully generated
         Invoke(nameof(ScatterLoot), 0.5f);
     }
 
@@ -19,19 +23,19 @@ public class MapLootSpawner : MonoBehaviour
 
         for (int i = 0; i < amountToSpawn; i++)
         {
-            // Вибираємо випадкову точку в межах великого кола
             Vector2 randomPoint = Random.insideUnitCircle * scatterRadius;
             Vector3 spawnPos = new Vector3(randomPoint.x, 0, randomPoint.y);
 
-            // Знаходимо точну висоту гори в цій точці
             if (Terrain.activeTerrain != null)
             {
                 float terrainY = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
-                spawnPos.y = terrainY + 0.8f; // Трохи піднімаємо над землею
+                spawnPos.y = terrainY + 0.8f;
             }
 
-            // Створюємо кристал
-            Instantiate(xpCrystalPrefab, spawnPos, Quaternion.identity);
+            if (ObjectPool.Instance != null)
+                ObjectPool.Instance.Get(xpCrystalPrefab, spawnPos, Quaternion.identity);
+            else
+                Instantiate(xpCrystalPrefab, spawnPos, Quaternion.identity);
         }
     }
 }
