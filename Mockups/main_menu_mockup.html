@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MegaBonk - Main Menu Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0f;
+    cursor: default;
+    user-select: none;
+  }
+
+  /* ═══ BACKGROUND ═══ */
+  .bg-layer {
+    position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse at 30% 60%, #1a0a2e 0%, #0a0a0f 60%),
+                radial-gradient(ellipse at 70% 40%, #0e1a2e 0%, transparent 50%);
+  }
+
+  /* Animated fog particles */
+  .fog {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    overflow: hidden;
+  }
+  .fog-particle {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(100, 60, 180, 0.08), transparent 70%);
+    animation: fogDrift linear infinite;
+  }
+  @keyframes fogDrift {
+    0% { transform: translateX(-20%) translateY(0); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateX(120vw) translateY(-30px); opacity: 0; }
+  }
+
+  /* Floating dust motes */
+  .dust {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  }
+  .dust-particle {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: rgba(255, 200, 100, 0.4);
+    border-radius: 50%;
+    animation: dustFloat ease-in-out infinite;
+  }
+  @keyframes dustFloat {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.2; }
+    50% { transform: translateY(-40px) scale(1.5); opacity: 0.7; }
+  }
+
+  /* ═══ MAIN LAYOUT ═══ */
+  .menu-container {
+    position: relative; z-index: 10;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: row;
+  }
+
+  /* ═══ LEFT SIDE - Character + Title ═══ */
+  .left-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 40px;
+  }
+
+  /* Game title */
+  .game-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 72px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: #fff;
+    text-shadow:
+      0 0 20px rgba(255, 100, 50, 0.8),
+      0 0 60px rgba(255, 60, 20, 0.4),
+      0 0 100px rgba(255, 40, 10, 0.2);
+    animation: titlePulse 3s ease-in-out infinite;
+    margin-bottom: 10px;
+  }
+  .game-title span.accent {
+    color: #ff4422;
+    text-shadow:
+      0 0 20px rgba(255, 50, 20, 1),
+      0 0 60px rgba(255, 50, 20, 0.6);
+  }
+  @keyframes titlePulse {
+    0%, 100% { text-shadow: 0 0 20px rgba(255,100,50,0.8), 0 0 60px rgba(255,60,20,0.4); }
+    50% { text-shadow: 0 0 30px rgba(255,100,50,1), 0 0 80px rgba(255,60,20,0.6), 0 0 120px rgba(255,40,10,0.3); }
+  }
+
+  .game-subtitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    color: rgba(255, 150, 100, 0.5);
+    margin-bottom: 50px;
+  }
+
+  /* Character display area */
+  .character-display {
+    width: 280px; height: 350px;
+    background: radial-gradient(ellipse at center bottom, rgba(255, 60, 20, 0.15), transparent 70%);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: grab;
+    transition: transform 0.3s ease;
+  }
+  .character-display:hover { transform: scale(1.03); }
+  .character-display:active { cursor: grabbing; }
+
+  .character-silhouette {
+    width: 120px; height: 200px;
+    background: linear-gradient(180deg, #3a2a4a 0%, #2a1a3a 50%, #1a0a2a 100%);
+    border-radius: 20px 20px 10px 10px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(100, 40, 180, 0.3);
+    animation: characterIdle 4s ease-in-out infinite;
+  }
+  /* Hammer orbit visual */
+  .hammer-orbit {
+    position: absolute;
+    width: 200px; height: 200px;
+    top: 50%; left: 50%;
+    margin-top: -100px; margin-left: -100px;
+    border: 2px dashed rgba(255, 150, 50, 0.15);
+    border-radius: 50%;
+    animation: orbitSpin 3s linear infinite;
+  }
+  .hammer-icon {
+    position: absolute;
+    top: -12px; left: 50%; margin-left: -10px;
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, #ffa040, #ff6020);
+    border-radius: 4px;
+    box-shadow: 0 0 15px rgba(255, 130, 50, 0.6);
+  }
+  @keyframes orbitSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes characterIdle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .character-label {
+    position: absolute;
+    bottom: -30px;
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+  }
+
+  /* Ground glow under character */
+  .ground-glow {
+    width: 200px; height: 8px;
+    background: radial-gradient(ellipse, rgba(255, 80, 30, 0.4), transparent);
+    border-radius: 50%;
+    margin-top: 20px;
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+  @keyframes glowPulse {
+    0%, 100% { transform: scaleX(1); opacity: 0.6; }
+    50% { transform: scaleX(1.3); opacity: 1; }
+  }
+
+  /* ═══ RIGHT SIDE - Buttons + Info ═══ */
+  .right-panel {
+    width: 420px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 50px;
+    position: relative;
+  }
+
+  /* Vertical separator line */
+  .right-panel::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 15%; height: 70%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(255, 100, 50, 0.2), rgba(255, 100, 50, 0.3), rgba(255, 100, 50, 0.2), transparent);
+  }
+
+  /* ═══ BUTTONS ═══ */
+  .menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .menu-btn {
+    position: relative;
+    padding: 16px 30px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    text-align: left;
+  }
+
+  /* Play button (primary - big and loud) */
+  .btn-play {
+    background: linear-gradient(135deg, #ff4422 0%, #ff6633 50%, #ff4422 100%);
+    color: #fff;
+    font-size: 22px;
+    padding: 22px 30px;
+    box-shadow: 0 4px 25px rgba(255, 60, 20, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    border: 1px solid rgba(255, 100, 60, 0.3);
+    animation: playGlow 2s ease-in-out infinite;
+  }
+  .btn-play:hover {
+    transform: scale(1.05) translateX(5px);
+    box-shadow: 0 6px 35px rgba(255, 60, 20, 0.7);
+    background: linear-gradient(135deg, #ff5533 0%, #ff7744 50%, #ff5533 100%);
+  }
+  .btn-play:active { transform: scale(0.98); }
+  @keyframes playGlow {
+    0%, 100% { box-shadow: 0 4px 25px rgba(255,60,20,0.4), inset 0 1px 0 rgba(255,255,255,0.2); }
+    50% { box-shadow: 0 4px 35px rgba(255,60,20,0.6), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 60px rgba(255,60,20,0.15); }
+  }
+
+  /* Shine sweep on play button */
+  .btn-play::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transform: skewX(-20deg);
+    animation: shineSweep 4s ease-in-out infinite;
+  }
+  @keyframes shineSweep {
+    0%, 100% { left: -100%; }
+    50% { left: 150%; }
+  }
+
+  /* Continue button */
+  .btn-continue {
+    background: linear-gradient(135deg, rgba(255, 100, 50, 0.15), rgba(255, 80, 30, 0.08));
+    color: rgba(255, 180, 130, 0.9);
+    border: 1px solid rgba(255, 100, 50, 0.25);
+    backdrop-filter: blur(10px);
+  }
+  .btn-continue:hover {
+    transform: translateX(8px);
+    background: linear-gradient(135deg, rgba(255, 100, 50, 0.25), rgba(255, 80, 30, 0.15));
+    border-color: rgba(255, 100, 50, 0.5);
+    color: #fff;
+  }
+  .btn-continue.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Secondary buttons */
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 14px;
+    padding: 13px 30px;
+    backdrop-filter: blur(5px);
+  }
+  .btn-secondary:hover {
+    transform: translateX(8px);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Button icon indicators */
+  .btn-icon {
+    float: right;
+    opacity: 0.4;
+    font-size: 14px;
+    margin-top: 2px;
+    transition: all 0.2s;
+  }
+  .menu-btn:hover .btn-icon {
+    opacity: 0.8;
+    transform: translateX(4px);
+  }
+
+  /* Spacer between button groups */
+  .btn-spacer { height: 8px; }
+
+  /* ═══ CRYSTALS DISPLAY ═══ */
+  .crystals-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 35px;
+    padding: 12px 18px;
+    background: rgba(255, 200, 50, 0.05);
+    border: 1px solid rgba(255, 200, 50, 0.12);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+  }
+  .crystal-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #60e0ff, #30a0d0);
+    border-radius: 4px;
+    transform: rotate(45deg);
+    box-shadow: 0 0 15px rgba(80, 200, 255, 0.4);
+    animation: crystalPulse 2s ease-in-out infinite;
+  }
+  @keyframes crystalPulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(80,200,255,0.4); }
+    50% { box-shadow: 0 0 25px rgba(80,200,255,0.7); }
+  }
+  .crystal-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: rgba(100, 220, 255, 0.9);
+    letter-spacing: 2px;
+  }
+  .crystal-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(100, 200, 255, 0.4);
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+
+  /* ═══ META UPGRADES PANEL ═══ */
+  .upgrades-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .upgrades-title {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.25);
+    margin-bottom: 12px;
+  }
+  .upgrades-grid {
+    display: flex;
+    gap: 8px;
+  }
+  .upgrade-slot {
+    flex: 1;
+    padding: 10px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .upgrade-slot:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 200, 50, 0.3);
+    transform: translateY(-3px);
+  }
+  .upgrade-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .upgrade-name {
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+  }
+  .upgrade-level {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: rgba(255, 200, 50, 0.7);
+    margin-top: 4px;
+  }
+  .upgrade-bar {
+    width: 100%; height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .upgrade-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff8040, #ffb060);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* ═══ BOTTOM BAR ═══ */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.5), transparent);
+  }
+  .version-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.15);
+    letter-spacing: 2px;
+  }
+  .social-links {
+    display: flex; gap: 15px;
+  }
+  .social-link {
+    width: 30px; height: 30px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .social-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
+    transform: translateY(-2px);
+  }
+
+  /* ═══ ENTRANCE ANIMATIONS ═══ */
+  .left-panel { animation: fadeSlideLeft 0.8s ease-out; }
+  .right-panel { animation: fadeSlideRight 0.8s ease-out; }
+
+  @keyframes fadeSlideLeft {
+    0% { opacity: 0; transform: translateX(-40px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeSlideRight {
+    0% { opacity: 0; transform: translateX(40px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Staggered button entrance */
+  .menu-btn { opacity: 0; animation: btnSlideIn 0.5s ease-out forwards; }
+  .menu-btn:nth-child(1) { animation-delay: 0.3s; }
+  .menu-btn:nth-child(2) { animation-delay: 0.4s; }
+  .menu-btn:nth-child(4) { animation-delay: 0.55s; }
+  .menu-btn:nth-child(5) { animation-delay: 0.65s; }
+  .menu-btn:nth-child(6) { animation-delay: 0.75s; }
+  .menu-btn:nth-child(7) { animation-delay: 0.85s; }
+
+  @keyframes btnSlideIn {
+    0% { opacity: 0; transform: translateX(30px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+
+  .crystals-bar { opacity: 0; animation: fadeIn 0.6s ease-out 0.2s forwards; }
+  .upgrades-section { opacity: 0; animation: fadeIn 0.6s ease-out 0.9s forwards; }
+  @keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 900px) {
+    .menu-container { flex-direction: column; }
+    .left-panel { flex: none; height: 40vh; padding: 20px; }
+    .right-panel { width: 100%; padding: 20px 30px; }
+    .right-panel::before { display: none; }
+    .game-title { font-size: 42px; }
+    .character-display { width: 180px; height: 220px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="bg-layer"></div>
+<div class="fog" id="fog"></div>
+<div class="dust" id="dust"></div>
+
+<!-- Main Menu -->
+<div class="menu-container">
+
+  <!-- LEFT: Title + Character -->
+  <div class="left-panel">
+    <div class="game-title">MEGA<span class="accent">BONK</span></div>
+    <div class="game-subtitle">Survive the Chaos</div>
+
+    <div class="character-display" id="charDisplay">
+      <div class="character-silhouette"></div>
+      <div class="hammer-orbit">
+        <div class="hammer-icon"></div>
+      </div>
+      <div class="character-label">drag to spin</div>
+    </div>
+    <div class="ground-glow"></div>
+  </div>
+
+  <!-- RIGHT: Buttons + Upgrades -->
+  <div class="right-panel">
+
+    <!-- Crystal currency -->
+    <div class="crystals-bar">
+      <div class="crystal-icon"></div>
+      <div class="crystal-text">1,247</div>
+      <div class="crystal-label">Crystals</div>
+    </div>
+
+    <!-- Menu Buttons -->
+    <div class="menu-buttons">
+      <button class="menu-btn btn-play" onclick="flash(this)">
+        New Run
+        <span class="btn-icon">&#9654;</span>
+      </button>
+
+      <button class="menu-btn btn-continue" onclick="flash(this)">
+        Continue
+        <span class="btn-icon">&#9654;</span>
+      </button>
+
+      <div class="btn-spacer"></div>
+
+      <button class="menu-btn btn-secondary" onclick="flash(this)">
+        Upgrades
+        <span class="btn-icon">&#9881;</span>
+      </button>
+
+      <button class="menu-btn btn-secondary" onclick="flash(this)">
+        Achievements
+        <span class="btn-icon">&#9733;</span>
+      </button>
+
+      <button class="menu-btn btn-secondary" onclick="flash(this)">
+        Options
+        <span class="btn-icon">&#9881;</span>
+      </button>
+
+      <button class="menu-btn btn-secondary" onclick="flash(this)">
+        Quit
+        <span class="btn-icon">&#10005;</span>
+      </button>
+    </div>
+
+    <!-- Meta Upgrades Preview -->
+    <div class="upgrades-section">
+      <div class="upgrades-title">Meta Upgrades</div>
+      <div class="upgrades-grid">
+        <div class="upgrade-slot" onclick="upgradeClick(this)">
+          <span class="upgrade-icon">&#10084;</span>
+          <div class="upgrade-name">Health</div>
+          <div class="upgrade-level">Lv 3/10</div>
+          <div class="upgrade-bar"><div class="upgrade-bar-fill" style="width:30%"></div></div>
+        </div>
+        <div class="upgrade-slot" onclick="upgradeClick(this)">
+          <span class="upgrade-icon">&#9889;</span>
+          <div class="upgrade-name">Speed</div>
+          <div class="upgrade-level">Lv 5/10</div>
+          <div class="upgrade-bar"><div class="upgrade-bar-fill" style="width:50%"></div></div>
+        </div>
+        <div class="upgrade-slot" onclick="upgradeClick(this)">
+          <span class="upgrade-icon">&#9876;</span>
+          <div class="upgrade-name">Damage</div>
+          <div class="upgrade-level">Lv 2/10</div>
+          <div class="upgrade-bar"><div class="upgrade-bar-fill" style="width:20%"></div></div>
+        </div>
+        <div class="upgrade-slot" onclick="upgradeClick(this)">
+          <span class="upgrade-icon">&#9731;</span>
+          <div class="upgrade-name">Armor</div>
+          <div class="upgrade-level">Lv 0/10</div>
+          <div class="upgrade-bar"><div class="upgrade-bar-fill" style="width:0%"></div></div>
+        </div>
+        <div class="upgrade-slot" onclick="upgradeClick(this)">
+          <span class="upgrade-icon">&#10026;</span>
+          <div class="upgrade-name">Magnet</div>
+          <div class="upgrade-level">Lv 7/10</div>
+          <div class="upgrade-bar"><div class="upgrade-bar-fill" style="width:70%"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <div class="version-text">v0.3.0 ALPHA</div>
+  <div class="social-links">
+    <div class="social-link" title="Discord">D</div>
+    <div class="social-link" title="Twitter">X</div>
+    <div class="social-link" title="GitHub">G</div>
+  </div>
+</div>
+
+<script>
+  // Generate fog particles
+  const fog = document.getElementById('fog');
+  for (let i = 0; i < 6; i++) {
+    const p = document.createElement('div');
+    p.className = 'fog-particle';
+    const size = 200 + Math.random() * 400;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.top = (Math.random() * 100) + '%';
+    p.style.left = '-20%';
+    p.style.animationDuration = (20 + Math.random() * 30) + 's';
+    p.style.animationDelay = (Math.random() * 20) + 's';
+    fog.appendChild(p);
+  }
+
+  // Generate dust motes
+  const dust = document.getElementById('dust');
+  for (let i = 0; i < 30; i++) {
+    const d = document.createElement('div');
+    d.className = 'dust-particle';
+    d.style.left = (Math.random() * 100) + '%';
+    d.style.top = (Math.random() * 100) + '%';
+    d.style.animationDuration = (3 + Math.random() * 5) + 's';
+    d.style.animationDelay = (Math.random() * 5) + 's';
+    dust.appendChild(d);
+  }
+
+  // Mouse parallax on left panel
+  const leftPanel = document.querySelector('.left-panel');
+  document.addEventListener('mousemove', (e) => {
+    const mx = (e.clientX / window.innerWidth - 0.5) * 2;
+    const my = (e.clientY / window.innerHeight - 0.5) * 2;
+
+    const charDisplay = document.getElementById('charDisplay');
+    charDisplay.style.transform = `perspective(600px) rotateY(${mx * 5}deg) rotateX(${-my * 3}deg) scale(${1 + Math.abs(mx) * 0.02})`;
+  });
+
+  // Button click flash effect
+  function flash(btn) {
+    btn.style.transition = 'none';
+    btn.style.filter = 'brightness(2)';
+    setTimeout(() => {
+      btn.style.transition = 'filter 0.3s';
+      btn.style.filter = 'brightness(1)';
+    }, 80);
+  }
+
+  // Upgrade click bounce
+  function upgradeClick(slot) {
+    slot.style.transition = 'none';
+    slot.style.transform = 'scale(0.92)';
+    setTimeout(() => {
+      slot.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      slot.style.transform = 'translateY(-3px)';
+    }, 80);
+    setTimeout(() => {
+      slot.style.transform = '';
+    }, 400);
+  }
+</script>
+
+</body>
+</html>
