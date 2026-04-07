@@ -23,6 +23,10 @@ public class GameManager : MonoBehaviour
         survivalTime = 0f;
         isGameOver = false;
         GameStats.Reset();
+
+        // Start gameplay music
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayMusic("gameplay");
     }
 
     private void Update()
@@ -59,6 +63,13 @@ public class GameManager : MonoBehaviour
         {
             GameStats.highestLevel = pc.currentLevel;
             GameStats.crystalsCollected = pc.crystalsCollected;
+        }
+
+        // Accumulate lifetime stats for achievements
+        if (AchievementManager.Instance != null)
+        {
+            AchievementManager.Instance.AccumulateRunStats();
+            AchievementManager.Instance.CheckAll();
         }
 
         StartCoroutine(GameOverSequence());

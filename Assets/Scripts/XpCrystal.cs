@@ -139,6 +139,7 @@ public class XpCrystal : MonoBehaviour
             if (dist < 0.5f)
             {
                 transform.localScale = Vector3.one;
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("crystalPickup", 0.5f);
                 playerController.GainXP(xpAmount);
 
                 if (ObjectPool.Instance != null)

@@ -218,6 +218,7 @@ public class PlayerController : MonoBehaviour
 
         if (cameraFollow != null) cameraFollow.StartShake();
         if (bloodEffect != null) bloodEffect.Flash();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("playerHurt");
 
         if (damageFlashImage != null)
         {
@@ -249,6 +250,7 @@ public class PlayerController : MonoBehaviour
 
     private void Die()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("playerDeath");
         SaveManager.AddCrystals(crystalsCollected);
         GameManager gm = FindObjectOfType<GameManager>();
         if (gm != null) gm.TriggerGameOver();
@@ -270,6 +272,7 @@ public class PlayerController : MonoBehaviour
         currentLevel++;
         currentXP -= xpToNextLevel;
         xpToNextLevel *= 1.5f;
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("levelUp");
         LevelUpManager lum = FindObjectOfType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
         UpdateHUD();
@@ -301,8 +304,9 @@ public class PlayerController : MonoBehaviour
             direction = (camForward * direction.z + camRight * direction.x).normalized;
         }
 
-        // FOV punch on dash start
+        // FOV punch + sound on dash start
         if (cameraFollow != null) cameraFollow.PunchFOV();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("dash");
 
         while (Time.time < startTime + dashDuration)
         {

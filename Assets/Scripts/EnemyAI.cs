@@ -35,7 +35,7 @@ public class EnemyAI : MonoBehaviour
     private float baseMoveSpeed;
     private float baseDamage;
 
-    private float currentHealth;
+    [HideInInspector] public float currentHealth;
     private MeshRenderer meshRenderer;
     private Color originalColor;
     private PlayerController playerController;
@@ -166,6 +166,9 @@ public class EnemyAI : MonoBehaviour
             if (popupScript != null) popupScript.Setup(damageAmount);
         }
 
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX("hit");
+
         StartCoroutine(FlashEffect());
         if (currentHealth <= 0) Die();
     }
@@ -195,9 +198,18 @@ public class EnemyAI : MonoBehaviour
 
         GameStats.totalKills++;
 
+        // Boss death callback (extra drops, stats, sound)
+        BossEnemy boss = GetComponent<BossEnemy>();
+        if (boss != null)
+            boss.OnBossDeath();
+
         // Hit freeze micro-pause for impact feel
         if (HitFreezeEffect.Instance != null)
             HitFreezeEffect.Instance.Freeze();
+
+        // Play kill sound
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(boss != null ? "bossDeath" : "enemyDeath");
 
         StartCoroutine(DeathAnimation());
     }

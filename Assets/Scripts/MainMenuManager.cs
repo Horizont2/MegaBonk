@@ -18,6 +18,10 @@ public class MainMenuManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         UpdateCrystalsUI();
         CheckContinueStatus();
+
+        // Start menu music
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayMusic("menu");
     }
 
     private void CheckContinueStatus()
@@ -66,10 +70,13 @@ public class MainMenuManager : MonoBehaviour
         Debug.Log("Options clicked! (Show options panel)");
     }
 
-    // Placeholder for "ACHIEVEMENTS"
     public void OpenAchievements()
     {
-        Debug.Log("Achievements clicked! (Show achievements panel)");
+        AchievementsPanelUI panel = FindObjectOfType<AchievementsPanelUI>(true);
+        if (panel != null) panel.Toggle();
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX("buttonClick");
     }
 
     // Called when "QUIT" is clicked

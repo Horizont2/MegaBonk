@@ -6,6 +6,7 @@ using UnityEngine;
 public static class GameStats
 {
     public static int totalKills;
+    public static int bossKills;
     public static float totalDamageDealt;
     public static float totalDamageTaken;
     public static int highestLevel;
@@ -14,6 +15,7 @@ public static class GameStats
     public static void Reset()
     {
         totalKills = 0;
+        bossKills = 0;
         totalDamageDealt = 0f;
         totalDamageTaken = 0f;
         highestLevel = 1;
