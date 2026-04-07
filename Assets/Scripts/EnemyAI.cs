@@ -25,6 +25,11 @@ public class EnemyAI : MonoBehaviour
 
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
+    [Header("Juice Effects")]
+    public float spawnBounceTime = 0.35f;
+    public float deathShrinkTime = 0.3f;
+    public float deathFloatHeight = 2f;
+
     // Base stats (set from prefab, used for reset)
     private float baseMaxHealth;
     private float baseMoveSpeed;
@@ -34,6 +39,8 @@ public class EnemyAI : MonoBehaviour
     private MeshRenderer meshRenderer;
     private Color originalColor;
     private PlayerController playerController;
+    private bool isDying = false;
+    private bool isSpawning = false;
 
     private void Awake()
     {
@@ -74,6 +81,7 @@ public class EnemyAI : MonoBehaviour
     private void Init()
     {
         currentHealth = maxHealth;
+        isDying = false;
 
         meshRenderer = GetComponentInChildren<MeshRenderer>();
         if (meshRenderer != null) originalColor = meshRenderer.material.color;
@@ -86,6 +94,9 @@ public class EnemyAI : MonoBehaviour
         }
 
         lastAttackTime = -attackCooldown;
+
+        // Spawn bounce animation
+        StartCoroutine(SpawnBounce());
     }
 
     /// <summary>
@@ -102,7 +113,7 @@ public class EnemyAI : MonoBehaviour
 
     private void Update()
     {
-        if (target == null) return;
+        if (target == null || isDying || isSpawning) return;
 
         Vector3 currentPos = transform.position;
         Vector3 direction = (target.position - currentPos).normalized;
@@ -171,6 +182,9 @@ public class EnemyAI : MonoBehaviour
 
     private void Die()
     {
+        if (isDying) return;
+        isDying = true;
+
         if (xpCrystalPrefab != null)
         {
             if (ObjectPool.Instance != null)
@@ -179,8 +193,67 @@ public class EnemyAI : MonoBehaviour
                 Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
         }
 
-        // Track kill stats
         GameStats.totalKills++;
+
+        // Hit freeze micro-pause for impact feel
+        if (HitFreezeEffect.Instance != null)
+            HitFreezeEffect.Instance.Freeze();
+
+        StartCoroutine(DeathAnimation());
+    }
+
+    private IEnumerator SpawnBounce()
+    {
+        isSpawning = true;
+        float t = 0f;
+        transform.localScale = Vector3.zero;
+
+        while (t < spawnBounceTime)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / spawnBounceTime);
+            // Elastic overshoot: goes to ~1.2 then settles
+            float elastic = 1f + Mathf.Sin(p * Mathf.PI) * 0.3f * (1f - p);
+            float scale = p * elastic;
+            transform.localScale = Vector3.one * scale;
+            yield return null;
+        }
+        transform.localScale = Vector3.one;
+        isSpawning = false;
+    }
+
+    private IEnumerator DeathAnimation()
+    {
+        float t = 0f;
+        Vector3 startPos = transform.position;
+        Vector3 startScale = transform.localScale;
+        Color startColor = (meshRenderer != null) ? meshRenderer.material.color : Color.white;
+
+        while (t < deathShrinkTime)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / deathShrinkTime);
+
+            // Shrink with accelerating curve
+            float scale = Mathf.Lerp(1f, 0f, p * p);
+            transform.localScale = startScale * scale;
+
+            // Float upward
+            transform.position = startPos + Vector3.up * (deathFloatHeight * p);
+
+            // Fade to white
+            if (meshRenderer != null)
+            {
+                meshRenderer.material.color = Color.Lerp(startColor, Color.white, p);
+            }
+
+            yield return null;
+        }
+
+        // Reset visual state before returning to pool
+        transform.localScale = startScale;
+        if (meshRenderer != null)
+            meshRenderer.material.color = originalColor;
 
         if (ObjectPool.Instance != null)
             ObjectPool.Instance.ReturnToPool(gameObject);

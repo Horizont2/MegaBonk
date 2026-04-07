@@ -11,10 +11,21 @@ public class XpCrystal : MonoBehaviour
     private Vector3 popTarget;
     private bool isPopping = true;
 
+    [Header("Idle Animation")]
+    public float bobAmplitude = 0.15f;
+    public float bobFrequency = 2f;
+    public float rotateSpeed = 90f;
+    public float glowPulseSpeed = 3f;
+    public float glowPulseIntensity = 0.3f;
+
     private Transform player;
     private PlayerController playerController;
     private bool isMagnetized = false;
     private bool collidersStripped = false;
+    private Vector3 restPosition;
+    private float bobTimer;
+    private MeshRenderer crystalRenderer;
+    private Color crystalBaseColor;
 
     private void Awake()
     {
@@ -52,6 +63,7 @@ public class XpCrystal : MonoBehaviour
     {
         isMagnetized = false;
         isPopping = true;
+        bobTimer = Random.Range(0f, Mathf.PI * 2f); // Randomize phase so crystals don't bob in sync
 
         GameObject p = GameObject.FindGameObjectWithTag("Player");
         if (p != null)
@@ -59,6 +71,9 @@ public class XpCrystal : MonoBehaviour
             player = p.transform;
             playerController = p.GetComponent<PlayerController>();
         }
+
+        crystalRenderer = GetComponentInChildren<MeshRenderer>();
+        if (crystalRenderer != null) crystalBaseColor = crystalRenderer.material.color;
 
         // Pop animation: scatter in random direction from spawn point
         Vector2 randomCircle = Random.insideUnitCircle.normalized * Random.Range(1.5f, popRadius);
@@ -80,11 +95,28 @@ public class XpCrystal : MonoBehaviour
             if (Vector3.Distance(transform.position, popTarget) < 0.1f)
             {
                 isPopping = false;
+                restPosition = transform.position;
             }
             return;
         }
 
-        // 2. Magnet pickup
+        // 2. Idle animation: bob up/down + rotate + glow pulse
+        if (!isMagnetized)
+        {
+            bobTimer += Time.deltaTime * bobFrequency;
+            float bobOffset = Mathf.Sin(bobTimer) * bobAmplitude;
+            transform.position = restPosition + Vector3.up * bobOffset;
+            transform.Rotate(Vector3.up, rotateSpeed * Time.deltaTime, Space.World);
+
+            // Subtle brightness pulse
+            if (crystalRenderer != null)
+            {
+                float pulse = 1f + Mathf.Sin(bobTimer * glowPulseSpeed) * glowPulseIntensity;
+                crystalRenderer.material.color = crystalBaseColor * pulse;
+            }
+        }
+
+        // 3. Magnet pickup
         if (player == null || playerController == null) return;
 
         float distance = Vector3.Distance(transform.position, player.position);
@@ -99,8 +131,14 @@ public class XpCrystal : MonoBehaviour
             Vector3 targetPos = player.position + Vector3.up * 1f;
             transform.position = Vector3.MoveTowards(transform.position, targetPos, magnetSpeed * Time.deltaTime);
 
-            if (Vector3.Distance(transform.position, targetPos) < 0.5f)
+            // Scale up slightly as it approaches player for a satisfying pickup feel
+            float dist = Vector3.Distance(transform.position, targetPos);
+            float scaleMult = Mathf.Lerp(1.3f, 1f, dist / playerController.pickupRadius);
+            transform.localScale = Vector3.one * scaleMult;
+
+            if (dist < 0.5f)
             {
+                transform.localScale = Vector3.one;
                 playerController.GainXP(xpAmount);
 
                 if (ObjectPool.Instance != null)

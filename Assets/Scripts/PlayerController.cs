@@ -301,12 +301,17 @@ public class PlayerController : MonoBehaviour
             direction = (camForward * direction.z + camRight * direction.x).normalized;
         }
 
+        // FOV punch on dash start
+        if (cameraFollow != null) cameraFollow.PunchFOV();
+
         while (Time.time < startTime + dashDuration)
         {
-            // Move the player super fast
             characterController.Move(direction * dashSpeed * Time.deltaTime);
-            yield return null; // Wait for the next frame
+            yield return null;
         }
+
+        // Restore FOV
+        if (cameraFollow != null) cameraFollow.ReleaseFOV();
 
         isDashing = false;
     }

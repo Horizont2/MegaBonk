@@ -16,15 +16,25 @@ public class CameraFollow : MonoBehaviour
     public float shakeIntensity = 0.3f;
     public float shakeDuration = 0.2f;
 
+    [Header("FOV Punch")]
+    public float baseFOV = 60f;
+    public float dashFOVBoost = 15f;
+    public float fovPunchSpeed = 8f;
+    public float fovReturnSpeed = 5f;
+
     private float currentX = 0f;
     private float currentY = 45f;
     private float shakeTimer;
+    private float targetFOVOffset = 0f;
+    private float currentFOVOffset = 0f;
+    private Camera cam;
 
     private void Start()
     {
         transform.parent = null;
-        // Ховаємо курсор миші для зручного керування (натисни ESC в Unity, щоб повернути його)
-        Cursor.lockState = CursorLockMode.Locked; 
+        Cursor.lockState = CursorLockMode.Locked;
+        cam = GetComponent<Camera>();
+        if (cam != null) baseFOV = cam.fieldOfView;
     }
 
     private void LateUpdate()
@@ -53,6 +63,9 @@ public class CameraFollow : MonoBehaviour
         transform.position = desiredPosition;
         transform.LookAt(target.position + targetOffset);
 
+        // --- FOV PUNCH (smooth transition) ---
+        UpdateFOV();
+
         // --- ANTI-CLIPPING (Keep camera above ground) ---
         if (Terrain.activeTerrain != null)
         {
@@ -74,5 +87,30 @@ public class CameraFollow : MonoBehaviour
     public void StartShake()
     {
         shakeTimer = shakeDuration;
+    }
+
+    /// <summary>
+    /// Punch the FOV outward (call on dash start).
+    /// </summary>
+    public void PunchFOV()
+    {
+        targetFOVOffset = dashFOVBoost;
+    }
+
+    /// <summary>
+    /// Return FOV to normal (call on dash end).
+    /// </summary>
+    public void ReleaseFOV()
+    {
+        targetFOVOffset = 0f;
+    }
+
+    private void UpdateFOV()
+    {
+        if (cam == null) return;
+
+        float speed = (targetFOVOffset > currentFOVOffset) ? fovPunchSpeed : fovReturnSpeed;
+        currentFOVOffset = Mathf.Lerp(currentFOVOffset, targetFOVOffset, speed * Time.deltaTime);
+        cam.fieldOfView = baseFOV + currentFOVOffset;
     }
 }
