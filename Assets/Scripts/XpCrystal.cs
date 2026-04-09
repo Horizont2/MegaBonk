@@ -63,6 +63,7 @@ public class XpCrystal : MonoBehaviour
     {
         isMagnetized = false;
         isPopping = true;
+        transform.localScale = Vector3.one;
         bobTimer = Random.Range(0f, Mathf.PI * 2f); // Randomize phase so crystals don't bob in sync
 
         GameObject p = GameObject.FindGameObjectWithTag("Player");
@@ -133,7 +134,7 @@ public class XpCrystal : MonoBehaviour
 
             // Scale up slightly as it approaches player for a satisfying pickup feel
             float dist = Vector3.Distance(transform.position, targetPos);
-            float scaleMult = Mathf.Lerp(1.3f, 1f, dist / playerController.pickupRadius);
+            float scaleMult = Mathf.Lerp(1.08f, 1f, Mathf.Clamp01(dist / playerController.pickupRadius));
             transform.localScale = Vector3.one * scaleMult;
 
             if (dist < 0.5f)

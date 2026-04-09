@@ -91,11 +91,11 @@ public class DeathStatsScreen : MonoBehaviour
         contentRoot = contentObj.AddComponent<RectTransform>();
         contentRoot.anchorMin = new Vector2(0.5f, 0.5f);
         contentRoot.anchorMax = new Vector2(0.5f, 0.5f);
-        contentRoot.sizeDelta = new Vector2(600, 600);
+        contentRoot.sizeDelta = new Vector2(500, 520);
         contentRoot.anchoredPosition = Vector2.zero;
 
         VerticalLayoutGroup vlg = contentObj.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 16;
+        vlg.spacing = 10;
         vlg.childAlignment = TextAnchor.UpperCenter;
         vlg.childControlWidth = true;
         vlg.childControlHeight = false;
@@ -103,15 +103,15 @@ public class DeathStatsScreen : MonoBehaviour
         vlg.childForceExpandHeight = false;
 
         // Title
-        titleText = CreateText(contentRoot, "YOU DIED", 52, titleColor, FontStyles.Bold);
-        titleText.GetComponent<LayoutElement>().preferredHeight = 80;
+        titleText = CreateText(contentRoot, "YOU DIED", 40, titleColor, FontStyles.Bold);
+        titleText.GetComponent<LayoutElement>().preferredHeight = 60;
         titleText.rectTransform.localScale = Vector3.one * 2f;
 
         // Spacer
         GameObject spacer = new GameObject("Spacer");
         spacer.transform.SetParent(contentRoot, false);
         spacer.AddComponent<RectTransform>();
-        spacer.AddComponent<LayoutElement>().preferredHeight = 20;
+        spacer.AddComponent<LayoutElement>().preferredHeight = 10;
     }
 
     private void PopulateStats(float survivalTime, int kills, float damageDealt,
@@ -125,18 +125,17 @@ public class DeathStatsScreen : MonoBehaviour
         statRows[4] = CreateStatRow("LEVEL REACHED", level);
         statRows[5] = CreateStatRow("CRYSTALS", crystals);
 
-        // Continue button
-        GameObject btnObj = new GameObject("ContinueButton");
-        btnObj.transform.SetParent(contentRoot, false);
-        RectTransform btnRect = btnObj.AddComponent<RectTransform>();
-        btnObj.AddComponent<LayoutElement>().preferredHeight = 60;
-
         // Spacer before button
         GameObject spacer2 = new GameObject("Spacer2");
         spacer2.transform.SetParent(contentRoot, false);
         spacer2.AddComponent<RectTransform>();
         spacer2.AddComponent<LayoutElement>().preferredHeight = 10;
-        spacer2.transform.SetSiblingIndex(btnObj.transform.GetSiblingIndex());
+
+        // Continue button
+        GameObject btnObj = new GameObject("ContinueButton");
+        btnObj.transform.SetParent(contentRoot, false);
+        RectTransform btnRect = btnObj.AddComponent<RectTransform>();
+        btnObj.AddComponent<LayoutElement>().preferredHeight = 50;
 
         Image btnBg = btnObj.AddComponent<Image>();
         btnBg.color = buttonColor;
@@ -151,7 +150,7 @@ public class DeathStatsScreen : MonoBehaviour
         continueButton.colors = cb;
         continueButton.onClick.AddListener(OnContinueClicked);
 
-        continueText = CreateText(btnRect, "CONTINUE", 28, Color.white, FontStyles.Bold);
+        continueText = CreateText(btnRect, "CONTINUE", 24, Color.white, FontStyles.Bold);
         continueText.alignment = TextAlignmentOptions.Center;
         continueText.rectTransform.anchorMin = Vector2.zero;
         continueText.rectTransform.anchorMax = Vector2.one;
@@ -168,7 +167,7 @@ public class DeathStatsScreen : MonoBehaviour
         GameObject rowObj = new GameObject("Row_" + label);
         rowObj.transform.SetParent(contentRoot, false);
         RectTransform rowRect = rowObj.AddComponent<RectTransform>();
-        rowObj.AddComponent<LayoutElement>().preferredHeight = 45;
+        rowObj.AddComponent<LayoutElement>().preferredHeight = 35;
 
         CanvasGroup cg = rowObj.AddComponent<CanvasGroup>();
         cg.alpha = 0f;
@@ -179,10 +178,10 @@ public class DeathStatsScreen : MonoBehaviour
         hlg.childControlHeight = true;
         hlg.childForceExpandWidth = true;
 
-        TextMeshProUGUI labelTmp = CreateText(rowRect, label, 26, labelColor, FontStyles.Normal);
+        TextMeshProUGUI labelTmp = CreateText(rowRect, label, 20, labelColor, FontStyles.Normal);
         labelTmp.alignment = TextAlignmentOptions.Left;
 
-        TextMeshProUGUI valueTmp = CreateText(rowRect, "0", 30, valueColor, FontStyles.Bold);
+        TextMeshProUGUI valueTmp = CreateText(rowRect, "0", 22, valueColor, FontStyles.Bold);
         valueTmp.alignment = TextAlignmentOptions.Right;
 
         return new StatRow
@@ -342,6 +341,7 @@ public class DeathStatsScreen : MonoBehaviour
 
     private void OnContinueClicked()
     {
+        Time.timeScale = 1f;
         SceneManager.LoadScene("MainMenu");
     }
 }

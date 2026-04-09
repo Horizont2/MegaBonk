@@ -50,7 +50,19 @@ public class MainMenuManager : MonoBehaviour
     public void StartNewRun()
     {
         PlayerPrefs.SetInt("IsRunActive", 1);
-        PlayerPrefs.SetInt("IsContinuing", 0); // NEW: Mark as fresh run
+        PlayerPrefs.SetInt("IsContinuing", 0); // Mark as fresh run
+
+        // Clear any saved run state from a previous continue
+        PlayerPrefs.DeleteKey("SavedLevel");
+        PlayerPrefs.DeleteKey("SavedXP");
+        PlayerPrefs.DeleteKey("SavedXPToNext");
+        PlayerPrefs.DeleteKey("SavedHealth");
+        PlayerPrefs.DeleteKey("SavedMaxHealth");
+        PlayerPrefs.DeleteKey("SavedCrystals");
+        PlayerPrefs.DeleteKey("SavedSurvivalTime");
+        PlayerPrefs.DeleteKey("SavedTotalKills");
+        PlayerPrefs.DeleteKey("SavedDamageDealt");
+        PlayerPrefs.DeleteKey("SavedDamageTaken");
         PlayerPrefs.Save();
 
         GameManager.survivalTime = 0f;

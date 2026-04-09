@@ -96,6 +96,19 @@ public class PlayerController : MonoBehaviour
             float savedY = PlayerPrefs.GetFloat("PlayerPosY", transform.position.y);
             float savedZ = PlayerPrefs.GetFloat("PlayerPosZ", transform.position.z);
             transform.position = new Vector3(savedX, savedY, savedZ);
+
+            // Restore full player state
+            currentLevel = PlayerPrefs.GetInt("SavedLevel", 1);
+            currentXP = PlayerPrefs.GetFloat("SavedXP", 0f);
+            xpToNextLevel = PlayerPrefs.GetFloat("SavedXPToNext", 50f);
+            currentHealth = PlayerPrefs.GetFloat("SavedHealth", maxHealth);
+            maxHealth = PlayerPrefs.GetFloat("SavedMaxHealth", maxHealth);
+            crystalsCollected = PlayerPrefs.GetInt("SavedCrystals", 0);
+            UpdateHUD();
+
+            // Clear continue flag so next scene load is fresh
+            PlayerPrefs.SetInt("IsContinuing", 0);
+            PlayerPrefs.Save();
         }
         else
         {

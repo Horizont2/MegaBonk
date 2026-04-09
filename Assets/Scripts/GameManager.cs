@@ -20,9 +20,21 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        survivalTime = 0f;
         isGameOver = false;
-        GameStats.Reset();
+
+        if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
+        {
+            // Restore saved run stats
+            survivalTime = PlayerPrefs.GetFloat("SavedSurvivalTime", 0f);
+            GameStats.totalKills = PlayerPrefs.GetInt("SavedTotalKills", 0);
+            GameStats.totalDamageDealt = PlayerPrefs.GetFloat("SavedDamageDealt", 0f);
+            GameStats.totalDamageTaken = PlayerPrefs.GetFloat("SavedDamageTaken", 0f);
+        }
+        else
+        {
+            survivalTime = 0f;
+            GameStats.Reset();
+        }
 
         // Start gameplay music
         if (AudioManager.Instance != null)
@@ -115,14 +127,31 @@ public class GameManager : MonoBehaviour
     {
         PlayerPrefs.SetInt("IsRunActive", 1);
 
-        // Save the exact player position before leaving
+        // Save the exact player position and full state before leaving
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
+            PlayerController pc = player.GetComponent<PlayerController>();
             PlayerPrefs.SetFloat("PlayerPosX", player.transform.position.x);
             PlayerPrefs.SetFloat("PlayerPosY", player.transform.position.y);
             PlayerPrefs.SetFloat("PlayerPosZ", player.transform.position.z);
+
+            if (pc != null)
+            {
+                PlayerPrefs.SetInt("SavedLevel", pc.currentLevel);
+                PlayerPrefs.SetFloat("SavedXP", pc.currentXP);
+                PlayerPrefs.SetFloat("SavedXPToNext", pc.xpToNextLevel);
+                PlayerPrefs.SetFloat("SavedHealth", pc.currentHealth);
+                PlayerPrefs.SetFloat("SavedMaxHealth", pc.maxHealth);
+                PlayerPrefs.SetInt("SavedCrystals", pc.crystalsCollected);
+            }
         }
+
+        // Save run stats
+        PlayerPrefs.SetFloat("SavedSurvivalTime", survivalTime);
+        PlayerPrefs.SetInt("SavedTotalKills", GameStats.totalKills);
+        PlayerPrefs.SetFloat("SavedDamageDealt", GameStats.totalDamageDealt);
+        PlayerPrefs.SetFloat("SavedDamageTaken", GameStats.totalDamageTaken);
 
         PlayerPrefs.Save();
         SceneManager.LoadScene("MainMenu");

@@ -10,8 +10,8 @@ public class DamagePopup : MonoBehaviour
     public float lifetime = 1f;
 
     [Header("Scale Animation")]
-    public float startScale = 1.8f;
-    public float normalScale = 1f;
+    public float startScale = 0.6f;
+    public float normalScale = 0.35f;
     public float scaleDownSpeed = 8f;
 
     [Header("Damage Colors")]
