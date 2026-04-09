@@ -32,11 +32,19 @@ public class EnemyAI : MonoBehaviour
 
     private void Awake()
     {
-        // 100% ФІКС: Примусово переносимо ворога ТА ВСІ ЙОГО ЧАСТИНИ на 9 шар (шар привидів)
+        // Переносимо самого ворога на 9 шар (шар привидів)
         gameObject.layer = 9;
+
+        // --- ЗАХИСТ МІНІМАПИ ---
+        int minimapLayer = LayerMask.NameToLayer("MinimapOnly");
+
         foreach (Transform t in GetComponentsInChildren<Transform>(true))
         {
-            t.gameObject.layer = 9;
+            // Змінюємо шар на 9 тільки якщо це НЕ іконка мінімапи
+            if (t.gameObject.layer != minimapLayer)
+            {
+                t.gameObject.layer = 9;
+            }
         }
 
         Collider[] enemyCols = GetComponentsInChildren<Collider>(true);

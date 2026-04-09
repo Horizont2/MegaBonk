@@ -56,8 +56,6 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        // --- 100% ФІКС ФІЗИКИ: Примусове налаштування шарів через код ---
-        // Ставимо гравця на 8 шар, а все інше на 9, і наказуємо їм ігнорувати одне одного
         gameObject.layer = 8;
         Physics.IgnoreLayerCollision(8, 9, true);
 
@@ -76,22 +74,18 @@ public class PlayerController : MonoBehaviour
         UIIconGlimmer glimmer = FindObjectOfType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
 
-        // FIX: Start a coroutine to wait for the terrain to generate before dropping the player
         StartCoroutine(SpawnSafely());
     }
 
     private System.Collections.IEnumerator SpawnSafely()
     {
-        // 1. Disable CharacterController so it doesn't block our teleportation
         if (characterController != null) characterController.enabled = false;
 
-        // 2. Wait exactly 2 frames for Unity to fully bake the Terrain physics collider
         yield return null;
         yield return null;
 
         if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
         {
-            // Load saved coordinates if continuing
             float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
             float savedY = PlayerPrefs.GetFloat("PlayerPosY", transform.position.y);
             float savedZ = PlayerPrefs.GetFloat("PlayerPosZ", transform.position.z);
@@ -99,28 +93,24 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // New Run: Shoot a raycast from the sky (Y = 1000) straight down to find the true ground
             float spawnX = 0f;
             float spawnZ = 0f;
-            float spawnY = 20f; // Fallback height
+            float spawnY = 20f;
 
             Vector3 skyPos = new Vector3(spawnX, 1000f, spawnZ);
 
             if (Physics.Raycast(skyPos, Vector3.down, out RaycastHit hit, 2000f))
             {
-                // Ground found! Add 2 meters so the player drops safely
                 spawnY = hit.point.y + 2f;
             }
             else if (Terrain.activeTerrain != null)
             {
-                // Fallback method just in case
                 spawnY = Terrain.activeTerrain.SampleHeight(new Vector3(spawnX, 0, spawnZ)) + Terrain.activeTerrain.transform.position.y + 2f;
             }
 
             transform.position = new Vector3(spawnX, spawnY, spawnZ);
         }
 
-        // 3. Re-enable CharacterController after teleporting
         if (characterController != null) characterController.enabled = true;
     }
 
@@ -151,24 +141,29 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(DashRoutine(inputDir));
         }
 
-        // If we are currently dashing, block normal movement
+        // Блокуємо рух під час ривка
         if (isDashing) return;
 
-        if (inputDir.magnitude >= 0.1f)
+        // Отримуємо напрямок камери
+        Vector3 camForward = Camera.main.transform.forward;
+        Vector3 camRight = Camera.main.transform.right;
+        camForward.y = 0f; camRight.y = 0f;
+        camForward.Normalize(); camRight.Normalize();
+
+        // --- 1. ПОСТІЙНИЙ ПОВОРОТ ЗА МИШКОЮ (КАМЕРОЮ) ---
+        if (camForward.sqrMagnitude > 0.001f)
         {
-            Vector3 camForward = Camera.main.transform.forward;
-            Vector3 camRight = Camera.main.transform.right;
-            camForward.y = 0f; camRight.y = 0f;
-            camForward.Normalize(); camRight.Normalize();
-
-            movement = (camForward * inputDir.z + camRight * inputDir.x).normalized * moveSpeed;
-
-            Quaternion targetRotation = Quaternion.LookRotation(movement.normalized);
+            Quaternion targetRotation = Quaternion.LookRotation(camForward);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // --- ЗАХИСТ ВІД ЛАГІВ (Lag Spike Fix) ---
-        // Якщо гра підвисне під час спавну кристалів, фізика не зійде з розуму
+        // --- 2. РУХ ---
+        if (inputDir.magnitude >= 0.1f)
+        {
+            movement = (camForward * inputDir.z + camRight * inputDir.x).normalized * moveSpeed;
+        }
+
+        // --- ФІЗИКА І ГРАВІТАЦІЯ ---
         float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
 
         if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
@@ -181,6 +176,7 @@ public class PlayerController : MonoBehaviour
         Vector3 finalMove = movement + velocity;
         characterController.Move(finalMove * safeDeltaTime);
 
+        // --- РЕГЕНЕРАЦІЯ ЗДОРОВ'Я ---
         if (currentHealth < maxHealth && healthRegenRate > 0)
         {
             currentHealth += healthRegenRate * Time.deltaTime;
@@ -188,14 +184,11 @@ public class PlayerController : MonoBehaviour
             UpdateHUD();
         }
 
-        // --- ULTIMATE FAILSAFE: Anti-Void Protection ---
-        // If the player somehow falls through the ground (e.g., terrain hasn't baked yet),
-        // we catch them at Y = -20 and teleport them safely back into the sky.
+        // --- ULTIMATE FAILSAFE (Захист від падіння) ---
         if (transform.position.y < -20f)
         {
             if (characterController != null) characterController.enabled = false;
 
-            // Find a safe height, or just drop them from 100m if terrain is still loading
             float safeY = 100f;
             if (Terrain.activeTerrain != null)
             {
@@ -203,7 +196,7 @@ public class PlayerController : MonoBehaviour
             }
 
             transform.position = new Vector3(transform.position.x, safeY, transform.position.z);
-            velocity = Vector3.zero; // Reset falling speed so they don't slam into the ground
+            velocity = Vector3.zero;
 
             if (characterController != null) characterController.enabled = true;
         }
@@ -219,22 +212,20 @@ public class PlayerController : MonoBehaviour
 
         if (damageFlashImage != null)
         {
-            StopAllCoroutines(); // Reset previous flashes
+            StopAllCoroutines();
             StartCoroutine(FlashRoutine());
         }
 
-        // Ці два рядки мають бути ВСЕРЕДИНІ методу TakeDamage!
         UpdateHUD();
         if (currentHealth <= 0) Die();
     }
 
     private System.Collections.IEnumerator FlashRoutine()
     {
-        // Quickly show red, then fade out
-        float t = 0.4f; // Flash duration
+        float t = 0.4f;
         Color c = damageFlashImage.color;
 
-        c.a = 0.5f; // Initial flash transparency
+        c.a = 0.5f;
         damageFlashImage.color = c;
 
         while (c.a > 0)
@@ -288,24 +279,43 @@ public class PlayerController : MonoBehaviour
         lastDashTime = Time.time;
         float startTime = Time.time;
 
-        // If the player isn't pressing any movement keys, dash straight forward
+        float originalFOV = Camera.main.fieldOfView;
+        float targetFOV = originalFOV + 12f;
+
         if (direction == Vector3.zero) direction = transform.forward;
         else
         {
-            // Convert input direction to world space camera direction
             Vector3 camForward = Camera.main.transform.forward;
             Vector3 camRight = Camera.main.transform.right;
             camForward.y = 0f; camRight.y = 0f;
             direction = (camForward * direction.z + camRight * direction.x).normalized;
         }
 
+        // 1. САМ РИВОК
         while (Time.time < startTime + dashDuration)
         {
-            // Move the player super fast
-            characterController.Move(direction * dashSpeed * Time.deltaTime);
-            yield return null; // Wait for the next frame
+            float normalizedTime = (Time.time - startTime) / dashDuration;
+            float curve = Mathf.Sin(normalizedTime * Mathf.PI);
+
+            characterController.Move(direction * dashSpeed * curve * Time.deltaTime);
+            Camera.main.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, targetFOV, normalizedTime);
+
+            yield return null;
         }
 
+        // 2. ВАЖЛИВО: Вимикаємо стан ривка ВІДРАЗУ після руху, щоб увімкнулася гравітація
         isDashing = false;
+
+        // 3. ПЛАВНЕ ПОВЕРНЕННЯ КАМЕРИ (вже без блокування руху)
+        float elapsed = 0f;
+        float returnTime = 0.3f;
+        while (elapsed < returnTime)
+        {
+            elapsed += Time.deltaTime;
+            Camera.main.fieldOfView = Mathf.Lerp(targetFOV, originalFOV, elapsed / returnTime);
+            yield return null;
+        }
+
+        Camera.main.fieldOfView = originalFOV;
     }
 }
