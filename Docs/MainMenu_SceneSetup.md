@@ -61,6 +61,57 @@ All scripts use Inspector references — no UI is created in code.
 
 ---
 
+## SPRITES & TEXTURES — WHAT YOU NEED TO CREATE
+
+Before starting, prepare these assets. You can make them in any image editor
+(Photoshop, GIMP, Paint.NET, Photopea.com — free online) or find free ones.
+
+### Required sprites list:
+
+| # | Sprite Name | Size | Description | How to make |
+|---|------------|------|-------------|-------------|
+| 1 | **RoundedRect.png** | 32x32 | White rounded rectangle, 12px corner radius | Draw white rect with rounded corners. Used for ALL buttons (9-slice) |
+| 2 | **Vignette.png** | 512x512 | Radial gradient: transparent center → black edges | Fill black, big soft circular eraser in center |
+| 3 | **SoftCircle.png** | 64x64 | White blurred circle, transparent edges | Soft brush dot on transparent background |
+| 4 | **EmberDot.png** | 8x8 | Small white circle | Tiny dot, or use Unity built-in "Knob" sprite instead |
+| 5 | **TreeSilhouette.png** | 64x128 | Dark pine/fir tree shape on transparent bg | Simple triangle-on-triangle tree shape, filled dark green-black |
+| 6 | **CrystalIcon.png** | 32x32 | Diamond/pentagon shape, white | Pentagon shape, script tints it cyan |
+| 7 | **BG_Gradient.png** (optional) | 1920x1080 | Vertical gradient: `#0D0E08` (top) → `#1A1E10` (middle) → `#0D1008` (bottom) | Or skip this and just use solid color |
+
+### How to import sprites into Unity:
+1. Create folder: `Assets/Textures/UI/`
+2. Drag all PNGs into this folder
+3. For EACH sprite, select it in Project window → Inspector:
+   - Texture Type: **Sprite (2D and UI)**
+   - Sprite Mode: **Single**
+   - Max Size: keep as-is or `256`
+   - Filter Mode: **Bilinear**
+   - Click **Apply**
+4. **For RoundedRect.png specifically** (9-slice):
+   - Click **Sprite Editor** button
+   - Set green Border lines: Left `12`, Right `12`, Top `12`, Bottom `12`
+   - Click **Apply** in Sprite Editor
+   - Now this sprite stretches cleanly to any button size
+
+### How to create prefabs:
+
+**EmberPrefab:**
+1. In scene: `GameObject > UI > Image` → rename "EmberPrefab"
+2. RectTransform: Width `4`, Height `4`
+3. Image: Source Image = `EmberDot.png` (or Unity "Knob"), Color = white
+4. Drag from Hierarchy into `Assets/Prefabs/UI/` → becomes prefab
+5. Delete from scene
+
+**FogPrefab:**
+1. In scene: `GameObject > UI > Image` → rename "FogPrefab"
+2. RectTransform: Width `300`, Height `300` (script resizes anyway)
+3. Image: Source Image = `SoftCircle.png`, Color = white
+4. Raycast Target: ❌ OFF
+5. Drag into `Assets/Prefabs/UI/` → becomes prefab
+6. Delete from scene
+
+---
+
 ## 2. Background Layers (children of MenuCanvas)
 
 > **IMPORTANT:** These must be the FIRST children of MenuCanvas (at the top of Hierarchy).
@@ -97,14 +148,89 @@ All scripts use Inspector references — no UI is created in code.
 - Save as PNG, import to `Assets/Textures/UI/vignette.png`
 - In Unity Import Settings: Texture Type = **Sprite (2D and UI)**
 
-### 2c. Embers Layer
+### 2c. Fog Layer
+1. Right-click **MenuCanvas** → `Create Empty` → rename **"FogArea"**
+2. RectTransform: **Stretch-Stretch** (same as above)
+3. Add **MenuFogEffect** script
+4. Inspector settings:
+
+| Slot | Value |
+|---|---|
+| `Fog Prefab` | Drag **FogPrefab** from `Assets/Prefabs/UI/` |
+| `Max Particles` | `5` |
+| `Spawn Interval` | `5` |
+| `Min Speed` | `20` |
+| `Max Speed` | `50` |
+| `Fog Color` | `RGBA(80, 120, 40, 15)` — green tint, very low alpha (~0.06) |
+| `Min Size` | `250` |
+| `Max Size` | `500` |
+| `Lifetime` | `30` |
+
+> These are big slow-moving green blobs that drift across the screen.
+> Very subtle — barely visible. That's intentional, it adds atmosphere.
+
+### 2d. Embers Layer
 1. Right-click **MenuCanvas** → `Create Empty` → rename **"EmbersArea"**
 2. RectTransform: **Stretch-Stretch** (same as above)
-   - Left `0`, Right `0`, Top `0`, Bottom `0`
 3. Add **MenuEmberParticle** script
-   - `Ember Prefab`: drag your EmberPrefab here (see Section 8, Step 4 for how to create it)
-   - Leave other values at defaults
-4. Raycast Target: not applicable (no Image component)
+4. Inspector settings:
+
+| Slot | Value |
+|---|---|
+| `Ember Prefab` | Drag **EmberPrefab** from `Assets/Prefabs/UI/` |
+| `Max Embers` | `20` |
+| `Spawn Interval` | `0.3` |
+| `Min Rise Speed` | `30` |
+| `Max Rise Speed` | `80` |
+| `Horizontal Drift` | `15` |
+| `Lifetime` | `4` |
+| `Min Size` | `2` |
+| `Max Size` | `5` |
+| `Ember Colors` | Array size `3`: |
+| — Element 0 | `RGBA(255, 180, 50, 179)` — warm orange |
+| — Element 1 | `RGBA(255, 140, 30, 153)` — deep orange |
+| — Element 2 | `RGBA(255, 220, 100, 128)` — yellow-ish |
+
+> These are tiny bright dots that float upward from the bottom half of the screen,
+> like campfire embers. They fade and shrink as they rise.
+
+### 2e. Tree Silhouettes
+1. Right-click **MenuCanvas** → `Create Empty` → rename **"TreesArea"**
+2. RectTransform:
+   - Anchor: **Bottom-Stretch** (stretch left-right, pinned to bottom)
+   - Height: `200`
+   - Pos Y: `0`, Left: `0`, Right: `0`
+3. Add **MenuTreeSilhouettes** script
+4. Inspector settings:
+
+| Slot | Value |
+|---|---|
+| `Tree Sprite` | Drag **TreeSilhouette** sprite from `Assets/Textures/UI/` |
+| `Tree Count` | `14` |
+| `Min Scale` | `0.5` |
+| `Max Scale` | `1.3` |
+| `Base Height` | `120` |
+| `Tree Color` | `RGBA(15, 18, 8, 255)` — near-black dark green |
+| `Min Alpha` | `0.3` |
+| `Max Alpha` | `0.7` |
+| `Parallax Amount` | `5` (trees shift slightly with mouse) |
+
+> Trees spawn along the bottom of the screen as dark silhouettes.
+> Bigger trees have more opacity (appear closer). They shift slightly with mouse movement.
+
+### Background Hierarchy Order (IMPORTANT — back to front):
+```
+MenuCanvas
+  ├── BG_Gradient     ← 1st (furthest back)
+  ├── FogArea         ← 2nd
+  ├── TreesArea       ← 3rd (trees in front of fog)
+  ├── EmbersArea      ← 4th (embers in front of trees)
+  ├── Vignette        ← 5th (darkens edges over everything)
+  ├── TitleArea       ← 6th (UI content starts here)
+  ├── MainArea        ← 7th
+  ├── UpgradesArea    ← 8th
+  └── BottomBar       ← 9th
+```
 
 ---
 
