@@ -1,66 +1,71 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
+/// <summary>
+/// A single meta upgrade slot in the main menu.
+/// Set up in the Inspector: assign the icon, texts, fill image, and button.
+/// </summary>
 public class MetaUpgradeSlot : MonoBehaviour
 {
     [Header("Upgrade Settings")]
-    public string upgradeID;      // Unique ID (e.g., "MetaHealth", "MetaDamage")
-    public int maxLevel = 10;     // Maximum allowed level
-    public int baseCost = 50;     // Cost for level 1
-    public float costMultiplier = 1.5f; // Each level costs 50% more
+    public string upgradeID;
+    public int maxLevel = 10;
+    public int baseCost = 50;
+    public float costMultiplier = 1.5f;
 
     [Header("UI References")]
+    public TextMeshProUGUI nameText;
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI costText;
-    public Slider progressBar;
+    public Image fillBar;
     public Button buyButton;
 
+    [Header("Feedback")]
+    public float punchScale = 0.9f;
+    public float punchDuration = 0.15f;
+
     private MainMenuManager menuManager;
+    private Vector3 originalScale;
 
     private void Start()
     {
         menuManager = FindObjectOfType<MainMenuManager>();
+        originalScale = transform.localScale;
 
-        // Assign the click event to the button automatically
         if (buyButton != null)
-        {
             buyButton.onClick.AddListener(AttemptPurchase);
-        }
 
-        UpdateUI(); // Refresh visuals on start
+        UpdateUI();
     }
 
     public void UpdateUI()
     {
         int currentLevel = SaveManager.GetUpgradeLevel(upgradeID);
 
-        // 1. Update text and progress bar
-        if (levelText != null) levelText.text = $"Lvl {currentLevel}/{maxLevel}";
-        if (progressBar != null)
-        {
-            progressBar.maxValue = maxLevel;
-            progressBar.value = currentLevel;
-        }
+        if (levelText != null)
+            levelText.text = currentLevel + "/" + maxLevel;
 
-        // 2. Update cost and button state
+        // Fill bar (Image.fillAmount 0..1)
+        if (fillBar != null)
+            fillBar.fillAmount = (float)currentLevel / maxLevel;
+
         if (currentLevel >= maxLevel)
         {
             if (costText != null) costText.text = "MAX";
-            if (buyButton != null) buyButton.interactable = false; // Disable button
+            if (buyButton != null) buyButton.interactable = false;
         }
         else
         {
-            int currentCost = CalculateCost(currentLevel);
-            if (costText != null) costText.text = currentCost.ToString();
+            int cost = CalculateCost(currentLevel);
+            if (costText != null) costText.text = cost.ToString();
 
-            // Check if player has enough crystals to buy this
-            bool canAfford = SaveManager.GetTotalCrystals() >= currentCost;
+            bool canAfford = SaveManager.GetTotalCrystals() >= cost;
             if (buyButton != null) buyButton.interactable = canAfford;
         }
     }
 
-    // Calculates exponential cost 
     private int CalculateCost(int currentLevel)
     {
         return Mathf.RoundToInt(baseCost * Mathf.Pow(costMultiplier, currentLevel));
@@ -73,21 +78,48 @@ public class MetaUpgradeSlot : MonoBehaviour
 
         int cost = CalculateCost(currentLevel);
 
-        // Try to spend crystals via SaveManager
         if (SaveManager.SpendCrystals(cost))
         {
-            // Level up!
             SaveManager.SetUpgradeLevel(upgradeID, currentLevel + 1);
 
-            // Update the global crystals text on screen
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX("buttonClick");
+
             if (menuManager != null) menuManager.UpdateCrystalsUI();
 
-            // Refresh ALL upgrade slots on screen (in case player can no longer afford others)
+            // Refresh all slots
             MetaUpgradeSlot[] allSlots = FindObjectsOfType<MetaUpgradeSlot>();
             foreach (MetaUpgradeSlot slot in allSlots)
-            {
                 slot.UpdateUI();
-            }
+
+            StartCoroutine(PunchAnimation());
         }
+    }
+
+    private IEnumerator PunchAnimation()
+    {
+        float t = 0f;
+        float halfDur = punchDuration * 0.5f;
+
+        // Shrink
+        while (t < halfDur)
+        {
+            t += Time.unscaledDeltaTime;
+            float p = t / halfDur;
+            transform.localScale = Vector3.Lerp(originalScale, originalScale * punchScale, p);
+            yield return null;
+        }
+
+        // Bounce back
+        t = 0f;
+        while (t < halfDur)
+        {
+            t += Time.unscaledDeltaTime;
+            float p = t / halfDur;
+            transform.localScale = Vector3.Lerp(originalScale * punchScale, originalScale, p);
+            yield return null;
+        }
+
+        transform.localScale = originalScale;
     }
 }

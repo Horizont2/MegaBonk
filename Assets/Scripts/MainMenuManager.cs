@@ -1,21 +1,39 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI; // Required for Button component
+using UnityEngine.UI;
 using TMPro;
 
 public class MainMenuManager : MonoBehaviour
 {
-    [Header("UI References")]
-    public TextMeshProUGUI crystalsText;
-    public Button continueButton; // Reference to the Continue button
+    [Header("Scene Settings")]
+    public string gameSceneName = "GameScene";
 
-    [Header("Settings")]
-    public string gameSceneName = "GameScene"; // Ensure this matches your actual gameplay scene name!
+    [Header("Crystal Bar")]
+    public TextMeshProUGUI crystalCountText;
+
+    [Header("Buttons")]
+    public Button bonkButton;
+    public Button continueButton;
+    public Button achievementsButton;
+    public Button optionsButton;
+    public Button quitButton;
+
+    [Header("Continue Disabled Look")]
+    [Tooltip("CanvasGroup on the Continue button to control alpha when disabled")]
+    public CanvasGroup continueCanvasGroup;
 
     private void Start()
     {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+
+        // Wire up button events
+        if (bonkButton != null) bonkButton.onClick.AddListener(StartNewRun);
+        if (continueButton != null) continueButton.onClick.AddListener(ContinueGame);
+        if (achievementsButton != null) achievementsButton.onClick.AddListener(OpenAchievements);
+        if (optionsButton != null) optionsButton.onClick.AddListener(OpenOptions);
+        if (quitButton != null) quitButton.onClick.AddListener(QuitGame);
+
         UpdateCrystalsUI();
         CheckContinueStatus();
 
@@ -26,33 +44,31 @@ public class MainMenuManager : MonoBehaviour
 
     private void CheckContinueStatus()
     {
-        if (continueButton != null)
-        {
-            // If IsRunActive is 1, button is interactable
-            bool isActive = PlayerPrefs.GetInt("IsRunActive", 0) == 1;
-            continueButton.interactable = isActive;
+        if (continueButton == null) return;
 
-            // Optional: change alpha to look "disabled" when not active
-            CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
-            if (cg != null) cg.alpha = isActive ? 1f : 0.5f;
-        }
+        bool hasActiveRun = PlayerPrefs.GetInt("IsRunActive", 0) == 1;
+        continueButton.interactable = hasActiveRun;
+
+        if (continueCanvasGroup != null)
+            continueCanvasGroup.alpha = hasActiveRun ? 1f : 0.3f;
     }
 
     public void UpdateCrystalsUI()
     {
-        if (crystalsText != null)
-        {
-            crystalsText.text = "CRYSTALS: " + SaveManager.GetTotalCrystals().ToString();
-        }
+        if (crystalCountText != null)
+            crystalCountText.text = SaveManager.GetTotalCrystals().ToString("N0");
     }
 
-    // Called when "NEW RUN" (or the big PLAY button) is clicked
+    // ─── BUTTON ACTIONS ───
+
     public void StartNewRun()
     {
-        PlayerPrefs.SetInt("IsRunActive", 1);
-        PlayerPrefs.SetInt("IsContinuing", 0); // Mark as fresh run
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("buttonClick");
 
-        // Clear any saved run state from a previous continue
+        PlayerPrefs.SetInt("IsRunActive", 1);
+        PlayerPrefs.SetInt("IsContinuing", 0);
+
+        // Clear saved run state
         PlayerPrefs.DeleteKey("SavedLevel");
         PlayerPrefs.DeleteKey("SavedXP");
         PlayerPrefs.DeleteKey("SavedXPToNext");
@@ -71,31 +87,30 @@ public class MainMenuManager : MonoBehaviour
 
     public void ContinueGame()
     {
-        PlayerPrefs.SetInt("IsContinuing", 1); // NEW: Mark as a continued run
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("buttonClick");
+
+        PlayerPrefs.SetInt("IsContinuing", 1);
         PlayerPrefs.Save();
         SceneManager.LoadScene(gameSceneName);
     }
 
-    // Placeholder for "OPTIONS"
+    public void OpenAchievements()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("buttonClick");
+
+        AchievementsPanelUI panel = FindObjectOfType<AchievementsPanelUI>(true);
+        if (panel != null) panel.Toggle();
+    }
+
     public void OpenOptions()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("buttonClick");
         Debug.Log("Options clicked! (Show options panel)");
     }
 
-    public void OpenAchievements()
-    {
-        AchievementsPanelUI panel = FindObjectOfType<AchievementsPanelUI>(true);
-        if (panel != null) panel.Toggle();
-
-        if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX("buttonClick");
-    }
-
-    // Called when "QUIT" is clicked
     public void QuitGame()
     {
-        Debug.Log("Quitting Game...");
-
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("buttonClick");
         Application.Quit();
 
 #if UNITY_EDITOR
