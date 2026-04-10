@@ -29,96 +29,180 @@ All scripts use Inspector references — no UI is created in code.
 
 ## 1. Scene & Canvas Setup
 
-1. Create a new scene called `MainMenu` (or use the existing one)
-2. Delete the default camera's Skybox — set Camera **Clear Flags = Solid Color**, **Background = `#0D0E08`**
-3. Add **EventSystem** (if not present): `GameObject > UI > Event System`
+### Scene
+1. Open your existing MainMenu scene, OR: `File > New Scene` → save as **"MainMenu"**
+2. Add it to Build Settings: `File > Build Settings` → drag MainMenu scene into the list (index 0)
+3. Delete any existing UI objects if starting fresh
 
-### Main Canvas
+### Camera
+1. Select **Main Camera** in Hierarchy
+2. In Inspector:
+   - Clear Flags: **Solid Color** (not Skybox!)
+   - Background: `#0D0E08` (R:13, G:14, B:8 — almost black with green tint)
+   - Projection: **Perspective** (default)
+   - Culling Mask: **Everything** (default)
+
+### EventSystem
+1. Check if EventSystem exists in Hierarchy
+2. If NOT: `GameObject > UI > Event System` (creates it automatically)
+3. No settings to change
+
+### MenuCanvas
 1. `GameObject > UI > Canvas` → rename to **"MenuCanvas"**
-2. Canvas settings:
+2. **Canvas** component:
    - Render Mode: **Screen Space - Overlay**
    - Sort Order: `0`
-3. **Canvas Scaler** component:
+3. **Canvas Scaler** component (already added automatically):
    - UI Scale Mode: **Scale With Screen Size**
-   - Reference Resolution: `1920 x 1080`
-   - Match: `0.5`
-4. Make sure it has **Graphic Raycaster**
+   - Reference Resolution: X = `1920`, Y = `1080`
+   - Screen Match Mode: **Match Width Or Height**
+   - Match: `0.5` (balanced between width/height)
+4. **Graphic Raycaster** — already added automatically, no changes needed
 
 ---
 
 ## 2. Background Layers (children of MenuCanvas)
 
+> **IMPORTANT:** These must be the FIRST children of MenuCanvas (at the top of Hierarchy).
+> Order matters: BG first (back), then Vignette, then Embers on top.
+> All three use **Stretch-Stretch** anchor to fill the screen.
+
 ### 2a. Background Image
-1. Create `UI > Image` → rename **"BG_Gradient"**
-2. Anchor: **Stretch-Stretch** (fill entire canvas)
-3. Color: `#1A1E10` (dark olive)
-4. If you have a gradient texture: assign it as Source Image
+1. Right-click **MenuCanvas** → `UI > Image` → rename **"BG_Gradient"**
+2. RectTransform:
+   - Click the **Anchor Presets** square (top-left of RectTransform)
+   - Hold **Alt+Shift** and click the **bottom-right** icon (stretch-stretch)
+   - This sets: Left `0`, Right `0`, Top `0`, Bottom `0` — fills canvas
+3. Image component:
+   - Color: `#1A1E10` (R:26, G:30, B:16) — dark olive-green
+   - Source Image: `None` (solid color is fine), OR if you made a gradient texture, assign it
+4. Raycast Target: ❌ OFF (background shouldn't block clicks)
 
 ### 2b. Vignette Overlay
-1. Create `UI > Image` → rename **"Vignette"**
-2. Anchor: **Stretch-Stretch**
-3. Use a radial gradient texture (transparent center → black edges)
-4. Or: use a solid black image and create a circular mask
-5. Color: White (full), the texture handles the alpha
-6. **Add CanvasGroup** component (for MenuAnimator reference)
+1. Right-click **MenuCanvas** → `UI > Image` → rename **"Vignette"**
+2. RectTransform: **Stretch-Stretch** (same as above — Alt+Shift bottom-right)
+3. Image component:
+   - **If you have a vignette texture** (radial gradient: transparent center → black edges):
+     - Source Image: assign the texture
+     - Color: white `RGBA(255,255,255,255)`
+   - **If you DON'T have a texture** (quick alternative):
+     - Color: `RGBA(0, 0, 0, 100)` (just a semi-transparent black overlay — less pretty but works)
+4. Raycast Target: ❌ OFF
+5. **Add CanvasGroup** component (MenuAnimator fades this in)
+
+**How to make a vignette texture:**
+- Open any image editor (Photoshop, GIMP, Paint.NET)
+- Create 512x512 canvas, fill black
+- Use a soft circular eraser in the center (or radial gradient: white center → black edges)
+- Save as PNG, import to `Assets/Textures/UI/vignette.png`
+- In Unity Import Settings: Texture Type = **Sprite (2D and UI)**
 
 ### 2c. Embers Layer
-1. Create empty `UI > Empty` → rename **"EmbersArea"**
-2. Add **RectTransform**: Anchor stretch-stretch, fill entire canvas
+1. Right-click **MenuCanvas** → `Create Empty` → rename **"EmbersArea"**
+2. RectTransform: **Stretch-Stretch** (same as above)
+   - Left `0`, Right `0`, Top `0`, Bottom `0`
 3. Add **MenuEmberParticle** script
-4. Create ember prefab:
-   - `UI > Image` (4x4 px), use a small circle sprite (or Unity's default "Knob")
-   - Color: white (script will tint it)
-   - Save as prefab in `Assets/Prefabs/UI/EmberPrefab`
-5. Assign **emberPrefab** in the Inspector
+   - `Ember Prefab`: drag your EmberPrefab here (see Section 8, Step 4 for how to create it)
+   - Leave other values at defaults
+4. Raycast Target: not applicable (no Image component)
 
 ---
 
 ## 3. Content Layout
 
 ### 3a. Title Area (child of MenuCanvas)
-1. Create empty → rename **"TitleArea"**
-2. Anchor: **Top-Center**
-3. Position Y: about `-180` (below top edge)
-4. Width: `800`, Height: `120`
+1. Right-click **MenuCanvas** → `Create Empty` → rename **"TitleArea"**
+2. RectTransform:
+   - Anchor: **Top-Center** (click anchor presets, pick top-center)
+   - Pivot: `(0.5, 1)` (top edge is the origin)
+   - Pos X: `0`, Pos Y: `-120` (120px below top edge)
+   - Width: `800`, Height: `130`
+3. Add **Vertical Layout Group** (to stack title + subtitle):
+   - Spacing: `4`
+   - Child Alignment: **Upper Center**
+   - Control Child Size: Width ✅ ON, Height ❌ OFF
 
 **Title Text:**
-1. Inside TitleArea, `UI > TextMeshPro` → rename **"TitleText"**
-2. Text: `MEGABONK`
-3. Font: Use a chunky/display font (import Bungee Shade from Google Fonts, or any bold display font)
-4. Size: `90`
-5. Color: `#FFCC33` (gold)
-6. Alignment: Center-Center
-7. Add **Material Preset** or **Outline**: Color `#CC6600`, Thickness `0.15`
-8. Optionally add **Underlay**: Color `#883300`, Offset X: `3`, Y: `-3`
-9. **Add CanvasGroup** component
+1. Right-click **TitleArea** → `UI > Text - TextMeshPro` → rename **"TitleText"**
+2. Add **Layout Element**: Preferred Height `90`
+3. TextMeshPro settings:
+   - Text: `MEGABONK`
+   - Font Asset: **Bungee Shade SDF** (or your bold display font)
+   - Font Size: `90`
+   - Color: `#FFCC33` (R:255, G:204, B:51)
+   - Alignment: Center-Center
+   - Font Style: (none needed — Bungee Shade is already decorative)
+4. **TMP Outline effect** (in Material settings or Extra Settings):
+   - Outline → Thickness: `0.15`
+   - Outline → Color: `#CC6600` (dark orange)
+5. **TMP Underlay** (fake 3D shadow):
+   - Underlay → Color: `#883300`
+   - Offset X: `3`, Offset Y: `-3`
+   - Dilate: `0.1`
+6. **Add CanvasGroup** component (for MenuAnimator title fade)
 
 **Subtitle Text:**
-1. Inside TitleArea, `UI > TextMeshPro` → rename **"SubtitleText"**
-2. Text: `BONK OR BE BONKED`
-3. Size: `16`
-4. Color: `RGBA(255, 200, 100, 115)` — gold with 0.45 alpha
-5. Character Spacing: `12`
-6. Alignment: Center
-7. **Add CanvasGroup** component
+1. Right-click **TitleArea** → `UI > Text - TextMeshPro` → rename **"SubtitleText"**
+2. Add **Layout Element**: Preferred Height `25`
+3. TextMeshPro settings:
+   - Text: `BONK OR BE BONKED`
+   - Font Asset: **Bungee SDF** (not Shade — simpler)
+   - Font Size: `16`
+   - Color: `RGBA(255, 200, 100, 115)` (R:255 G:200 B:100 A:115 — gold, 0.45 alpha)
+   - Character Spacing: `12` (wide letterspace)
+   - Alignment: Center-Center
+   - Font Style: **Uppercase**
+4. **Add CanvasGroup** component
 
-### 3b. Main Area (child of MenuCanvas)
-1. Create empty → rename **"MainArea"**
-2. Anchor: **Middle-Center**
-3. Position: `(0, -20)`
-4. Size: `900 x 400`
-5. Add **Horizontal Layout Group**:
-   - Spacing: `60`
-   - Child Alignment: Middle Center
-   - Control Child Size: Width OFF, Height OFF
+### 3b. Main Area (child of MenuCanvas) — CENTRAL LAYOUT
+
+This is the core container that holds the character on the LEFT and buttons on the RIGHT.
+
+1. Right-click **MenuCanvas** → `Create Empty` → rename **"MainArea"**
+2. RectTransform:
+   - Anchor Preset: **Middle-Center** (click the anchor presets square in Inspector)
+   - Pivot: `(0.5, 0.5)`
+   - Pos X: `0`, Pos Y: `-20` (slightly below center — title takes upper space)
+   - Width: `660`, Height: `420`
+3. Add **Horizontal Layout Group**:
+   - Spacing: `60` (gap between character and buttons)
+   - Child Alignment: **Middle Center**
+   - Control Child Size: Width ❌ OFF, Height ❌ OFF
+   - Force Expand: Width ❌ OFF, Height ❌ OFF
+4. Optionally add **Content Size Fitter** → Horizontal Fit: Preferred Size (auto-width from children)
+
+**Visual map of the screen (1920x1080):**
+```
+┌─────────────────────────────────────────────────┐
+│                                                 │
+│              M E G A B O N K                    │ ← TitleArea (top-center, Y: -180)
+│            bonk or be bonked                    │
+│                                                 │
+│       ┌─────────┐    ┌───────────────┐          │
+│       │         │    │  💎 1,247     │          │
+│       │  CHAR   │    │  ══BONK!══   │          │
+│       │  ACTER  │60px│  Continue     │          │ ← MainArea (center, Y: -20)
+│       │         │gap │  ───────      │          │
+│       │   🔨    │    │  Achievements │          │
+│       │         │    │  Options      │          │
+│       └─────────┘    │  Quit         │          │
+│        drag to spin  └───────────────┘          │
+│                                                 │
+│         ❤️  ⚡  ⚔️  🛡️  🧲                      │ ← UpgradesArea (bottom-center, Y: 70)
+│        META UPGRADES                            │
+│                                                 │
+│  v0.3.0 alpha                                   │ ← BottomBar
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
-## 4. Character Preview (child of MainArea)
+## 4. Character Preview (LEFT child of MainArea)
 
-1. Create empty → rename **"CharacterArea"**
-2. Size: `240 x 340`
-3. **Add CanvasGroup** component (for MenuAnimator)
+1. Right-click **MainArea** → `Create Empty` → rename **"CharacterArea"**
+2. Add **Layout Element**: Preferred Width `240`, Preferred Height `340`
+3. RectTransform: Width `240`, Height `340`, Pivot `(0.5, 0.5)`
+4. **Add CanvasGroup** component (for MenuAnimator fade-in)
 
 **Option A: 3D Character Preview (recommended)**
 1. Create a second camera → rename **"CharPreviewCam"**
@@ -142,166 +226,606 @@ All scripts use Inspector references — no UI is created in code.
 
 ---
 
-## 5. Buttons Panel (child of MainArea)
+## 5. Buttons Panel (child of MainArea) — DETAILED LAYOUT
 
-1. Create empty → rename **"ButtonsPanel"**
-2. Size: Width `320`, flexible height
-3. Add **Vertical Layout Group**:
+The buttons sit on the RIGHT side of MainArea next to the character.
+The Vertical Layout Group handles positioning — you only set Preferred Heights.
+
+### ButtonsPanel Container
+1. Right-click **MainArea** → `UI > Create Empty` → rename **"ButtonsPanel"**
+2. RectTransform:
+   - Width: `320`  Height: `420` (will be controlled by layout)
+   - Pivot: `(0.5, 0.5)`
+3. Add **Layout Element**: Preferred Width `320`
+4. Add **Vertical Layout Group**:
    - Spacing: `10`
-   - Child Alignment: Upper Center
-   - Control Child Size: Width ON, Height OFF
-   - Force Expand Width: ON
+   - Child Alignment: **Upper Center**
+   - Control Child Size: Width ✅ ON, Height ❌ OFF
+   - Force Expand Width: ✅ ON, Height: ❌ OFF
+   - Padding: Left `0`, Right `0`, Top `0`, Bottom `0`
 
-### 5a. Crystal Bar (first child of ButtonsPanel)
-1. Create `UI > Image` → rename **"CrystalBar"**
-2. Preferred Height (Layout Element): `50`
-3. Color: `RGBA(60, 200, 220, 20)` (0.08 alpha)
-4. Add **Outline** component: Color `RGBA(60, 200, 220, 38)`, Distance `(2, -2)`
-5. Add **CanvasGroup** component
-6. Add **Horizontal Layout Group**: Spacing `10`, Padding `10/16/10/16`
+> **HOW IT WORKS:** Every child gets the full 320px width automatically.
+> The height of each child is set via **Layout Element → Preferred Height**.
+> The spacing between children is 10px. Children stack top-to-bottom.
 
-**Inside CrystalBar:**
-- `UI > Image` → rename **"CrystalGem"**: Size `22x22`, Color `#40E8FF`, use a diamond/pentagon sprite
-- `UI > TextMeshPro` → rename **"CrystalCount"**: Size `20`, Color `#60E8FF`, bold
-- `UI > TextMeshPro` → rename **"CrystalLabel"**: Text `CRYSTALS`, Size `10`, Color `RGBA(60, 220, 255, 89)` (0.35 alpha), Letter Spacing `3`
+### Visual guide (what the final column looks like):
 
-### 5b. BONK! Button
-1. `UI > Button - TextMeshPro` → rename **"BonkButton"**
-2. Layout Element: Preferred Height `65`
-3. **Image** color: `#FFCC33`
-4. **If using a 9-slice sprite:** create one with rounded corners (12px radius), assign it
-5. **Add Outline** component: Color `#FFD855`, Distance `(3, -3)`
-6. Child TextMeshPro: Text `BONK!`, Size `26`, Color `#3A2200`, Bold
-7. **Add CanvasGroup** component (for MenuAnimator button pop-in)
-8. **Add UIButtonEffects** script
+```
+┌──────────────── 320px ────────────────┐
+│  💎 1,247          CRYSTALS           │ ← CrystalBar (h:50)
+├───────────────────────────────────────┤
+│                                       │ 10px gap
+├───────────────────────────────────────┤
+│                                       │
+│              B O N K !                │ ← BonkButton (h:65) GOLD
+│                                       │
+├───────────────────────────────────────┤
+│                                       │ 10px gap
+├───────────────────────────────────────┤
+│            CONTINUE                   │ ← ContinueButton (h:52) GREEN
+├───────────────────────────────────────┤
+│                                       │ 10px gap
+├───────────────────────────────────────┤
+│                                       │ Spacer (h:4)
+├───────────────────────────────────────┤
+│                                       │ 10px gap
+├───────────────────────────────────────┤
+│          ACHIEVEMENTS                 │ ← AchievementsBtn (h:48) BROWN
+├───────────────────────────────────────┤
+│                                       │ 10px gap
+├───────────────────────────────────────┤
+│            OPTIONS                    │ ← OptionsButton (h:48) BROWN
+├───────────────────────────────────────┤
+│                                       │ 10px gap
+├───────────────────────────────────────┤
+│              QUIT                     │ ← QuitButton (h:42) TRANSPARENT
+└───────────────────────────────────────┘
+```
 
-**Shine Overlay (child of BonkButton):**
-1. `UI > Image` → rename **"ShineOverlay"**
-2. Anchor: Stretch vertically, width `80px`
-3. Color: `RGBA(255, 255, 255, 64)` (0.25 alpha)
-4. Rotation Z: `-20` degrees (skew effect)
-5. Raycast Target: **OFF**
-6. Position off-screen left initially (MenuAnimator will sweep it)
-
-### 5c. Continue Button
-1. `UI > Button - TextMeshPro` → rename **"ContinueButton"**
-2. Layout Element: Preferred Height `52`
-3. Image color: `#5A8A35` (green)
-4. Add Outline: Color `#6A9A45`
-5. Child text: `CONTINUE`, Size `18`, Color `#D0F0A0`
-6. **Add CanvasGroup** (for disabled alpha + MenuAnimator)
-7. **Add UIButtonEffects**
-
-### 5d. Spacer
-1. Create empty → rename **"Spacer"**
-2. Layout Element: Preferred Height `4`
-
-### 5e. Achievements Button
-1. `UI > Button - TextMeshPro` → rename **"AchievementsButton"**
-2. Layout Element: Preferred Height `48`
-3. Image color: `#3A3828` (dark brown)
-4. Add Outline: Color `RGBA(100, 90, 60, 102)`
-5. Child text: `ACHIEVEMENTS`, Size `14`, Color `RGBA(220, 200, 160, 179)`
-6. **Add CanvasGroup + UIButtonEffects**
-
-### 5f. Options Button
-1. Same as Achievements but text: `OPTIONS`
-2. rename **"OptionsButton"**
-3. **Add CanvasGroup + UIButtonEffects**
-
-### 5g. Quit Button
-1. `UI > Button - TextMeshPro` → rename **"QuitButton"**
-2. Layout Element: Preferred Height `42`
-3. Image color: `RGBA(0, 0, 0, 0)` (transparent)
-4. Add Outline: Color `RGBA(100, 80, 50, 38)` (0.15 alpha)
-5. Child text: `QUIT`, Size `13`, Color `RGBA(180, 140, 100, 77)`
-6. **Add CanvasGroup + UIButtonEffects**
+Total height: 50 + 65 + 52 + 4 + 48 + 48 + 42 + (6 × 10 gap) = **369px**
 
 ---
 
-## 6. Meta Upgrades Area (child of MenuCanvas)
+### 5a. Crystal Bar (1st child of ButtonsPanel)
 
-1. Create empty → rename **"UpgradesArea"**
-2. Anchor: **Bottom-Center**
-3. Position Y: `70` (from bottom)
-4. Width: `500`, Height: `120`
-5. **Add CanvasGroup** component
+**Creating:**
+1. Right-click **ButtonsPanel** → `UI > Image` → rename **"CrystalBar"**
 
-**Label:**
-1. `UI > TextMeshPro` → "META UPGRADES"
-2. Size: `10`, Color: `RGBA(200, 180, 120, 77)`, Letter Spacing: `4`, alignment center-top
+**RectTransform (handled by layout — only set preferred height):**
+- Add **Layout Element** component: Preferred Height = `50`
 
-**Upgrades Row:**
-1. Create empty → rename **"UpgradesRow"**
-2. Add **Horizontal Layout Group**: Spacing `8`, Child Alignment: Middle Center
+**Image component:**
+- Color: `RGBA(60, 200, 220, 20)` → hex `#3CC8DC` with alpha = `20` (≈0.08)
+- Source Image: use a rounded rect 9-slice sprite (12px corners), or leave as default
 
-**For each upgrade (Health, Speed, Damage, Armor, Magnet):**
-1. Create empty → rename e.g. **"Slot_Health"**
-2. Size: `70 x 85`
-3. Background: `UI > Image`, Color `RGBA(50, 45, 30, 179)`
-4. Round corners: use a 9-slice rounded rect sprite
-5. Add Outline: Color `RGBA(100, 90, 50, 51)`
-6. Add **Vertical Layout Group**: Spacing `2`, Padding `8`, Child Alignment Upper Center
+**Additional components:**
+- Add **Outline**: Effect Color `RGBA(60, 200, 220, 38)`, Effect Distance `(2, -2)`
+- Add **CanvasGroup** (for MenuAnimator fade reference)
+- Add **Horizontal Layout Group**:
+  - Spacing: `10`
+  - Padding: Left `16`, Right `16`, Top `10`, Bottom `10`
+  - Child Alignment: **Middle Left**
+  - Control Child Size: Width ❌, Height ✅
 
-**Inside each slot:**
-- `UI > TextMeshPro` → **icon/emoji** text (or use an Image with icon sprite): Size `22`
-- `UI > TextMeshPro` → **name**: "HEALTH", Size `8`, Color `RGBA(200, 180, 130, 102)`
-- `UI > TextMeshPro` → **level**: "0/10", Size `10`, Color `#C0A050`, Font: bold
-- `UI > Image` → **fill bar background**: Height `3`, Color `RGBA(255, 255, 255, 15)`
-  - Inside it: `UI > Image` → **fill**: Color gradient `#C09030` to `#E0B040`, **Image Type: Filled**, Fill Method: Horizontal
-- `UI > Button (invisible)` → covers the entire slot, for buying
-7. Add **MetaUpgradeSlot** script to each slot
-8. Set upgradeID: `MetaHealth`, `MetaSpeed`, `MetaDamage`, `MetaArmor`, `MetaMagnet`
+**Children of CrystalBar (left to right):**
+
+1. **CrystalGem** — `UI > Image`
+   - Layout Element: Preferred Width `22`, Preferred Height `22`
+   - Color: `#40E8FF`
+   - Source Image: pentagon or diamond sprite
+   
+2. **CrystalCount** — `UI > TextMeshPro`
+   - Layout Element: Preferred Width `100`
+   - Font Size: `20`, Color: `#60E8FF`, Style: **Bold**
+   - Text: `0` (script updates it)
+   - Alignment: Middle-Left
+
+3. **CrystalLabel** — `UI > TextMeshPro`
+   - Layout Element: Flexible Width `1` (fills remaining space)
+   - Font Size: `10`, Color: `RGBA(60, 220, 255, 89)` (0.35 alpha)
+   - Text: `CRYSTALS`
+   - Character Spacing: `3`, Alignment: Middle-Right
+
+---
+
+### 5b. BONK! Button (2nd child) — THE BIG GOLD BUTTON
+
+**Creating:**
+1. Right-click **ButtonsPanel** → `UI > Button - TextMeshPro` → rename **"BonkButton"**
+
+**Layout Element:** Preferred Height = `65`
+
+**Image component (Button background):**
+- Color: `#FFCC33` (bright gold)
+- Source Image: rounded rect 9-slice sprite (12px corners)
+
+**Outline component:**
+- Effect Color: `#FFD855` (lighter gold border)
+- Effect Distance: `(3, -3)` ← gives a thick 3D border feel
+
+**Shadow effect — add a SECOND Image under the button? No — use Unity's Shadow component:**
+- Add **Shadow** component: Effect Color `#996600`, Distance `(0, -4)`
+
+**Button component:**
+- Transition: **None** (UIButtonEffects handles visuals)
+- Navigation: **None**
+
+**Additional components:**
+- Add **CanvasGroup** (alpha=1, needed for MenuAnimator pop-in)
+- Add **UIButtonEffects** script:
+  - Hover Lift: `4`
+  - Hover Scale Multiplier: `1.04`
+  - Press Scale: `0.95`
+
+**Child: Text (TMP) — already created by the Button:**
+- Text: `BONK!`
+- Font: **Bungee** (or your display font)
+- Font Size: `26`
+- Color: `#3A2200` (dark brown — readable on gold)
+- Style: **Bold**
+- Alignment: Center-Center
+- RectTransform: Anchor stretch-stretch, all offsets `0`
+
+**Child: ShineOverlay (new Image inside BonkButton):**
+1. Right-click **BonkButton** → `UI > Image` → rename **"ShineOverlay"**
+2. RectTransform:
+   - Anchor: vertical stretch (top=0, bottom=0)
+   - Width: `80`, Height: stretch
+   - Pivot: `(0.5, 0.5)`
+   - Pos X: `-250` (off-screen left to start — MenuAnimator sweeps it right)
+3. Image:
+   - Color: `RGBA(255, 255, 255, 64)` (white, 0.25 alpha)
+   - Raycast Target: ❌ **OFF** (so it doesn't block button clicks!)
+4. Rotation Z: `-20` (slight diagonal skew)
+
+---
+
+### 5c. Continue Button (3rd child) — GREEN
+
+**Creating:**
+1. Right-click **ButtonsPanel** → `UI > Button - TextMeshPro` → rename **"ContinueButton"**
+
+**Layout Element:** Preferred Height = `52`
+
+**Image:** Color `#5A8A35` (green), same rounded sprite
+
+**Outline:** Color `#6A9A45`, Distance `(2, -2)`
+
+**Shadow:** Color `#2A4A15`, Distance `(0, -3)`
+
+**Button:** Transition: None, Navigation: None
+
+**Components:**
+- **CanvasGroup** (used by MainMenuManager to set alpha=0.3 when disabled)
+- **UIButtonEffects**: Hover Lift `3`, Hover Scale `1.03`, Press Scale `0.95`
+
+**Child Text (TMP):**
+- Text: `CONTINUE`
+- Font: **Bungee**, Size `18`, Color `#D0F0A0`, Bold
+- Alignment: Center-Center
+
+---
+
+### 5d. Spacer (4th child) — INVISIBLE SPACING
+
+1. Right-click **ButtonsPanel** → `Create Empty` → rename **"Spacer"**
+2. Add **Layout Element**: Preferred Height = `4`
+3. No Image, no scripts — just empty space to visually separate primary/secondary buttons
+
+---
+
+### 5e. Achievements Button (5th child) — DARK BROWN
+
+**Creating:**
+1. Right-click **ButtonsPanel** → `UI > Button - TextMeshPro` → rename **"AchievementsButton"**
+
+**Layout Element:** Preferred Height = `48`
+
+**Image:** Color `#3A3828` (dark olive-brown), rounded sprite
+
+**Outline:** Color `RGBA(100, 90, 60, 102)` (0.4 alpha), Distance `(2, -2)`
+
+**Shadow:** Color `#1A1810`, Distance `(0, -2)`
+
+**Button:** Transition: None, Navigation: None
+
+**Components:**
+- **CanvasGroup**
+- **UIButtonEffects**: Hover Lift `2`, Hover Scale `1.02`
+
+**Child Text (TMP):**
+- Text: `ACHIEVEMENTS`
+- Font: **Bungee**, Size `14`
+- Color: `RGBA(220, 200, 160, 179)` (0.7 alpha — slightly faded)
+- Alignment: Center-Center
+
+---
+
+### 5f. Options Button (6th child) — SAME STYLE AS ACHIEVEMENTS
+
+1. Right-click **ButtonsPanel** → `UI > Button - TextMeshPro` → rename **"OptionsButton"**
+2. **EVERYTHING same as Achievements** — same colors, outline, shadow, components
+3. **Layout Element:** Preferred Height = `48`
+4. Text: `OPTIONS`, Size `14`
+5. Add **CanvasGroup + UIButtonEffects**
+
+---
+
+### 5g. Quit Button (7th child) — ALMOST INVISIBLE
+
+**Creating:**
+1. Right-click **ButtonsPanel** → `UI > Button - TextMeshPro` → rename **"QuitButton"**
+
+**Layout Element:** Preferred Height = `42`
+
+**Image:** Color `RGBA(0, 0, 0, 0)` — **fully transparent!** (no visible background)
+
+**Outline:** Color `RGBA(100, 80, 50, 38)` (0.15 alpha — very faint border), Distance `(1, -1)`
+
+**NO Shadow** on this one — it should feel minimal.
+
+**Button:** Transition: None, Navigation: None
+
+**Components:**
+- **CanvasGroup**
+- **UIButtonEffects**: Hover Lift `1`, Hover Scale `1.01` (subtle)
+
+**Child Text (TMP):**
+- Text: `QUIT`
+- Font: **Bungee**, Size `13`
+- Color: `RGBA(180, 140, 100, 77)` (0.3 alpha — very dim)
+- Alignment: Center-Center
+
+---
+
+### Important: Button hierarchy order in Hierarchy
+
+The Vertical Layout Group stacks children **top to bottom in Hierarchy order**.
+Make sure the order in the Hierarchy panel is EXACTLY this:
+
+```
+ButtonsPanel
+  ├── CrystalBar      ← 1st (top)
+  ├── BonkButton       ← 2nd
+  ├── ContinueButton   ← 3rd
+  ├── Spacer           ← 4th
+  ├── AchievementsButton ← 5th
+  ├── OptionsButton    ← 6th
+  └── QuitButton       ← 7th (bottom)
+```
+
+To reorder: drag items up/down in the Hierarchy panel.
+
+---
+
+### Button components checklist (quick reference)
+
+| Button | Height | Image Color | Outline | Text Size | Text Color | UIButtonEffects Lift |
+|--------|--------|------------|---------|-----------|------------|---------------------|
+| CrystalBar | 50 | `RGBA(60,200,220,20)` | `RGBA(60,200,220,38)` | — | — | — |
+| **BONK!** | **65** | **`#FFCC33`** | **`#FFD855`** | **26** | **`#3A2200`** | **4** |
+| Continue | 52 | `#5A8A35` | `#6A9A45` | 18 | `#D0F0A0` | 3 |
+| Achievements | 48 | `#3A3828` | `RGBA(100,90,60,102)` | 14 | `RGBA(220,200,160,179)` | 2 |
+| Options | 48 | `#3A3828` | `RGBA(100,90,60,102)` | 14 | `RGBA(220,200,160,179)` | 2 |
+| Quit | 42 | `RGBA(0,0,0,0)` | `RGBA(100,80,50,38)` | 13 | `RGBA(180,140,100,77)` | 1 |
+
+---
+
+## 6. Meta Upgrades Area (child of MenuCanvas) — DETAILED
+
+### UpgradesArea Container
+1. Right-click **MenuCanvas** → `Create Empty` → rename **"UpgradesArea"**
+2. RectTransform:
+   - Anchor: **Bottom-Center**
+   - Pivot: `(0.5, 0)`
+   - Pos X: `0`, Pos Y: `70`
+   - Width: `450`, Height: `110`
+3. Add **CanvasGroup** (for MenuAnimator fade-in)
+
+### UpgradesLabel
+1. Right-click **UpgradesArea** → `UI > TextMeshPro` → rename **"UpgradesLabel"**
+2. RectTransform:
+   - Anchor: **Top-Stretch** (stretch left to right)
+   - Height: `20`
+   - Pos Y: `0` (top of parent)
+3. TextMeshPro:
+   - Text: `META UPGRADES`
+   - Font Size: `10`
+   - Color: `RGBA(200, 180, 120, 77)` (0.3 alpha)
+   - Character Spacing: `4`
+   - Alignment: Center-Center
+   - Style: **Uppercase**
+
+### UpgradesRow
+1. Right-click **UpgradesArea** → `Create Empty` → rename **"UpgradesRow"**
+2. RectTransform:
+   - Anchor: **Bottom-Stretch**
+   - Height: `85`
+   - Pos Y: `0`
+3. Add **Horizontal Layout Group**:
+   - Spacing: `8`
+   - Child Alignment: **Middle Center**
+   - Control Child Size: Width ❌ OFF, Height ❌ OFF
+4. Add **Content Size Fitter**: Horizontal Fit: **Preferred Size** (auto-centers the row)
+
+### Each Upgrade Slot (repeat 5 times)
+
+Create one, then duplicate 4 times. The 5 slots are:
+
+| Name | upgradeID | Icon (use sprite or text) |
+|------|-----------|--------------------------|
+| Slot_Health | `MetaHealth` | Heart icon / ❤ |
+| Slot_Speed | `MetaSpeed` | Lightning / ⚡ |
+| Slot_Damage | `MetaDamage` | Sword / ⚔ |
+| Slot_Armor | `MetaArmor` | Shield / 🛡 |
+| Slot_Magnet | `MetaMagnet` | Magnet / 🧲 |
+
+**Creating Slot_Health (then duplicate for others):**
+
+1. Right-click **UpgradesRow** → `Create Empty` → rename **"Slot_Health"**
+2. RectTransform: Width `78`, Height `85`
+3. Add **Layout Element**: Preferred Width `78`, Preferred Height `85`
+
+**Background Image:**
+4. Add **Image** component to Slot_Health itself:
+   - Color: `RGBA(50, 45, 30, 179)` (0.7 alpha)
+   - Source Image: rounded rect sprite (10px corners)
+5. Add **Outline**: Color `RGBA(100, 90, 50, 51)` (0.2 alpha), Distance `(1, -1)`
+
+**Layout:**
+6. Add **Vertical Layout Group**:
+   - Spacing: `1`
+   - Padding: Left `4`, Right `4`, Top `6`, Bottom `4`
+   - Child Alignment: **Upper Center**
+   - Control Child Size: Width ✅ ON, Height ❌ OFF
+
+**Children of Slot_Health (top to bottom):**
+
+**a) IconImage** — `UI > Image`
+   - Layout Element: Preferred Height `24`
+   - Source Image: heart sprite (or use a red circle as placeholder)
+   - Color: tinted to match the icon's theme
+   - Preserve Aspect: ✅
+   - **If you don't have icon sprites yet**, create `UI > TextMeshPro` instead:
+     - Text: `♥` or any icon character
+     - Font Size: `22`, Color: red, Alignment: Center
+
+**b) NameText** — `UI > TextMeshPro` → rename **"NameText"**
+   - Layout Element: Preferred Height `12`
+   - Text: `HEALTH`
+   - Font Size: `8`
+   - Color: `RGBA(200, 180, 130, 102)` (0.4 alpha)
+   - Alignment: Center-Center
+   - Letter Spacing: `1`
+
+**c) LevelText** — `UI > TextMeshPro` → rename **"LevelText"**
+   - Layout Element: Preferred Height `14`
+   - Text: `0/10`
+   - Font: **Bungee** (bold)
+   - Font Size: `10`
+   - Color: `#C0A050` (warm gold)
+   - Alignment: Center-Center
+
+**d) FillBarBG** — `UI > Image` → rename **"FillBarBG"**
+   - Layout Element: Preferred Height `4`
+   - Color: `RGBA(255, 255, 255, 15)` (0.06 alpha — very faint)
+
+**e) FillBar** (child of FillBarBG) — `UI > Image` → rename **"FillBar"**
+   - RectTransform: Anchor stretch-stretch, all offsets `0` (fills parent completely)
+   - Color: `#C09030` (warm gold)
+   - **Image Type**: `Filled`
+   - **Fill Method**: `Horizontal`
+   - **Fill Origin**: `Left`
+   - Fill Amount: `0` (script controls this via `fillBar.fillAmount`)
+
+**f) BuyButton** (covers entire slot) — `UI > Button` → rename **"BuyButton"**
+   - RectTransform: Anchor stretch-stretch, all offsets `0`
+   - Image component: Color `RGBA(0, 0, 0, 0)` (invisible)
+   - Button Transition: **None**
+   - Remove the default Text child (we don't need it)
+
+**g) CostText** (optional, inside BuyButton or beside it) — `UI > TextMeshPro`
+   - Font Size: `8`, Color: `#60E8FF`, Alignment: Center
+   - Text: `50` (script will update)
+
+**Adding MetaUpgradeSlot script:**
+7. Select **Slot_Health** in Hierarchy
+8. Add Component → **MetaUpgradeSlot**
+9. In Inspector, set:
+   - `upgradeID`: `MetaHealth`
+   - `maxLevel`: `10`
+   - `baseCost`: `50`
+   - `costMultiplier`: `1.5`
+   - `nameText` ← drag **NameText** here
+   - `levelText` ← drag **LevelText** here
+   - `costText` ← drag **CostText** here (if created)
+   - `fillBar` ← drag **FillBar** Image here
+   - `buyButton` ← drag **BuyButton** here
+
+**Duplicating for remaining slots:**
+10. Select **Slot_Health** → `Ctrl+D` (duplicate) → rename **"Slot_Speed"**
+11. Change: icon to lightning, NameText to `SPEED`, upgradeID to `MetaSpeed`
+12. Repeat for `Slot_Damage` (MetaDamage), `Slot_Armor` (MetaArmor), `Slot_Magnet` (MetaMagnet)
+
+**Final hierarchy of UpgradesRow:**
+```
+UpgradesRow (HorizontalLayoutGroup)
+  ├── Slot_Health (MetaUpgradeSlot)
+  │   ├── IconImage (Image or TMP)
+  │   ├── NameText (TMP) — "HEALTH"
+  │   ├── LevelText (TMP) — "0/10"
+  │   ├── FillBarBG (Image)
+  │   │   └── FillBar (Image, Filled)
+  │   ├── BuyButton (Button, invisible)
+  │   └── CostText (TMP) — "50"
+  ├── Slot_Speed (same structure)
+  ├── Slot_Damage (same structure)
+  ├── Slot_Armor (same structure)
+  └── Slot_Magnet (same structure)
+```
 
 ---
 
 ## 7. Bottom Bar (child of MenuCanvas)
 
-1. Create `UI > Image` → rename **"BottomBar"**
-2. Anchor: **Bottom-Stretch**
-3. Height: `40`
-4. Color: `RGBA(0, 0, 0, 102)` (0.4 alpha)
-5. Inside: `UI > TextMeshPro` → "v0.3.0 alpha"
-6. Size: `10`, Color: `RGBA(255, 255, 255, 26)` (0.1 alpha)
+1. Right-click **MenuCanvas** → `UI > Image` → rename **"BottomBar"**
+2. RectTransform:
+   - Anchor: **Bottom-Stretch** (hold Alt+Shift, click bottom-stretch preset)
+   - Left: `0`, Right: `0`, Pos Y: `0`
+   - Height: `40`
+3. Image Color: `RGBA(0, 0, 0, 102)` (0.4 alpha)
+4. Raycast Target: ❌ OFF
+
+**Version Text:**
+5. Right-click **BottomBar** → `UI > TextMeshPro` → rename **"VersionText"**
+6. RectTransform: Anchor bottom-left, Pos X: `25`, Pos Y: `12`
+7. TextMeshPro:
+   - Text: `v0.3.0 alpha`
+   - Font Size: `10`
+   - Color: `RGBA(255, 255, 255, 26)` (0.1 alpha — barely visible)
+   - Alignment: Left-Center
 
 ---
 
-## 8. Script Wiring
+## 8. Script Wiring — COMPLETE GUIDE
 
-### On an empty GameObject "MenuManager":
-1. Add **MainMenuManager** script
-2. Assign:
-   - `crystalCountText` → CrystalCount TextMeshPro
-   - `bonkButton` → BonkButton
-   - `continueButton` → ContinueButton
-   - `achievementsButton` → AchievementsButton
-   - `optionsButton` → OptionsButton
-   - `quitButton` → QuitButton
-   - `continueCanvasGroup` → the CanvasGroup on ContinueButton
-   - `gameSceneName` → your game scene name
+This is where you connect all the objects to the scripts. Do this LAST after all UI is built.
 
-### On the same (or another) GameObject "MenuAnimator":
-1. Add **MenuAnimator** script
-2. Assign:
-   - `titleRect` → TitleText RectTransform
-   - `titleGroup` → TitleText CanvasGroup
-   - `subtitleGroup` → SubtitleText CanvasGroup
-   - `characterGroup` → CharacterArea CanvasGroup
-   - `characterRect` → CharacterArea RectTransform
-   - `buttonRects` → array of 5 elements: BonkButton, ContinueButton, AchievementsButton, OptionsButton, QuitButton (RectTransforms)
-   - `crystalBarGroup` → CrystalBar CanvasGroup
-   - `crystalBarRect` → CrystalBar RectTransform
-   - `upgradesGroup` → UpgradesArea CanvasGroup
-   - `upgradesRect` → UpgradesArea RectTransform
-   - `shineRect` → ShineOverlay RectTransform
-   - `vignetteGroup` → Vignette CanvasGroup
+### Step 1: Create MenuManager GameObject
 
-### On the camera:
-1. Add **MenuCameraParallax** (optional, for 3D preview)
+1. Right-click in Hierarchy (root level, not inside Canvas) → `Create Empty` → rename **"MenuManager"**
+2. Position doesn't matter (it's not visible)
 
-### On the character model (if using 3D preview):
-1. Add **MenuCharacterSpin**
-2. Add a **Box Collider** (required by the script)
+### Step 2: Add MainMenuManager script
+
+1. Select **MenuManager** in Hierarchy
+2. Inspector → Add Component → search **"MainMenuManager"** → add it
+3. **Now drag-and-drop references from Hierarchy into the Inspector slots:**
+
+| Inspector Slot | Drag This Object | What Component |
+|---|---|---|
+| `Crystal Count Text` | **CrystalCount** (inside CrystalBar) | TextMeshProUGUI |
+| `Bonk Button` | **BonkButton** | Button |
+| `Continue Button` | **ContinueButton** | Button |
+| `Achievements Button` | **AchievementsButton** | Button |
+| `Options Button` | **OptionsButton** | Button |
+| `Quit Button` | **QuitButton** | Button |
+| `Continue Canvas Group` | **ContinueButton** | CanvasGroup |
+| `Game Scene Name` | Type: `GameScene` | (string field) |
+
+> **TIP:** To drag a specific component, click the object in Hierarchy, then drag
+> from the Hierarchy into the Inspector slot. Unity auto-picks the right component.
+
+### Step 3: Add MenuAnimator script
+
+1. Still on **MenuManager** (or create separate empty GO)
+2. Add Component → **MenuAnimator**
+3. **Drag references:**
+
+| Inspector Slot | Drag This Object | Notes |
+|---|---|---|
+| `Title Rect` | **TitleText** | The RectTransform of the title TMP |
+| `Title Group` | **TitleText** | The CanvasGroup on TitleText |
+| `Subtitle Group` | **SubtitleText** | CanvasGroup on SubtitleText |
+| `Character Group` | **CharacterArea** | CanvasGroup on CharacterArea |
+| `Character Rect` | **CharacterArea** | RectTransform |
+| `Button Rects` | (array — see below) | Size: 5 |
+| `Crystal Bar Group` | **CrystalBar** | CanvasGroup |
+| `Crystal Bar Rect` | **CrystalBar** | RectTransform |
+| `Upgrades Group` | **UpgradesArea** | CanvasGroup |
+| `Upgrades Rect` | **UpgradesArea** | RectTransform |
+| `Shine Rect` | **ShineOverlay** (inside BonkButton) | RectTransform |
+| `Vignette Group` | **Vignette** | CanvasGroup |
+
+**For the `Button Rects` array:**
+1. In Inspector, set Size to `5`
+2. Drag into each element slot:
+   - Element 0: **BonkButton**
+   - Element 1: **ContinueButton**
+   - Element 2: **AchievementsButton**
+   - Element 3: **OptionsButton**
+   - Element 4: **QuitButton**
+
+### Step 4: MenuEmberParticle (on EmbersArea)
+
+1. Select **EmbersArea** in Hierarchy (inside MenuCanvas)
+2. It should already have **MenuEmberParticle** script (if not, add it)
+3. Inspector slots:
+
+| Inspector Slot | Value / Drag |
+|---|---|
+| `Ember Prefab` | Drag your **EmberPrefab** from `Assets/Prefabs/UI/` |
+| `Max Embers` | `20` |
+| `Spawn Interval` | `0.3` |
+| `Min Rise Speed` | `30` |
+| `Max Rise Speed` | `80` |
+| `Horizontal Drift` | `15` |
+| `Lifetime` | `4` |
+| `Min Size` | `2` |
+| `Max Size` | `5` |
+
+**Creating the EmberPrefab:**
+1. In scene: Right-click → `UI > Image` (anywhere temporary)
+2. Rename to **"EmberPrefab"**
+3. RectTransform: Width `4`, Height `4`
+4. Image: Source Image = Unity built-in **"Knob"** sprite (circle), Color: white
+5. Drag from Hierarchy into `Assets/Prefabs/UI/` folder → it becomes a prefab
+6. Delete the instance from scene
+7. Drag prefab into the `Ember Prefab` slot on MenuEmberParticle
+
+### Step 5: UIButtonEffects (on each button)
+
+Each button (BonkButton, ContinueButton, etc.) should already have UIButtonEffects.
+If not, select the button → Add Component → **UIButtonEffects**.
+
+Default values are fine, but for best match:
+
+| Button | hoverLift | hoverScaleMultiplier | pressScale |
+|---|---|---|---|
+| BonkButton | `4` | `1.04` | `0.95` |
+| ContinueButton | `3` | `1.03` | `0.95` |
+| AchievementsButton | `2` | `1.02` | `0.95` |
+| OptionsButton | `2` | `1.02` | `0.95` |
+| QuitButton | `1` | `1.01` | `0.97` |
+
+### Step 6: MetaUpgradeSlot (on each upgrade slot)
+
+Already covered in Section 6, but summary:
+
+| Slot Object | upgradeID | maxLevel | baseCost |
+|---|---|---|---|
+| Slot_Health | `MetaHealth` | `10` | `50` |
+| Slot_Speed | `MetaSpeed` | `10` | `50` |
+| Slot_Damage | `MetaDamage` | `10` | `75` |
+| Slot_Armor | `MetaArmor` | `10` | `75` |
+| Slot_Magnet | `MetaMagnet` | `10` | `50` |
+
+For each slot, drag its children into the script's Inspector slots:
+- `nameText` ← NameText (TMP child)
+- `levelText` ← LevelText (TMP child)
+- `costText` ← CostText (TMP child)
+- `fillBar` ← FillBar (Image child, the Filled one)
+- `buyButton` ← BuyButton (Button child)
+
+### Step 7: Camera
+
+1. Select **Main Camera**
+2. Set Clear Flags: **Solid Color**
+3. Background: `#0D0E08`
+4. Optionally add **MenuCameraParallax** script:
+   - `Max Offset`: `0.5`
+   - `Smooth Speed`: `5`
+
+### Step 8: Character model (optional 3D preview)
+
+If using 3D character preview:
+1. Place your player model in the scene near an offset position (e.g. `(10, 0, 0)`)
+2. Add **MenuCharacterSpin** script to it
+   - `Spin Speed`: `500`
+3. Add a **Box Collider** (required for OnMouseDrag)
+4. Create a second camera **CharPreviewCam** pointing at the model
+5. Create Render Texture, assign to camera
+6. In **CharacterArea** create `UI > Raw Image` → assign Render Texture
 
 ---
 
