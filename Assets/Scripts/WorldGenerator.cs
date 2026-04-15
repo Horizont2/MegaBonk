@@ -1,5 +1,5 @@
 using UnityEngine;
-using Unity.AI.Navigation;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Terrain))]
 public class WorldGenerator : MonoBehaviour
@@ -40,7 +40,9 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] snowGrass;
 
     [Header("Rocks & Logs")]
-    public GameObject[] rockPrefabs;
+    public GameObject[] forestRocks;
+    public GameObject[] desertRocks;
+    public GameObject[] snowRocks;
     public GameObject[] logPrefabs;
 
     [Header("Points of Interest (Багаття, Намети)")]
@@ -72,7 +74,14 @@ public class WorldGenerator : MonoBehaviour
         PaintTerrain(terrain.terrainData);
         PopulateBiomes();
         SpawnPOIs();
-        GetComponent<NavMeshSurface>().BuildNavMesh();
+
+        // Садимо гравця на землю
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            float groundY = terrain.SampleHeight(player.transform.position) + terrain.transform.position.y;
+            player.transform.position = new Vector3(player.transform.position.x, groundY + 1.5f, player.transform.position.z);
+        }
     }
 
     private float GetTemperature(float normX, float normZ)
@@ -199,36 +208,68 @@ public class WorldGenerator : MonoBehaviour
             float normalizedX = px / w;
             float normalizedZ = pz / l;
             float steepness = terrain.terrainData.GetSteepness(normalizedX, normalizedZ);
-
-            if (steepness > 40f) continue;
-
-            float density = Mathf.PerlinNoise(normalizedX * clusterScale + offsetX, normalizedZ * clusterScale + offsetZ);
             float localTemp = GetTemperature(normalizedX, normalizedZ);
 
+            if (steepness > 45f)
+            {
+                if (Random.value > 0.98f)
+                {
+                    GameObject rockPrefab = localTemp > 0.6f ? GetRandomPrefab(desertRocks) : (localTemp < 0.4f ? GetRandomPrefab(snowRocks) : GetRandomPrefab(forestRocks));
+                    if (rockPrefab != null)
+                    {
+                        Vector3 cliffNormal = terrain.terrainData.GetInterpolatedNormal(normalizedX, normalizedZ);
+                        Quaternion cliffRot = Quaternion.LookRotation(cliffNormal) * Quaternion.Euler(0, 0, Random.Range(0, 360f));
+
+                        GameObject obj = Instantiate(rockPrefab, new Vector3(worldX, worldY, worldZ), cliffRot, rockContainer);
+                        obj.transform.localScale *= Random.Range(1.5f, 3f);
+                    }
+                }
+                continue;
+            }
+
+            float density = Mathf.PerlinNoise(normalizedX * clusterScale + offsetX, normalizedZ * clusterScale + offsetZ);
             GameObject prefabToSpawn = null;
             Transform targetContainer = null;
 
-            // Додаємо && steepness <= 25f (Дерева не ростуть на крутих схилах)
             if (density > forestThreshold && steepness <= 25f)
             {
-                // Дерева
                 targetContainer = treeContainer;
                 if (localTemp > 0.6f) prefabToSpawn = GetRandomPrefab(desertTrees);
                 else if (localTemp < 0.4f) prefabToSpawn = GetRandomPrefab(snowTrees);
                 else prefabToSpawn = GetRandomPrefab(forestTrees);
+
+                if (prefabToSpawn != null)
+                {
+                    GameObject obj = Instantiate(prefabToSpawn, new Vector3(worldX, worldY, worldZ), prefabToSpawn.transform.rotation, targetContainer);
+                    obj.transform.Rotate(0, Random.Range(0f, 360f), 0, Space.World);
+                    obj.transform.localScale *= Random.Range(0.8f, 1.2f);
+                }
             }
             else if (density < 0.3f)
             {
-                // Каміння
-                if (Random.value > 0.90f)
+                if (Random.value > 0.93f)
                 {
-                    prefabToSpawn = GetRandomPrefab(rockPrefabs);
                     targetContainer = rockContainer;
+                    GameObject rockBase = localTemp > 0.6f ? GetRandomPrefab(desertRocks) : (localTemp < 0.4f ? GetRandomPrefab(snowRocks) : GetRandomPrefab(forestRocks));
+
+                    if (rockBase != null)
+                    {
+                        int clusterSize = Random.Range(1, 5);
+                        for (int c = 0; c < clusterSize; c++)
+                        {
+                            float ox = Random.Range(-3f, 3f);
+                            float oz = Random.Range(-3f, 3f);
+                            float cy = terrain.SampleHeight(new Vector3(worldX + ox, 0, worldZ + oz)) + transform.position.y;
+
+                            GameObject obj = Instantiate(rockBase, new Vector3(worldX + ox, cy, worldZ + oz), rockBase.transform.rotation, targetContainer);
+                            obj.transform.Rotate(0, Random.Range(0f, 360f), 0, Space.World);
+                            obj.transform.localScale *= Random.Range(0.5f, 1.5f);
+                        }
+                    }
                 }
             }
             else
             {
-                // Галявини (Колоди та Трава)
                 float rand = Random.value;
                 if (rand > 0.92f)
                 {
@@ -237,24 +278,18 @@ public class WorldGenerator : MonoBehaviour
                 }
                 else if (rand > 0.75f)
                 {
-                    // ЛОГІКА ТРАВИ ДЛЯ БІОМІВ
                     targetContainer = grassContainer;
                     if (localTemp > 0.6f) prefabToSpawn = GetRandomPrefab(desertGrass);
                     else if (localTemp < 0.4f) prefabToSpawn = GetRandomPrefab(snowGrass);
                     else prefabToSpawn = GetRandomPrefab(forestGrass);
                 }
-            }
 
-            if (prefabToSpawn != null)
-            {
-                Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
-                // Спавнимо об'єкт з його РІДНИМ поворотом (щоб зберегти твої 90 градусів на X)
-                GameObject obj = Instantiate(prefabToSpawn, spawnPos, prefabToSpawn.transform.rotation, targetContainer);
-
-                // А тепер просто крутимо його по вертикалі (Y) відносно світу
-                obj.transform.Rotate(0, Random.Range(0f, 360f), 0, Space.World);
-
-                obj.transform.localScale *= Random.Range(0.8f, 1.2f);
+                if (prefabToSpawn != null)
+                {
+                    GameObject obj = Instantiate(prefabToSpawn, new Vector3(worldX, worldY, worldZ), prefabToSpawn.transform.rotation, targetContainer);
+                    obj.transform.Rotate(0, Random.Range(0f, 360f), 0, Space.World);
+                    obj.transform.localScale *= Random.Range(0.8f, 1.2f);
+                }
             }
         }
     }

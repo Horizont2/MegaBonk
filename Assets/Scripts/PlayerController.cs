@@ -341,4 +341,18 @@ public class PlayerController : MonoBehaviour
 
         Camera.main.fieldOfView = originalFOV;
     }
+    // Функція лікування гравця
+    // Функція лікування гравця
+    public void Heal(float amount)
+    {
+        currentHealth += amount;
+
+        if (currentHealth > maxHealth)
+        {
+            currentHealth = maxHealth;
+        }
+
+        // ОНОВЛЮЄМО ІНТЕРФЕЙС! Без цього рядка смужка здоров'я не буде рухатись
+        UpdateHUD();
+    }
 }
