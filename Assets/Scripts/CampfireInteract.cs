@@ -1,6 +1,5 @@
 using UnityEngine;
 
-[RequireComponent(typeof(SphereCollider))]
 public class CampfireInteract : MonoBehaviour
 {
     [Header("Heal Settings")]
@@ -10,66 +9,60 @@ public class CampfireInteract : MonoBehaviour
     [Header("Visual Effects")]
     public ParticleSystem healEffect;
 
-    private PlayerController playerInZone;
+    private PlayerController player;
 
-    private void Awake()
+    private void Start()
     {
-        SphereCollider triggerZone = GetComponent<SphereCollider>();
-        triggerZone.isTrigger = true;
-        triggerZone.radius = healRadius;
+        // Багаття знаходить гравця 1 раз при старті гри (ніяких тригерів)
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+        {
+            player = playerObj.GetComponent<PlayerController>();
+        }
 
         if (healEffect != null) healEffect.Stop();
     }
 
     private void Update()
     {
-        if (playerInZone != null)
+        // Якщо гравця немає - нічого не робимо
+        if (player == null) return;
+
+        // МАТЕМАТИКА: Міряємо точну відстань від багаття до гравця
+        float distance = Vector3.Distance(transform.position, player.transform.position);
+
+        // Якщо гравець достатньо близько (радіус)
+        if (distance <= healRadius)
         {
-            // 1. Перевірка на відстань (якщо OnTriggerExit чомусь не спрацював)
-            float distance = Vector3.Distance(transform.position, playerInZone.transform.position);
+            // 1. Лікуємо
+            player.Heal(healPerSecond * Time.deltaTime);
 
-            if (distance <= healRadius + 1f) // +1 для запасу
+            // 2. Прив'язуємо візуальний ефект до гравця
+            if (healEffect != null)
             {
-                // 2. Лікуємо
-                playerInZone.Heal(healPerSecond * Time.deltaTime);
+                // Ефект завжди летить під ноги гравцю
+                healEffect.transform.position = player.transform.position + Vector3.up * 0.2f;
 
-                // 3. ПЕРЕМІЩУЄМО ЕФЕКТ ДО ГРАВЦЯ
-                if (healEffect != null)
+                if (!healEffect.isPlaying)
                 {
-                    // Ефект літає за гравцем, але трохи вище землі
-                    healEffect.transform.position = playerInZone.transform.position + Vector3.up * 0.1f;
-
-                    if (!healEffect.isPlaying) healEffect.Play();
+                    healEffect.Play();
                 }
             }
-            else
+        }
+        else
+        {
+            // Гравець відійшов від багаття - вимикаємо ефект
+            if (healEffect != null && healEffect.isPlaying)
             {
-                // Гравець далеко, але OnTriggerExit не спрацював - примусово чистимо
-                StopHealing();
+                healEffect.Stop();
             }
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    // Малюємо зелену сферу в редакторі Unity, щоб ти міг налаштувати healRadius
+    private void OnDrawGizmosSelected()
     {
-        if (other.CompareTag("Player"))
-        {
-            playerInZone = other.GetComponent<PlayerController>();
-            if (playerInZone == null) playerInZone = other.GetComponentInParent<PlayerController>();
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            StopHealing();
-        }
-    }
-
-    private void StopHealing()
-    {
-        playerInZone = null;
-        if (healEffect != null) healEffect.Stop();
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, healRadius);
     }
 }

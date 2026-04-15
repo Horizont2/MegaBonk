@@ -13,6 +13,11 @@ public class PlayerController : MonoBehaviour
     public float moveSpeed = 8f;
     public float rotationSpeed = 15f;
 
+    [Header("MegaBoom Inertia")]
+    public float normalAcceleration = 15f; // Наскільки швидко розганяється і гальмує в нормі
+    public float dragAcceleration = 3f;    // Наскільки "слизько" стає при перегріві
+    private Vector3 currentVelocityMove;   // Поточна швидкість (для інерції)
+
     [Header("Jump Settings")]
     public bool canJump = true;
     public float jumpHeight = 2f;
@@ -53,6 +58,13 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public float globalDamageMultiplier = 1f;
     private float damageReduction = 0f;
 
+    [Header("MegaBoom Settings")]
+    public float stackRadius = 7f;
+    public TextMeshProUGUI stackText;
+    public float criticalDamagePerSec = 5f;  // Шкода при стаку 30+
+    [HideInInspector] public int currentStack = 0;
+    [HideInInspector] public int currentMultiplier = 1;
+
     private CameraFollow cameraFollow;
     private BloodFlashEffect bloodEffect;
     private CharacterController characterController;
@@ -67,7 +79,6 @@ public class PlayerController : MonoBehaviour
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
 
-        // Оновлено для нових версій Unity (вирішує жовті попередження)
         bloodEffect = FindFirstObjectByType<BloodFlashEffect>();
     }
 
@@ -134,14 +145,39 @@ public class PlayerController : MonoBehaviour
         globalDamageMultiplier = 1f + (dmgLvl * 0.1f);
     }
 
+    private void CheckStack()
+    {
+        Collider[] colliders = Physics.OverlapSphere(transform.position, stackRadius, 1 << 9);
+        currentStack = 0;
+
+        foreach (Collider col in colliders)
+        {
+            if (col.CompareTag("Enemy")) currentStack++;
+        }
+
+        if (currentStack >= 30) currentMultiplier = 5;
+        else if (currentStack >= 20) currentMultiplier = 4;
+        else if (currentStack >= 15) currentMultiplier = 2;
+        else currentMultiplier = 1;
+
+        if (stackText != null)
+        {
+            stackText.text = "STACK: " + currentStack + "  |  x" + currentMultiplier;
+
+            if (currentStack >= 30) stackText.color = Color.red;
+            else if (currentStack >= 15) stackText.color = Color.yellow;
+            else stackText.color = Color.white;
+        }
+    }
+
     private void Update()
     {
-        // --- NOCLIP ТАГЛ ---
+        CheckStack();
+
         if (Input.GetKeyDown(KeyCode.F10))
         {
             isNoclip = !isNoclip;
             if (characterController != null) characterController.enabled = !isNoclip;
-            Debug.Log("Noclip: " + isNoclip);
         }
 
         if (isNoclip)
@@ -149,18 +185,15 @@ public class PlayerController : MonoBehaviour
             float h = Input.GetAxisRaw("Horizontal");
             float v = Input.GetAxisRaw("Vertical");
             float up = 0f;
-
             if (Input.GetKey(KeyCode.Space)) up = 1f;
-            if (Input.GetKey(KeyCode.LeftControl)) up = -1f; // Спуск на Ctrl
+            if (Input.GetKey(KeyCode.LeftControl)) up = -1f;
 
-            // Перейменовано змінні, щоб уникнути помилки CS0136
             Vector3 ncForward = Camera.main.transform.forward;
             Vector3 ncRight = Camera.main.transform.right;
 
             Vector3 dir = (ncForward * v + ncRight * h + Vector3.up * up).normalized;
             transform.position += dir * noclipSpeed * Time.deltaTime;
-
-            return; // Зупиняємо виконання решти коду
+            return;
         }
 
         Vector3 movement = Vector3.zero;
@@ -187,10 +220,34 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
+        // --- MEGABOOM OVERHEAT LOGIC (Інерція та Шкода) ---
+        float currentAccel = normalAcceleration;
+
+        if (currentStack >= 30)
+        {
+            currentAccel = dragAcceleration;
+            // Критична шкода (тиха, без тряски камери)
+            currentHealth -= criticalDamagePerSec * Time.deltaTime;
+            UpdateHUD();
+            if (currentHealth <= 0) Die();
+        }
+        else if (currentStack >= 15)
+        {
+            currentAccel = dragAcceleration; // Слизьке керування
+        }
+
+        // Застосовуємо інерцію (Lerp)
         if (inputDir.magnitude >= 0.1f)
         {
-            movement = (camForward * inputDir.z + camRight * inputDir.x).normalized * moveSpeed;
+            Vector3 targetMove = (camForward * inputDir.z + camRight * inputDir.x).normalized * moveSpeed;
+            currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMove, currentAccel * Time.deltaTime);
         }
+        else
+        {
+            currentVelocityMove = Vector3.Lerp(currentVelocityMove, Vector3.zero, currentAccel * Time.deltaTime);
+        }
+
+        movement = currentVelocityMove;
 
         float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
 
@@ -214,16 +271,13 @@ public class PlayerController : MonoBehaviour
         if (transform.position.y < -20f)
         {
             if (characterController != null) characterController.enabled = false;
-
             float safeY = 100f;
             if (Terrain.activeTerrain != null)
             {
                 safeY = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y + 20f;
             }
-
             transform.position = new Vector3(transform.position.x, safeY, transform.position.z);
             velocity = Vector3.zero;
-
             if (characterController != null) characterController.enabled = true;
         }
     }
@@ -250,10 +304,8 @@ public class PlayerController : MonoBehaviour
     {
         float t = 0.4f;
         Color c = damageFlashImage.color;
-
         c.a = 0.5f;
         damageFlashImage.color = c;
-
         while (c.a > 0)
         {
             c.a -= Time.deltaTime / t;
@@ -341,18 +393,11 @@ public class PlayerController : MonoBehaviour
 
         Camera.main.fieldOfView = originalFOV;
     }
-    // Функція лікування гравця
-    // Функція лікування гравця
+
     public void Heal(float amount)
     {
         currentHealth += amount;
-
-        if (currentHealth > maxHealth)
-        {
-            currentHealth = maxHealth;
-        }
-
-        // ОНОВЛЮЄМО ІНТЕРФЕЙС! Без цього рядка смужка здоров'я не буде рухатись
+        if (currentHealth > maxHealth) currentHealth = maxHealth;
         UpdateHUD();
     }
 }

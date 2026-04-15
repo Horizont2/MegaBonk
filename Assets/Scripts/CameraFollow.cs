@@ -4,62 +4,58 @@ public class CameraFollow : MonoBehaviour
 {
     [Header("Target Settings")]
     public Transform target;
-    public Vector3 targetOffset = new Vector3(0, 1.5f, 0); // Щоб камера дивилася на спину/голову, а не в ноги
-    public float distance = 8f; // Віддаленість камери
+    public Vector3 targetOffset = new Vector3(0, 1.5f, 0);
+    public float distance = 8f;
 
     [Header("Mouse Control")]
     public float mouseSensitivity = 3f;
-    public float minYAngle = -20f; // Наскільки низько можна опустити камеру
-    public float maxYAngle = 80f;  // Наскільки високо можна підняти
+    public float minYAngle = -20f;
+    public float maxYAngle = 80f;
 
     [Header("Shake Settings")]
-    public float shakeIntensity = 0.3f;
-    public float shakeDuration = 0.2f;
+    private float shakeTimer;
+    private float currentShakeIntensity;
 
     private float currentX = 0f;
     private float currentY = 45f;
-    private float shakeTimer;
 
     private void Start()
     {
         transform.parent = null;
-        // Ховаємо курсор миші для зручного керування (натисни ESC в Unity, щоб повернути його)
-        Cursor.lockState = CursorLockMode.Locked; 
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
     private void LateUpdate()
     {
         if (target == null) return;
 
-        // Зчитуємо рух миші
+        // 1. Керування мишею
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
         currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
-        
-        // Обмежуємо кут нахилу, щоб камера не переверталася догори дригом
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
 
-        // Вираховуємо нову позицію по колу
+        // 2. Розрахунок позиції
         Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
         Vector3 desiredPosition = target.position + targetOffset - (rotation * Vector3.forward * distance);
 
-        // Трясіння
+        // 3. ДИНАМІЧНА ТРЯСКА (Працює навіть під час Hit Stop)
         if (shakeTimer > 0)
         {
-            desiredPosition += Random.insideUnitSphere * shakeIntensity;
-            shakeTimer -= Time.deltaTime;
+            // Додаємо випадковий зсув, помножений на поточну інтенсивність
+            desiredPosition += Random.insideUnitSphere * currentShakeIntensity;
+
+            // Використовуємо unscaledDeltaTime, щоб тряска не сповільнювалася разом із грою
+            shakeTimer -= Time.unscaledDeltaTime;
         }
 
-        // Застосовуємо позицію і змушуємо камеру дивитися на гравця
+        // 4. Застосування позиції
         transform.position = desiredPosition;
         transform.LookAt(target.position + targetOffset);
 
-        // --- ANTI-CLIPPING (Keep camera above ground) ---
+        // --- ANTI-CLIPPING (Захист від провалювання під землю) ---
         if (Terrain.activeTerrain != null)
         {
-            // Find the height of the mountain exactly under the camera
             float terrainHeight = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y;
-
-            // The camera must always be at least 1.5 meters above the dirt
             float minCameraHeight = terrainHeight + 1.5f;
 
             if (transform.position.y < minCameraHeight)
@@ -71,8 +67,16 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
+    // Новий метод для MegaBoom: дозволяє задавати різну силу тряски
+    public void TriggerShake(float duration, float intensity)
+    {
+        shakeTimer = duration;
+        currentShakeIntensity = intensity;
+    }
+
+    // Старий метод (для сумісності з отриманням шкоди)
     public void StartShake()
     {
-        shakeTimer = shakeDuration;
+        TriggerShake(0.2f, 0.3f);
     }
 }

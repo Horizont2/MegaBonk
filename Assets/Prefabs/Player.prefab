@@ -392,8 +392,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d30ca0b894857c4682af664662e121e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+  noclipSpeed: 30
   moveSpeed: 8
   rotationSpeed: 15
+  normalAcceleration: 15
+  dragAcceleration: 3
   canJump: 1
   jumpHeight: 2
   gravity: -25
@@ -415,6 +418,11 @@ MonoBehaviour:
   dashDuration: 0.2
   dashCooldown: 1.5
   globalDamageMultiplier: 1
+  stackRadius: 7
+  stackText: {fileID: 0}
+  criticalDamagePerSec: 5
+  currentStack: 0
+  currentMultiplier: 1
 --- !u!143 &7005003726609898094
 CharacterController:
   m_ObjectHideFlags: 0
@@ -465,13 +473,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5802165503733821538}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.00000008940697, z: -0.5866319, w: 0.8098538}
-  m_LocalPosition: {x: -0.334, y: 0.305, z: -0}
+  m_LocalRotation: {x: -0.000000089406946, y: 0.00000020861621, z: -0.80631167, w: 0.591491}
+  m_LocalPosition: {x: -0.11, y: 0.497, z: -0}
   m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 3388024236579309694}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -71.837}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -107.474}
 --- !u!212 &3277944420822641592
 SpriteRenderer:
   serializedVersion: 2

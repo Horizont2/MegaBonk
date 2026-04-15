@@ -23,6 +23,10 @@ public class EnemyAI : MonoBehaviour
     [Header("Ground Settings")]
     public float verticalOffset = 0.5f;
 
+    [Header("Swarm Settings (MegaBoom)")]
+    public float repulsionRadius = 1.2f; // На якій відстані вони відштовхуються
+    public float repulsionForce = 3f;    // Сила відштовхування
+
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
     private float currentHealth;
@@ -32,26 +36,16 @@ public class EnemyAI : MonoBehaviour
 
     private void Awake()
     {
-        // Переносимо самого ворога на 9 шар (шар привидів)
         gameObject.layer = 9;
-
-        // --- ЗАХИСТ МІНІМАПИ ---
         int minimapLayer = LayerMask.NameToLayer("MinimapOnly");
 
         foreach (Transform t in GetComponentsInChildren<Transform>(true))
         {
-            // Змінюємо шар на 9 тільки якщо це НЕ іконка мінімапи
-            if (t.gameObject.layer != minimapLayer)
-            {
-                t.gameObject.layer = 9;
-            }
+            if (t.gameObject.layer != minimapLayer) t.gameObject.layer = 9;
         }
 
         Collider[] enemyCols = GetComponentsInChildren<Collider>(true);
-        foreach (Collider eCol in enemyCols)
-        {
-            eCol.isTrigger = true;
-        }
+        foreach (Collider eCol in enemyCols) eCol.isTrigger = true;
 
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
@@ -62,7 +56,6 @@ public class EnemyAI : MonoBehaviour
     private void Start()
     {
         currentHealth = maxHealth;
-
         meshRenderer = GetComponentInChildren<MeshRenderer>();
         if (meshRenderer != null) originalColor = meshRenderer.material.color;
 
@@ -79,10 +72,32 @@ public class EnemyAI : MonoBehaviour
         if (target == null) return;
 
         Vector3 currentPos = transform.position;
-        Vector3 direction = (target.position - currentPos).normalized;
-        direction.y = 0f;
+        Vector3 directionToPlayer = (target.position - currentPos).normalized;
 
-        Vector3 nextPos = currentPos + direction * moveSpeed * Time.deltaTime;
+        // --- SWARM PHYSICS (М'яке відштовхування) ---
+        Vector3 repulsion = Vector3.zero;
+        // Шукаємо всіх сусідів у радіусі (Тільки на шарі 9 - Вороги)
+        Collider[] neighbors = Physics.OverlapSphere(transform.position, repulsionRadius, 1 << 9);
+
+        foreach (Collider neighbor in neighbors)
+        {
+            if (neighbor.gameObject != gameObject)
+            {
+                Vector3 pushDir = transform.position - neighbor.transform.position;
+                float distance = pushDir.magnitude;
+                // Чим ближче сусід, тим сильніше штовхаємось
+                if (distance < repulsionRadius && distance > 0)
+                {
+                    repulsion += pushDir.normalized * (repulsionRadius - distance);
+                }
+            }
+        }
+
+        // Міксуємо бажання йти до гравця і бажання не врізатися в сусідів
+        Vector3 finalDirection = (directionToPlayer + repulsion * repulsionForce).normalized;
+        finalDirection.y = 0f;
+
+        Vector3 nextPos = currentPos + finalDirection * moveSpeed * Time.deltaTime;
 
         if (Terrain.activeTerrain != null)
         {
@@ -92,9 +107,9 @@ public class EnemyAI : MonoBehaviour
 
         transform.position = nextPos;
 
-        if (direction != Vector3.zero)
+        if (finalDirection != Vector3.zero)
         {
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 10f * Time.deltaTime);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(finalDirection), 10f * Time.deltaTime);
         }
 
         if (Vector3.Distance(transform.position, target.position) <= attackRange)
@@ -136,10 +151,7 @@ public class EnemyAI : MonoBehaviour
 
     private void Die()
     {
-        if (xpCrystalPrefab != null)
-        {
-            Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
-        }
+        if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
         Destroy(gameObject);
     }
 }
