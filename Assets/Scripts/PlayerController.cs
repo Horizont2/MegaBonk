@@ -5,6 +5,10 @@ using TMPro;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
+    [Header("Debug")]
+    public float noclipSpeed = 30f;
+    private bool isNoclip = false;
+
     [Header("Movement Settings")]
     public float moveSpeed = 8f;
     public float rotationSpeed = 15f;
@@ -29,7 +33,7 @@ public class PlayerController : MonoBehaviour
     public int crystalsCollected = 0;
 
     [Header("Visual Effects")]
-    public Image damageFlashImage; // Reference to the same BloodVignette
+    public Image damageFlashImage;
 
     [Header("HUD UI References")]
     public Slider hpSlider;
@@ -62,7 +66,9 @@ public class PlayerController : MonoBehaviour
         characterController = GetComponent<CharacterController>();
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
-        bloodEffect = FindObjectOfType<BloodFlashEffect>();
+
+        // Оновлено для нових версій Unity (вирішує жовті попередження)
+        bloodEffect = FindFirstObjectByType<BloodFlashEffect>();
     }
 
     private void Start()
@@ -71,7 +77,7 @@ public class PlayerController : MonoBehaviour
         currentHealth = maxHealth;
         UpdateHUD();
 
-        UIIconGlimmer glimmer = FindObjectOfType<UIIconGlimmer>();
+        UIIconGlimmer glimmer = FindFirstObjectByType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
 
         StartCoroutine(SpawnSafely());
@@ -130,6 +136,33 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        // --- NOCLIP ТАГЛ ---
+        if (Input.GetKeyDown(KeyCode.F10))
+        {
+            isNoclip = !isNoclip;
+            if (characterController != null) characterController.enabled = !isNoclip;
+            Debug.Log("Noclip: " + isNoclip);
+        }
+
+        if (isNoclip)
+        {
+            float h = Input.GetAxisRaw("Horizontal");
+            float v = Input.GetAxisRaw("Vertical");
+            float up = 0f;
+
+            if (Input.GetKey(KeyCode.Space)) up = 1f;
+            if (Input.GetKey(KeyCode.LeftControl)) up = -1f; // Спуск на Ctrl
+
+            // Перейменовано змінні, щоб уникнути помилки CS0136
+            Vector3 ncForward = Camera.main.transform.forward;
+            Vector3 ncRight = Camera.main.transform.right;
+
+            Vector3 dir = (ncForward * v + ncRight * h + Vector3.up * up).normalized;
+            transform.position += dir * noclipSpeed * Time.deltaTime;
+
+            return; // Зупиняємо виконання решти коду
+        }
+
         Vector3 movement = Vector3.zero;
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
@@ -141,29 +174,24 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(DashRoutine(inputDir));
         }
 
-        // Блокуємо рух під час ривка
         if (isDashing) return;
 
-        // Отримуємо напрямок камери
         Vector3 camForward = Camera.main.transform.forward;
         Vector3 camRight = Camera.main.transform.right;
         camForward.y = 0f; camRight.y = 0f;
         camForward.Normalize(); camRight.Normalize();
 
-        // --- 1. ПОСТІЙНИЙ ПОВОРОТ ЗА МИШКОЮ (КАМЕРОЮ) ---
         if (camForward.sqrMagnitude > 0.001f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(camForward);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // --- 2. РУХ ---
         if (inputDir.magnitude >= 0.1f)
         {
             movement = (camForward * inputDir.z + camRight * inputDir.x).normalized * moveSpeed;
         }
 
-        // --- ФІЗИКА І ГРАВІТАЦІЯ ---
         float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
 
         if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
@@ -176,7 +204,6 @@ public class PlayerController : MonoBehaviour
         Vector3 finalMove = movement + velocity;
         characterController.Move(finalMove * safeDeltaTime);
 
-        // --- РЕГЕНЕРАЦІЯ ЗДОРОВ'Я ---
         if (currentHealth < maxHealth && healthRegenRate > 0)
         {
             currentHealth += healthRegenRate * Time.deltaTime;
@@ -184,7 +211,6 @@ public class PlayerController : MonoBehaviour
             UpdateHUD();
         }
 
-        // --- ULTIMATE FAILSAFE (Захист від падіння) ---
         if (transform.position.y < -20f)
         {
             if (characterController != null) characterController.enabled = false;
@@ -239,9 +265,9 @@ public class PlayerController : MonoBehaviour
     private void Die()
     {
         SaveManager.AddCrystals(crystalsCollected);
-        GameManager gm = FindObjectOfType<GameManager>();
+        GameManager gm = FindFirstObjectByType<GameManager>();
         if (gm != null) gm.TriggerGameOver();
-        WeaponOrbit weapon = FindObjectOfType<WeaponOrbit>();
+        WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
         gameObject.SetActive(false);
     }
@@ -259,7 +285,7 @@ public class PlayerController : MonoBehaviour
         currentLevel++;
         currentXP -= xpToNextLevel;
         xpToNextLevel *= 1.5f;
-        LevelUpManager lum = FindObjectOfType<LevelUpManager>();
+        LevelUpManager lum = FindFirstObjectByType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
         UpdateHUD();
     }
@@ -291,7 +317,6 @@ public class PlayerController : MonoBehaviour
             direction = (camForward * direction.z + camRight * direction.x).normalized;
         }
 
-        // 1. САМ РИВОК
         while (Time.time < startTime + dashDuration)
         {
             float normalizedTime = (Time.time - startTime) / dashDuration;
@@ -303,10 +328,8 @@ public class PlayerController : MonoBehaviour
             yield return null;
         }
 
-        // 2. ВАЖЛИВО: Вимикаємо стан ривка ВІДРАЗУ після руху, щоб увімкнулася гравітація
         isDashing = false;
 
-        // 3. ПЛАВНЕ ПОВЕРНЕННЯ КАМЕРИ (вже без блокування руху)
         float elapsed = 0f;
         float returnTime = 0.3f;
         while (elapsed < returnTime)
