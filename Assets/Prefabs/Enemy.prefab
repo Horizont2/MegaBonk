@@ -133,9 +133,13 @@ MonoBehaviour:
   attackRange: 1.5
   attackCooldown: 1
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
+  diamondPrefab: {fileID: 0}
+  diamondDropChance: 0.1
   damagePopupPrefab: {fileID: 8592393487426644071, guid: 03a2312f805a3404c8cda59e89140aad, type: 3}
   target: {fileID: 0}
   verticalOffset: 0.6
+  repulsionRadius: 1.2
+  repulsionForce: 3
   xpRewardMultiplier: 1
 --- !u!54 &8154194412166926141
 Rigidbody:
@@ -175,7 +179,7 @@ GameObject:
   - component: {fileID: 6851244170765573850}
   - component: {fileID: 3218331221870212544}
   m_Layer: 10
-  m_Name: Circle
+  m_Name: MiniMapIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

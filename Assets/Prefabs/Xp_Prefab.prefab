@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 4742072957177026893}
   - component: {fileID: 760241756426077300}
   m_Layer: 7
-  m_Name: XpCrystal_Prefab
+  m_Name: Xp_Prefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -105,3 +105,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::XpCrystal
   xpAmount: 10
   magnetSpeed: 15
+  popRadius: 3
+  popSpeed: 12
+  hoverSpeed: 3
+  hoverHeight: 0.3
+  rotationSpeed: 100

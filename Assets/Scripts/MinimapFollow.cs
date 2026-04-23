@@ -1,25 +1,24 @@
 using UnityEngine;
 
-public class MinimapFollow : MonoBehaviour
+public class MinimapCamera : MonoBehaviour
 {
     public Transform player;
-    public float cameraHeight = 50f;
-    public bool rotateWithPlayer = true; // Чи має мапа крутитися
+    public float cameraHeight = 30f;
+
+    private void Start()
+    {
+        // Відкріплюємо камеру від гравця, якщо вона була всередині нього
+        transform.parent = null;
+    }
 
     private void LateUpdate()
     {
-        if (player == null) return;
-
-        // Слідуємо за позицією
-        transform.position = new Vector3(player.position.x, player.position.y + cameraHeight, player.position.z);
-
-        if (rotateWithPlayer)
+        if (player != null)
         {
-            // Камера мінімапи крутиться так само, як і гравець/камера навколо осі Y
-            transform.rotation = Quaternion.Euler(90f, player.eulerAngles.y, 0f);
-        }
-        else
-        {
+            // Камера просто висить над гравцем
+            transform.position = new Vector3(player.position.x, player.position.y + cameraHeight, player.position.z);
+
+            // Завжди дивиться вниз (на 90 градусів) і ніколи не крутиться!
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         }
     }

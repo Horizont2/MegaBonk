@@ -327,8 +327,15 @@ public class PlayerController : MonoBehaviour
     public void GainXP(float amount)
     {
         currentXP += amount;
-        crystalsCollected++;
+        // ВАЖЛИВО: Ми прибрали звідси crystalsCollected++;
         if (currentXP >= xpToNextLevel) LevelUp();
+        UpdateHUD();
+    }
+
+    // НОВА ФУНКЦІЯ ТІЛЬКИ ДЛЯ АЛМАЗІВ
+    public void GainDiamond(int amount = 1)
+    {
+        crystalsCollected += amount;
         UpdateHUD();
     }
 

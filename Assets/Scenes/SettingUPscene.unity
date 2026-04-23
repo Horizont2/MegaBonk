@@ -590,7 +590,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MinimapFollow
   player: {fileID: 907436303}
   cameraHeight: 50
-  rotateWithPlayer: 1
 --- !u!1 &124161012
 GameObject:
   m_ObjectHideFlags: 0
@@ -1107,7 +1106,7 @@ MonoBehaviour:
   persistence: 0.5
   lacunarity: 2
   peakSharpness: 2.5
-  terraceCount: 12
+  terraceCount: 24
   edgeMountainMultiplier: 1.5
   grassLayer: {fileID: 8574412962073106934, guid: 88ae7c361a379464e8ea3c1a0140b44d, type: 2}
   sandLayer: {fileID: 8574412962073106934, guid: 406a82348762e6e4d82558e5677abf98, type: 2}
@@ -1154,9 +1153,7 @@ MonoBehaviour:
   - {fileID: 1977206697040563177, guid: ecf2a1713782dad4797f707c2b00b81f, type: 3}
   - {fileID: 464237172582211401, guid: 23df266b56203024e9e38c655ca15662, type: 3}
   - {fileID: 9144803541525760852, guid: fc9fa9989efb92947bed9ccabb3d5dcd, type: 3}
-  poiPrefabs:
-  - {fileID: 1333987346965480676, guid: a0cb97213f1da8142b799feda15700c6, type: 3}
-  - {fileID: 772772992814070604, guid: 0f7dcb700af9b854d9aabe2375fad7ec, type: 3}
+  poiPrefabs: []
   maxPOIs: 15
   maxPOISteepness: 4
 --- !u!154 &240858630
@@ -1276,6 +1273,7 @@ GameObject:
   m_Component:
   - component: {fileID: 249127116}
   - component: {fileID: 249127115}
+  - component: {fileID: 249127117}
   m_Layer: 0
   m_Name: EnvironmentManager
   m_TagString: Untagged
@@ -1324,6 +1322,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &249127117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 249127114}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e6256856e98a77489c50b552d37bdc0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::POISpawner
+  locationPrefabs:
+  - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
+  amountToSpawn: 15
+  mapSize: 250
+  maxSlopeAngle: 10
 --- !u!1 &290329618
 GameObject:
   m_ObjectHideFlags: 0
@@ -13884,7 +13899,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d51c432557a87cd4b8967a0f4daccf4f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
-  enemyPrefab: {fileID: 1388865259773110402, guid: 8c4fd47bd7b48194c8792e1748f1b7f0, type: 3}
+  enemyPool:
+  - enemyPrefab: {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    spawnAtMinute: 0
+  - enemyPrefab: {fileID: 2058852120935944091, guid: c7c47f0ce5b83fa46918e9cf2dbb7155, type: 3}
+    spawnAtMinute: 3
+  - enemyPrefab: {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
+    spawnAtMinute: 8
   player: {fileID: 907436303}
   baseSpawnInterval: 5
   spawnRadius: 200
