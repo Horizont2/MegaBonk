@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections;
 
@@ -16,6 +17,9 @@ public class ShopManager : MonoBehaviour
     [Header("Animation Settings")]
     public float swipeSpeed = 4f;
     public float rotationSpeed = 500f;
+
+    [Header("Scene Navigation")]
+    public string mainMenuSceneName = "MainMenu"; // Впиши сюди точну назву сцени меню
 
     [Header("UI Main Elements")]
     public TextMeshProUGUI heroNameText;
@@ -51,7 +55,7 @@ public class ShopManager : MonoBehaviour
     private void Start()
     {
         // 1. Налаштування капіталу
-        if (!PlayerPrefs.HasKey(DIAMONDS_KEY)) PlayerPrefs.SetInt(DIAMONDS_KEY, 2500);
+        if (!PlayerPrefs.HasKey(DIAMONDS_KEY)) PlayerPrefs.SetInt(DIAMONDS_KEY, 0);
 
         // 2. Налаштування стартового героя (перший запуск)
         if (!PlayerPrefs.HasKey(SELECTED_HERO_KEY))
@@ -83,6 +87,8 @@ public class ShopManager : MonoBehaviour
         if (leftArrow != null) leftArrow.onClick.AddListener(PreviousHero);
         if (rightArrow != null) rightArrow.onClick.AddListener(NextHero);
         if (buyButton != null) buyButton.onClick.AddListener(OnBuyOrSelectPressed);
+
+        if (backButton != null) backButton.onClick.AddListener(GoToMainMenu);
     }
 
     private void Update()
@@ -271,5 +277,10 @@ public class ShopManager : MonoBehaviour
             yield return null;
         }
         textComponent.transform.localScale = originalScale;
+    }
+
+    public void GoToMainMenu()
+    {
+        SceneManager.LoadScene(mainMenuSceneName);
     }
 }

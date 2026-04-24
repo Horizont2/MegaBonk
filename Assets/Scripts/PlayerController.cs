@@ -5,6 +5,13 @@ using TMPro;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
+    [Header("Character & Weapon Spawning")]
+    public GameObject[] heroPrefabs;
+    public GameObject[] weaponPrefabs;
+    public float visualYOffset = -1f;
+    private GameObject currentVisual;
+    private GameObject currentWeapon;
+
     [Header("Debug")]
     public float noclipSpeed = 30f;
     private bool isNoclip = false;
@@ -14,9 +21,9 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed = 15f;
 
     [Header("MegaBoom Inertia")]
-    public float normalAcceleration = 15f; // Наскільки швидко розганяється і гальмує в нормі
-    public float dragAcceleration = 3f;    // Наскільки "слизько" стає при перегріві
-    private Vector3 currentVelocityMove;   // Поточна швидкість (для інерції)
+    public float normalAcceleration = 15f;
+    public float dragAcceleration = 3f;
+    private Vector3 currentVelocityMove;
 
     [Header("Jump Settings")]
     public bool canJump = true;
@@ -36,6 +43,26 @@ public class PlayerController : MonoBehaviour
     public float currentXP = 0f;
     public float xpToNextLevel = 50f;
     public int crystalsCollected = 0;
+
+    [Header("Melee Combat")]
+    public float meleeDamage = 25f;
+    public float meleeRadius = 2.5f;
+    public Transform meleePoint;
+
+    [Header("Grenade & Trajectory (NEW)")]
+    public GameObject grenadePrefab;
+    public Transform throwPoint;
+    public LineRenderer trajectoryLine;
+    public int linePoints = 30;
+    public float timeBetweenPoints = 0.1f;
+    public float minThrowForce = 5f;
+    public float maxThrowForce = 30f;
+    public float chargeRate = 15f;
+    public float upwardAngle = 0.5f;
+
+    private float currentThrowForce;
+    private bool isAimingGrenade = false;
+    private Vector3 savedThrowVelocity; // Зберігає вектор сили під час анімації
 
     [Header("Visual Effects")]
     public Image damageFlashImage;
@@ -61,7 +88,7 @@ public class PlayerController : MonoBehaviour
     [Header("MegaBoom Settings")]
     public float stackRadius = 7f;
     public TextMeshProUGUI stackText;
-    public float criticalDamagePerSec = 5f;  // Шкода при стаку 30+
+    public float criticalDamagePerSec = 5f;
     [HideInInspector] public int currentStack = 0;
     [HideInInspector] public int currentMultiplier = 1;
 
@@ -70,6 +97,8 @@ public class PlayerController : MonoBehaviour
     private CharacterController characterController;
     private Vector3 velocity;
 
+    private Animator anim;
+
     private void Awake()
     {
         gameObject.layer = 8;
@@ -77,9 +106,34 @@ public class PlayerController : MonoBehaviour
 
         characterController = GetComponent<CharacterController>();
 
-        if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
+        int selectedHeroID = PlayerPrefs.GetInt("SelectedHeroID", 0);
+        int selectedWeaponID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
 
+        if (heroPrefabs != null && heroPrefabs.Length > selectedHeroID && heroPrefabs[selectedHeroID] != null)
+        {
+            currentVisual = Instantiate(heroPrefabs[selectedHeroID], transform.position, transform.rotation, transform);
+            currentVisual.transform.localPosition = new Vector3(0, visualYOffset, 0);
+
+            anim = currentVisual.GetComponent<Animator>();
+            if (anim != null) anim.applyRootMotion = false;
+
+            Transform socket = FindDeepChild(currentVisual.transform, "WeaponSocket");
+            if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > selectedWeaponID && weaponPrefabs[selectedWeaponID] != null)
+            {
+                currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket.position, socket.rotation, socket);
+            }
+        }
+        else
+        {
+            anim = GetComponentInChildren<Animator>();
+            if (anim != null) anim.applyRootMotion = false;
+        }
+
+        if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
         bloodEffect = FindFirstObjectByType<BloodFlashEffect>();
+
+        // Ховаємо лінію траєкторії на старті
+        if (trajectoryLine != null) trajectoryLine.positionCount = 0;
     }
 
     private void Start()
@@ -97,7 +151,6 @@ public class PlayerController : MonoBehaviour
     private System.Collections.IEnumerator SpawnSafely()
     {
         if (characterController != null) characterController.enabled = false;
-
         yield return null;
         yield return null;
 
@@ -163,7 +216,6 @@ public class PlayerController : MonoBehaviour
         if (stackText != null)
         {
             stackText.text = "STACK: " + currentStack + "  |  x" + currentMultiplier;
-
             if (currentStack >= 30) stackText.color = Color.red;
             else if (currentStack >= 15) stackText.color = Color.yellow;
             else stackText.color = Color.white;
@@ -173,6 +225,11 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         CheckStack();
+
+        if (currentVisual != null)
+        {
+            currentVisual.transform.localRotation = Quaternion.identity;
+        }
 
         if (Input.GetKeyDown(KeyCode.F10))
         {
@@ -201,7 +258,6 @@ public class PlayerController : MonoBehaviour
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 inputDir = new Vector3(horizontal, 0f, vertical).normalized;
 
-        // --- DASH MECHANIC ---
         if (Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= lastDashTime + dashCooldown)
         {
             StartCoroutine(DashRoutine(inputDir));
@@ -220,26 +276,25 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // --- MEGABOOM OVERHEAT LOGIC (Інерція та Шкода) ---
         float currentAccel = normalAcceleration;
 
         if (currentStack >= 30)
         {
             currentAccel = dragAcceleration;
-            // Критична шкода (тиха, без тряски камери)
             currentHealth -= criticalDamagePerSec * Time.deltaTime;
             UpdateHUD();
             if (currentHealth <= 0) Die();
         }
         else if (currentStack >= 15)
         {
-            currentAccel = dragAcceleration; // Слизьке керування
+            currentAccel = dragAcceleration;
         }
 
-        // Застосовуємо інерцію (Lerp)
+        float actualSpeed = isAimingGrenade ? moveSpeed * 0.5f : moveSpeed;
+
         if (inputDir.magnitude >= 0.1f)
         {
-            Vector3 targetMove = (camForward * inputDir.z + camRight * inputDir.x).normalized * moveSpeed;
+            Vector3 targetMove = (camForward * inputDir.z + camRight * inputDir.x).normalized * actualSpeed;
             currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMove, currentAccel * Time.deltaTime);
         }
         else
@@ -260,6 +315,49 @@ public class PlayerController : MonoBehaviour
 
         Vector3 finalMove = movement + velocity;
         characterController.Move(finalMove * safeDeltaTime);
+
+        // --- УПРАВЛІННЯ АНІМАТОРОМ І БОЄМ ---
+        if (anim != null)
+        {
+            anim.SetFloat("Speed", currentVelocityMove.magnitude);
+            anim.SetBool("IsGrounded", characterController.isGrounded);
+
+            // МЕЧ (ЛІВА кнопка миші = 0)
+            if (Input.GetMouseButtonDown(0))
+            {
+                if (!isAimingGrenade) // Якщо ми не тримаємо гранату, б'ємо мечем
+                {
+                    anim.SetTrigger("Attack");
+                }
+            }
+
+            // ГРАНАТА (ПРАВА кнопка миші = 1)
+            if (Input.GetMouseButtonDown(1))
+            {
+                isAimingGrenade = true;
+                currentThrowForce = minThrowForce;
+                if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+            }
+
+            // Накопичення сили (тримаємо ПРАВУ кнопку)
+            if (Input.GetMouseButton(1) && isAimingGrenade)
+            {
+                currentThrowForce += chargeRate * Time.deltaTime;
+                if (currentThrowForce > maxThrowForce) currentThrowForce = maxThrowForce;
+                DrawTrajectory();
+            }
+
+            if (Input.GetMouseButtonUp(1))
+            {
+                if (isAimingGrenade)
+                {
+                    isAimingGrenade = false;
+                    savedThrowVelocity = GetThrowVelocity(); // Запам'ятовуємо силу і напрямок ДО анімації
+                    if (trajectoryLine != null) trajectoryLine.positionCount = 0; // Ховаємо лінію
+                    anim.SetTrigger("Throw"); // Запускаємо анімацію
+                }
+            }
+        }
 
         if (currentHealth < maxHealth && healthRegenRate > 0)
         {
@@ -282,6 +380,74 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // --- ЛОГІКА ПРИЦІЛЮВАННЯ ТА ТРАЄКТОРІЇ ---
+    // --- ЛОГІКА ПРИЦІЛЮВАННЯ ТА ТРАЄКТОРІЇ ---
+    // --- ЛОГІКА ПРИЦІЛЮВАННЯ ТА ТРАЄКТОРІЇ ---
+    private Vector3 GetThrowVelocity()
+    {
+        // Беремо напрямок рівно туди, куди дивиться гравець
+        Vector3 aimDir = transform.forward;
+
+        // Додаємо кут вгору, щоб граната летіла гарною дугою
+        Vector3 throwDir = (aimDir + Vector3.up * upwardAngle).normalized;
+
+        // Множимо на поточну накопичену силу
+        return throwDir * currentThrowForce;
+    }
+
+    private void DrawTrajectory()
+    {
+        if (trajectoryLine == null || throwPoint == null) return;
+
+        trajectoryLine.positionCount = linePoints;
+        Vector3 startPosition = throwPoint.position;
+        Vector3 startVelocity = GetThrowVelocity();
+
+        for (int i = 0; i < linePoints; i++)
+        {
+            float t = i * timeBetweenPoints;
+            Vector3 point = startPosition + startVelocity * t + Physics.gravity * 0.5f * t * t;
+
+            trajectoryLine.SetPosition(i, point);
+
+            if (point.y < 0f && i > 5)
+            {
+                trajectoryLine.positionCount = i + 1;
+                break;
+            }
+        }
+    }
+
+    // --- ФІЗИЧНА ЛОГІКА ---
+    public void ExecuteAttack()
+    {
+        if (meleePoint == null) return;
+
+        Collider[] hitEnemies = Physics.OverlapSphere(meleePoint.position, meleeRadius, 1 << 9);
+
+        foreach (Collider enemyCol in hitEnemies)
+        {
+            if (enemyCol.CompareTag("Enemy"))
+            {
+                Debug.Log("Вдарили ворога: " + enemyCol.name);
+            }
+        }
+    }
+
+    public void ExecuteThrow()
+    {
+        if (grenadePrefab != null && throwPoint != null)
+        {
+            GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
+            Rigidbody rb = grenade.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                // Застосовуємо силу, яку ми розрахували ДО початку анімації
+                rb.linearVelocity = savedThrowVelocity;
+            }
+        }
+    }
+
     public void TakeDamage(float damageAmount)
     {
         float finalDamage = damageAmount * (1f - damageReduction);
@@ -295,6 +461,8 @@ public class PlayerController : MonoBehaviour
             StopAllCoroutines();
             StartCoroutine(FlashRoutine());
         }
+
+        if (anim != null) anim.SetTrigger("Hit");
 
         UpdateHUD();
         if (currentHealth <= 0) Die();
@@ -327,12 +495,10 @@ public class PlayerController : MonoBehaviour
     public void GainXP(float amount)
     {
         currentXP += amount;
-        // ВАЖЛИВО: Ми прибрали звідси crystalsCollected++;
         if (currentXP >= xpToNextLevel) LevelUp();
         UpdateHUD();
     }
 
-    // НОВА ФУНКЦІЯ ТІЛЬКИ ДЛЯ АЛМАЗІВ
     public void GainDiamond(int amount = 1)
     {
         crystalsCollected += amount;
@@ -406,5 +572,25 @@ public class PlayerController : MonoBehaviour
         currentHealth += amount;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
         UpdateHUD();
+    }
+
+    private Transform FindDeepChild(Transform parent, string name)
+    {
+        foreach (Transform child in parent)
+        {
+            if (child.name == name) return child;
+            Transform result = FindDeepChild(child, name);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (meleePoint != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(meleePoint.position, meleeRadius);
+        }
     }
 }

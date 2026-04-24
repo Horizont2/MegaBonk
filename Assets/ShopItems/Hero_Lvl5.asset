@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b9780b1766dde0419b8a7c94488d9f8, type: 3}
+  m_Name: Hero_Lvl5
+  m_EditorClassIdentifier: Assembly-CSharp::HeroData
+  heroName: Sparkie
+  price: 3500
+  heroID: 4
+  shopModelPrefab: {fileID: 7863355636086098685, guid: dd7e9550bab61d549b88e994c7926c69, type: 3}
+  hpBarFill: 1
+  speedBarFill: 1
+  radiusBarFill: 1
+  actualMaxHealth: 1000
+  actualMoveSpeed: 7.6
+  actualBombRadius: 9

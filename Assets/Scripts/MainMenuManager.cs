@@ -1,16 +1,17 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI; // Required for Button component
+using UnityEngine.UI;
 using TMPro;
 
 public class MainMenuManager : MonoBehaviour
 {
     [Header("UI References")]
     public TextMeshProUGUI crystalsText;
-    public Button continueButton; // Reference to the Continue button
+    public Button continueButton;
 
-    [Header("Settings")]
-    public string gameSceneName = "GameScene"; // Ensure this matches your actual gameplay scene name!
+    [Header("Scene Settings")]
+    public string gameSceneName = "GameScene";
+    public string shopSceneName = "ShopScene"; // Õ‡Á‚‡ Ú‚Ó∫ø ÒˆÂÌË Á Ï‡„‡ÁËÌÓÏ
 
     private void Start()
     {
@@ -24,11 +25,9 @@ public class MainMenuManager : MonoBehaviour
     {
         if (continueButton != null)
         {
-            // If IsRunActive is 1, button is interactable
             bool isActive = PlayerPrefs.GetInt("IsRunActive", 0) == 1;
             continueButton.interactable = isActive;
 
-            // Optional: change alpha to look "disabled" when not active
             CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
             if (cg != null) cg.alpha = isActive ? 1f : 0.5f;
         }
@@ -42,11 +41,10 @@ public class MainMenuManager : MonoBehaviour
         }
     }
 
-    // Called when "NEW RUN" (or the big PLAY button) is clicked
     public void StartNewRun()
     {
         PlayerPrefs.SetInt("IsRunActive", 1);
-        PlayerPrefs.SetInt("IsContinuing", 0); // NEW: Mark as fresh run
+        PlayerPrefs.SetInt("IsContinuing", 0);
         PlayerPrefs.Save();
 
         GameManager.survivalTime = 0f;
@@ -55,28 +53,30 @@ public class MainMenuManager : MonoBehaviour
 
     public void ContinueGame()
     {
-        PlayerPrefs.SetInt("IsContinuing", 1); // NEW: Mark as a continued run
+        PlayerPrefs.SetInt("IsContinuing", 1);
         PlayerPrefs.Save();
         SceneManager.LoadScene(gameSceneName);
     }
 
-    // Placeholder for "OPTIONS"
+    // --- ÕŒ¬»… Ã≈“Œƒ ƒÀﬂ Ã¿√¿«»Õ” ---
+    public void OpenShop()
+    {
+        SceneManager.LoadScene(shopSceneName);
+    }
+
     public void OpenOptions()
     {
         Debug.Log("Options clicked! (Show options panel)");
     }
 
-    // Placeholder for "ACHIEVEMENTS"
     public void OpenAchievements()
     {
         Debug.Log("Achievements clicked! (Show achievements panel)");
     }
 
-    // Called when "QUIT" is clicked
     public void QuitGame()
     {
         Debug.Log("Quitting Game...");
-
         Application.Quit();
 
 #if UNITY_EDITOR

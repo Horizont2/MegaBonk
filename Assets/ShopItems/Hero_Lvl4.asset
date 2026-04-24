@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b9780b1766dde0419b8a7c94488d9f8, type: 3}
+  m_Name: Hero_Lvl4
+  m_EditorClassIdentifier: Assembly-CSharp::HeroData
+  heroName: Lyra
+  price: 1800
+  heroID: 3
+  shopModelPrefab: {fileID: 6711135348820887869, guid: 4e14ee18fa4ad0140a4995cd40fa3fa1, type: 3}
+  hpBarFill: 0.75
+  speedBarFill: 0.8
+  radiusBarFill: 0.75
+  actualMaxHealth: 750
+  actualMoveSpeed: 6.8
+  actualBombRadius: 7.5

@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b9780b1766dde0419b8a7c94488d9f8, type: 3}
   m_Name: Hero_Lvl2
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
-  heroName: Sparkie
+  heroName: Norrington
   price: 300
   heroID: 1
-  shopModelPrefab: {fileID: 3320949370803323709, guid: d6e8c95bff8a71d498daa0a2f3c9d519, type: 3}
-  hpBarFill: 0.5
-  speedBarFill: 0.629
-  radiusBarFill: 0.478
-  actualMaxHealth: 200
-  actualMoveSpeed: 6.5
-  actualBombRadius: 9
+  shopModelPrefab: {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
+  hpBarFill: 0.25
+  speedBarFill: 0.4
+  radiusBarFill: 0.3
+  actualMaxHealth: 250
+  actualMoveSpeed: 5.5
+  actualBombRadius: 4.5

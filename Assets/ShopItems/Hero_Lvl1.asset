@@ -15,10 +15,10 @@ MonoBehaviour:
   heroName: Shiro
   price: 0
   heroID: 0
-  shopModelPrefab: {fileID: 2483413748942568600, guid: 77448f649b94d964294e96e7dd989ebf, type: 3}
-  hpBarFill: 0.3
-  speedBarFill: 0.5
-  radiusBarFill: 0.333
+  shopModelPrefab: {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
+  hpBarFill: 0.1
+  speedBarFill: 0.2
+  radiusBarFill: 0.1
   actualMaxHealth: 100
-  actualMoveSpeed: 5.5
-  actualBombRadius: 7
+  actualMoveSpeed: 5
+  actualBombRadius: 3

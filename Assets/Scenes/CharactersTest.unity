@@ -496,7 +496,7 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!1001 &1447678156
+--- !u!1001 &2290082910758980951
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -504,55 +504,55 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
+      propertyPath: m_Name
+      value: Knight
+      objectReference: {fileID: 0}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -30.871357
+      value: -30.877972
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.00000011802794
+      value: 0.000000017753223
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -280.58377
+      value: -280.3505
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalRotation.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3534932703829936395, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+    - target: {fileID: 6377123067469056260, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
-      propertyPath: m_Name
-      value: Skeleton_Minion
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -560,4 +560,4 @@ SceneRoots:
   - {fileID: 367935919}
   - {fileID: 994085721}
   - {fileID: 782793026}
-  - {fileID: 1447678156}
+  - {fileID: 2290082910758980951}
