@@ -117,7 +117,7 @@ public class PlayerController : MonoBehaviour
             anim = currentVisual.GetComponent<Animator>();
             if (anim != null) anim.applyRootMotion = false;
 
-            Transform socket = FindDeepChild(currentVisual.transform, "WeaponSocket");
+            Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
             if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > selectedWeaponID && weaponPrefabs[selectedWeaponID] != null)
             {
                 currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket.position, socket.rotation, socket);

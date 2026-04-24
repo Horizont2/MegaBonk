@@ -995,7 +995,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -553, y: -6}
+  m_AnchoredPosition: {x: -584.79395, y: -6}
   m_SizeDelta: {x: -1433.0083, y: -669.17834}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &247566170
@@ -1145,7 +1145,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -552.20605, y: -6.439087}
+  m_AnchoredPosition: {x: -584, y: -6.439087}
   m_SizeDelta: {x: -1455.2576, y: -690.78394}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &303362142
@@ -6621,8 +6621,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 167.1, y: 4.2291}
-  m_SizeDelta: {x: 37.0099, y: 25}
+  m_AnchoredPosition: {x: 158.4076, y: 4.2291}
+  m_SizeDelta: {x: 54.3946, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &495753023
 MonoBehaviour:
@@ -6678,7 +6678,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 2
+  m_HorizontalAlignment: 4
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -6763,7 +6763,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 408.00012, y: -8.75}
+  m_AnchoredPosition: {x: 376.20618, y: -8.75}
   m_SizeDelta: {x: 480.9917, y: 405.3217}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &502755138
@@ -8082,8 +8082,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 167.1, y: 4.2291}
-  m_SizeDelta: {x: 37.0099, y: 25}
+  m_AnchoredPosition: {x: 158.40762, y: 4.2291}
+  m_SizeDelta: {x: 54.3946, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1125168726
 MonoBehaviour:
@@ -8139,7 +8139,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 2
+  m_HorizontalAlignment: 4
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -8889,11 +8889,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2f41996621013d549a905c4d14cae957, type: 2}
   - {fileID: 11400000, guid: 0546e1c368a55414194f8815080d09cf, type: 2}
   - {fileID: 11400000, guid: 925c10e6aed8022479e406548ba31ff9, type: 2}
+  - {fileID: 11400000, guid: 1287adcb4f252854d87b5f312aa52547, type: 2}
+  - {fileID: 11400000, guid: 3ef2475e7d7ffef4fb1467344d742d8b, type: 2}
   pedestalPos: {fileID: 1929607855}
   offscreenLeft: {fileID: 1007561362}
   offscreenRight: {fileID: 587249941}
   swipeSpeed: 2.2
   rotationSpeed: 400
+  mainMenuSceneName: MainMenu
   heroNameText: {fileID: 893249283}
   priceText: {fileID: 713626657}
   diamondIconOnButton: {fileID: 879232393}
@@ -8954,8 +8957,8 @@ Transform:
   m_GameObject: {fileID: 1742661595}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1278.37, y: 5.63, z: -374.14}
-  m_LocalScale: {x: 4, y: 0.3, z: 4}
+  m_LocalPosition: {x: 1278.37, y: 5.5456, z: -374.14}
+  m_LocalScale: {x: 3, y: 0.21558, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1505225959}
@@ -9168,7 +9171,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 55
+  field of view: 46
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -9447,8 +9450,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 167.1, y: 4.2291}
-  m_SizeDelta: {x: 37.0099, y: 25}
+  m_AnchoredPosition: {x: 158.4076, y: 4.2291}
+  m_SizeDelta: {x: 54.3946, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1866573926
 MonoBehaviour:
@@ -9504,7 +9507,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 2
+  m_HorizontalAlignment: 4
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0

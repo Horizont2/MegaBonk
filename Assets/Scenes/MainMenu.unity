@@ -12863,7 +12863,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MainMenuManager
   crystalsText: {fileID: 722533631}
   continueButton: {fileID: 167645580}
-  gameSceneName: SettingUPscene
+  gameSceneName: GameScene
   shopSceneName: ShopScene
 --- !u!4 &2009830577
 Transform:

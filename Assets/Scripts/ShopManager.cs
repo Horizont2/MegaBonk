@@ -116,6 +116,15 @@ public class ShopManager : MonoBehaviour
         if (heroes[index].shopModelPrefab != null)
         {
             currentModel = Instantiate(heroes[index].shopModelPrefab, position, pedestalPos.rotation);
+
+            // --- ДОДАНИЙ КОД ДЛЯ АНІМАЦІЇ ---
+            Animator anim = currentModel.GetComponent<Animator>();
+            if (anim != null)
+            {
+                anim.SetBool("IsGrounded", true); // Кажемо, що ми на землі
+                anim.SetFloat("Speed", 0f);       // Кажемо, що ми стоїмо
+            }
+            // --------------------------------
         }
     }
 
@@ -149,6 +158,15 @@ public class ShopManager : MonoBehaviour
         if (heroes[newIndex].shopModelPrefab != null)
         {
             newModel = Instantiate(heroes[newIndex].shopModelPrefab, newStartPos, pedestalPos.rotation);
+
+            // --- ДОДАНИЙ КОД ДЛЯ АНІМАЦІЇ (зверни увагу, тут використовується newModel) ---
+            Animator anim = newModel.GetComponent<Animator>();
+            if (anim != null)
+            {
+                anim.SetBool("IsGrounded", true);
+                anim.SetFloat("Speed", 0f);
+            }
+            // -----------------------------------------------------------------------------
         }
 
         currentModel = newModel;
