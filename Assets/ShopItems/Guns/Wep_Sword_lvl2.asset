@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ba1d0e895a576047b59f0e41baf8fff, type: 3}
+  m_Name: Wep_Sword_lvl2
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  weaponID: 1
+  weaponName: Barbarian Axe
+  price: 250
+  shopPrefab: {fileID: 7292583777197831632, guid: 264c445fd8372214891a5e34393d63be, type: 3}
+  inGamePrefab: {fileID: 4722655034226915781, guid: 8528f67867808024094886c081baccc0, type: 3}
+  damageBonus: 15
+  attackSpeed: 1.3
+  critChance: 0.1

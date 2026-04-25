@@ -82,6 +82,6 @@ public class GameManager : MonoBehaviour
         }
 
         PlayerPrefs.Save();
-        SceneManager.LoadScene("MainMenu");
+        SceneManager.LoadScene("Menu");
     }
 }

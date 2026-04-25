@@ -104,13 +104,9 @@ public class EnemyAI : MonoBehaviour
 
             if (Time.time >= lastAttackTime + attackCooldown)
             {
-                if (playerController != null)
-                {
-                    playerController.TakeDamage(damage);
-                    lastAttackTime = Time.time;
-
-                    if (animator != null) animator.SetTrigger("Attack");
-                }
+                // Запускаємо тільки анімацію та оновлюємо кулдаун
+                lastAttackTime = Time.time;
+                if (animator != null) animator.SetTrigger("Attack");
             }
         }
         else
@@ -133,6 +129,19 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    // Цей метод ми викличемо через Animation Event у момент удару!
+    public void ExecuteAttackDamage()
+    {
+        if (isDead || target == null || playerController == null) return;
+
+        // Перевіряємо, чи гравець все ще стоїть поруч, коли зброя опускається
+        // (даємо трохи запасу +0.5f до рейнджу, щоб ворог не "мазав", якщо гравець зробив крок назад)
+        float distanceToPlayer = Vector3.Distance(transform.position, target.position);
+        if (distanceToPlayer <= attackRange + 0.5f)
+        {
+            playerController.TakeDamage(damage);
+        }
+    }
     public void TakeDamage(float damageAmount)
     {
         if (isDead) return;

@@ -2006,11 +2006,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DayNightCycle
   sunLight: {fileID: 410087040}
-  dayDurationInSeconds: 120
+  dayDurationInSeconds: 300
   dayIntensity: 1.5
   nightIntensity: 0
-  starsParticles: {fileID: 0}
-  moonTransform: {fileID: 0}
+  starsParticles: {fileID: 1222502574}
+  moonTransform: {fileID: 887200779}
   weatherChangeInterval: 60
   weatherTransitionSpeed: 0.5
   daySunnyFog: {r: 0.8, g: 0.9, b: 1, a: 1}
@@ -8433,7 +8433,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 602188959054625890, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: m_Height
-      value: 2
+      value: 2.0299273
       objectReference: {fileID: 0}
     - target: {fileID: 602188959054625890, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: m_Radius
@@ -8445,7 +8445,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 602188959054625890, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: m_Center.y
-      value: 0
+      value: 1.1712215
       objectReference: {fileID: 0}
     - target: {fileID: 2582742148985257271, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: m_Layer
@@ -8673,7 +8673,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: weaponPrefabs.Array.size
-      value: 1
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: 'heroPrefabs.Array.data[0]'
@@ -8699,6 +8699,22 @@ PrefabInstance:
       propertyPath: 'weaponPrefabs.Array.data[0]'
       value: 
       objectReference: {fileID: 919132149155446097, guid: 1b7c5ebd1e164cc4cb2698c1f9995749, type: 3}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: 'weaponPrefabs.Array.data[1]'
+      value: 
+      objectReference: {fileID: 4722655034226915781, guid: 8528f67867808024094886c081baccc0, type: 3}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: 'weaponPrefabs.Array.data[2]'
+      value: 
+      objectReference: {fileID: 7009237522966617082, guid: 2ef440fda02775e4aafd89e90690bb2d, type: 3}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: 'weaponPrefabs.Array.data[3]'
+      value: 
+      objectReference: {fileID: 5548968681433392241, guid: d9ebcf06070c13044a82cab96c409270, type: 3}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: 'weaponPrefabs.Array.data[4]'
+      value: 
+      objectReference: {fileID: 7705683734966450536, guid: 4f6e37ac6643cd14e84eb94f9516c131, type: 3}
     m_RemovedComponents:
     - {fileID: 5861247027208564975, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
     - {fileID: 59754268695939679, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}

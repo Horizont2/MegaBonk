@@ -322,21 +322,25 @@ public class PlayerController : MonoBehaviour
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
             anim.SetBool("IsGrounded", characterController.isGrounded);
 
-            // МЕЧ (ЛІВА кнопка миші = 0)
-            if (Input.GetMouseButtonDown(0))
+            // ДОДАНО: Перевірка на те, чи стоїмо ми на землі
+            if (characterController.isGrounded)
             {
-                if (!isAimingGrenade) // Якщо ми не тримаємо гранату, б'ємо мечем
+                // МЕЧ (ЛІВА кнопка миші = 0)
+                if (Input.GetMouseButtonDown(0))
                 {
-                    anim.SetTrigger("Attack");
+                    if (!isAimingGrenade) // Якщо ми не тримаємо гранату, б'ємо мечем
+                    {
+                        anim.SetTrigger("Attack");
+                    }
                 }
-            }
 
-            // ГРАНАТА (ПРАВА кнопка миші = 1)
-            if (Input.GetMouseButtonDown(1))
-            {
-                isAimingGrenade = true;
-                currentThrowForce = minThrowForce;
-                if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+                // ГРАНАТА (ПРАВА кнопка миші = 1)
+                if (Input.GetMouseButtonDown(1))
+                {
+                    isAimingGrenade = true;
+                    currentThrowForce = minThrowForce;
+                    if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+                }
             }
 
             // Накопичення сили (тримаємо ПРАВУ кнопку)
@@ -347,14 +351,26 @@ public class PlayerController : MonoBehaviour
                 DrawTrajectory();
             }
 
+            // Відпускання кнопки кидка (можна відпустити навіть якщо впав зі скали)
             if (Input.GetMouseButtonUp(1))
             {
                 if (isAimingGrenade)
                 {
                     isAimingGrenade = false;
-                    savedThrowVelocity = GetThrowVelocity(); // Запам'ятовуємо силу і напрямок ДО анімації
-                    if (trajectoryLine != null) trajectoryLine.positionCount = 0; // Ховаємо лінію
-                    anim.SetTrigger("Throw"); // Запускаємо анімацію
+                    savedThrowVelocity = GetThrowVelocity();
+                    if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+
+                    // Кидаємо тільки якщо на землі (щоб анімація не зламала стрибок)
+                    if (characterController.isGrounded)
+                    {
+                        anim.SetTrigger("Throw");
+                    }
+                    else
+                    {
+                        // Якщо відпустили кнопку в повітрі, просто кидаємо без анімації 
+                        // (або можеш видалити цей else, тоді граната просто скасується)
+                        ExecuteThrow();
+                    }
                 }
             }
         }
@@ -423,13 +439,23 @@ public class PlayerController : MonoBehaviour
     {
         if (meleePoint == null) return;
 
-        Collider[] hitEnemies = Physics.OverlapSphere(meleePoint.position, meleeRadius, 1 << 9);
+        Collider[] hitEnemies = Physics.OverlapSphere(meleePoint.position, meleeRadius, 1 << 9); // 1 << 9 це шар ворогів
 
         foreach (Collider enemyCol in hitEnemies)
         {
             if (enemyCol.CompareTag("Enemy"))
             {
-                Debug.Log("Вдарили ворога: " + enemyCol.name);
+                // ДОДАНО: Реальне нанесення шкоди ворогу!
+                EnemyAI enemy = enemyCol.GetComponent<EnemyAI>();
+                if (enemy != null)
+                {
+                    // Враховуємо базовий урон + мета-прокачку
+                    float finalDamage = meleeDamage * globalDamageMultiplier;
+                    enemy.TakeDamage(finalDamage);
+
+                    // Можеш залишити лог для перевірки, потім видалиш
+                    Debug.Log("Вдарили ворога на: " + finalDamage + " урону!");
+                }
             }
         }
     }

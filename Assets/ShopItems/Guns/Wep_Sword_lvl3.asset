@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ba1d0e895a576047b59f0e41baf8fff, type: 3}
+  m_Name: Wep_Sword_lvl3
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  weaponID: 2
+  weaponName: Rare Sword
+  price: 800
+  shopPrefab: {fileID: 4292794119454397175, guid: 0e62603268aa13a468fb711d3737de96, type: 3}
+  inGamePrefab: {fileID: 7009237522966617082, guid: 2ef440fda02775e4aafd89e90690bb2d, type: 3}
+  damageBonus: 25
+  attackSpeed: 1.6
+  critChance: 0.18
