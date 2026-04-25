@@ -222,6 +222,7 @@ public class ShopManager : MonoBehaviour
         if (diamondBalanceText != null) diamondBalanceText.text = myDiamonds.ToString("N0");
 
         // 2. Стан кнопки (BUY / SELECT / EQUIPPED)
+        // 2. Стан кнопки (BUY / SELECT / EQUIPPED)
         bool isBought = PlayerPrefs.GetInt("HeroUnlocked_" + currentHero.heroID, currentHero.price == 0 ? 1 : 0) == 1;
         bool isSelected = PlayerPrefs.GetInt(SELECTED_HERO_KEY, 0) == currentHero.heroID;
 
@@ -230,6 +231,7 @@ public class ShopManager : MonoBehaviour
             priceText.text = "EQUIPPED";
             priceText.alignment = TextAlignmentOptions.Center;
             priceText.margin = new Vector4(0, 0, 0, 0);
+            priceText.color = Color.white; // СКИДАЄМО КОЛІР НА БІЛИЙ
             if (diamondIconOnButton != null) diamondIconOnButton.SetActive(false);
             buyButton.interactable = false;
         }
@@ -238,16 +240,33 @@ public class ShopManager : MonoBehaviour
             priceText.text = "SELECT";
             priceText.alignment = TextAlignmentOptions.Center;
             priceText.margin = new Vector4(0, 0, 0, 0);
+
+            // --- САЛАТОВИЙ КОЛІР ДЛЯ "SELECT" ---
+            priceText.color = new Color(0.6f, 1f, 0.2f); // Яскравий салатовий
+
             if (diamondIconOnButton != null) diamondIconOnButton.SetActive(false);
             buyButton.interactable = true;
         }
-        else
+        else // Стан покупки (герой не куплений)
         {
             priceText.text = "BUY FOR\n" + currentHero.price.ToString("N0");
-            priceText.alignment = TextAlignmentOptions.Left; // Зліва направо
-            priceText.margin = new Vector4(10, 0, 0, 0); // Мінімальний відступ зліва
+            priceText.alignment = TextAlignmentOptions.Left;
+            priceText.margin = new Vector4(10, 0, 0, 0);
             if (diamondIconOnButton != null) diamondIconOnButton.SetActive(true);
-            buyButton.interactable = true;
+
+            // --- НОВА ВІЗУАЛІЗАЦІЯ ---
+            if (myDiamonds >= currentHero.price)
+            {
+                // Грошей вистачає: кнопка активна, текст нормальний
+                buyButton.interactable = true;
+                priceText.color = Color.white;
+            }
+            else
+            {
+                // Грошей НЕ вистачає: вимикаємо кнопку, текст стає червоним
+                buyButton.interactable = false;
+                priceText.color = new Color(1f, 0.2f, 0.2f); // Яскраво-червоний відтінок
+            }
         }
 
         // 3. Статистика

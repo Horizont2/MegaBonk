@@ -8896,7 +8896,7 @@ MonoBehaviour:
   offscreenRight: {fileID: 587249941}
   swipeSpeed: 2.2
   rotationSpeed: 400
-  mainMenuSceneName: MainMenu
+  mainMenuSceneName: Menu
   heroNameText: {fileID: 893249283}
   priceText: {fileID: 713626657}
   diamondIconOnButton: {fileID: 879232393}

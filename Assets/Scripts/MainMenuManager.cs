@@ -23,11 +23,34 @@ public class MainMenuManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        UpdateCrystalsUI();
-        CheckContinueStatus();
+        // Замість звичайного оновлення запускаємо анімацію
+        StartCoroutine(AnimateCrystals());
 
-        // Викликаємо спавн героя при старті меню
+        CheckContinueStatus();
         SpawnSelectedHero();
+    }
+
+    private System.Collections.IEnumerator AnimateCrystals()
+    {
+        if (crystalsText == null) yield break;
+
+        // Отримуємо реальну кількість кристалів
+        int targetCrystals = PlayerPrefs.GetInt("PlayerDiamonds", 0);
+        int currentCount = 0;
+        float duration = 1.2f; // Тривалість анімації в секундах
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            // Плавне наближення до цілі
+            currentCount = (int)Mathf.Lerp(0, targetCrystals, elapsed / duration);
+            crystalsText.text = currentCount.ToString("N0");
+            yield return null;
+        }
+
+        // Встановлюємо фінальне точне значення
+        crystalsText.text = targetCrystals.ToString("N0");
     }
 
     private void SpawnSelectedHero()
@@ -87,10 +110,29 @@ public class MainMenuManager : MonoBehaviour
 
     public void UpdateCrystalsUI()
     {
-        if (crystalsText != null)
+        int targetCrystals = SaveManager.GetTotalCrystals(); // Або PlayerPrefs.GetInt("PlayerDiamonds", 0);
+        StartCoroutine(AnimateCrystalCount(targetCrystals));
+    }
+
+    private System.Collections.IEnumerator AnimateCrystalCount(int targetCount)
+    {
+        int currentCount = 0;
+        float duration = 1.5f; // Скільки секунд триває анімація
+        float elapsed = 0f;
+
+        while (elapsed < duration)
         {
-            crystalsText.text = "CRYSTALS: " + SaveManager.GetTotalCrystals().ToString();
+            elapsed += Time.deltaTime;
+            // Плавне математичне наближення
+            currentCount = (int)Mathf.Lerp(0, targetCount, elapsed / duration);
+            if (crystalsText != null)
+                crystalsText.text = currentCount.ToString("N0");
+
+            yield return null;
         }
+
+        if (crystalsText != null)
+            crystalsText.text = targetCount.ToString("N0");
     }
 
     public void StartNewRun()
