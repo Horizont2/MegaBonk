@@ -5,7 +5,14 @@ public class CameraFollow : MonoBehaviour
     [Header("Target Settings")]
     public Transform target;
     public Vector3 targetOffset = new Vector3(0, 1.5f, 0);
-    public float distance = 8f;
+
+    // Замінили distance на maxDistance для зручності
+    public float maxDistance = 8f;
+    public float minDistance = 1.0f;
+
+    [Header("Collision Settings (NEW)")]
+    public LayerMask collisionLayers; // Шари, крізь які камера не може пройти
+    public float smoothSpeed = 10f;   // Швидкість повернення камери
 
     [Header("Mouse Control")]
     public float mouseSensitivity = 3f;
@@ -18,11 +25,13 @@ public class CameraFollow : MonoBehaviour
 
     private float currentX = 0f;
     private float currentY = 45f;
+    private float currentDistance;
 
     private void Start()
     {
         transform.parent = null;
         Cursor.lockState = CursorLockMode.Locked;
+        currentDistance = maxDistance;
     }
 
     private void LateUpdate()
@@ -34,25 +43,39 @@ public class CameraFollow : MonoBehaviour
         currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
 
-        // 2. Розрахунок позиції
+        // 2. Розрахунок бажаної позиції (ніби перешкод немає)
         Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
-        Vector3 desiredPosition = target.position + targetOffset - (rotation * Vector3.forward * distance);
+        Vector3 lookAtPos = target.position + targetOffset;
+        Vector3 direction = -(rotation * Vector3.forward);
+        Vector3 desiredPosition = lookAtPos + direction * maxDistance;
 
-        // 3. ДИНАМІЧНА ТРЯСКА (Працює навіть під час Hit Stop)
+        // 3. ПЕРЕВІРКА КОЛІЗІЙ (Щоб не заглядати в будинки)
+        if (Physics.Linecast(lookAtPos, desiredPosition, out RaycastHit hit, collisionLayers))
+        {
+            // Якщо промінь вдарився - наближаємо камеру (множимо на 0.85, щоб вона не влипала в саму текстуру)
+            currentDistance = Mathf.Clamp(hit.distance * 0.85f, minDistance, maxDistance);
+        }
+        else
+        {
+            // Якщо перешкод немає - плавно повертаємо камеру на максимальну відстань
+            currentDistance = Mathf.Lerp(currentDistance, maxDistance, Time.deltaTime * smoothSpeed);
+        }
+
+        // Обчислюємо фінальну позицію з урахуванням колізій
+        Vector3 finalPosition = lookAtPos + direction * currentDistance;
+
+        // 4. ДИНАМІЧНА ТРЯСКА
         if (shakeTimer > 0)
         {
-            // Додаємо випадковий зсув, помножений на поточну інтенсивність
-            desiredPosition += Random.insideUnitSphere * currentShakeIntensity;
-
-            // Використовуємо unscaledDeltaTime, щоб тряска не сповільнювалася разом із грою
+            finalPosition += Random.insideUnitSphere * currentShakeIntensity;
             shakeTimer -= Time.unscaledDeltaTime;
         }
 
-        // 4. Застосування позиції
-        transform.position = desiredPosition;
-        transform.LookAt(target.position + targetOffset);
+        // 5. Застосування позиції
+        transform.position = finalPosition;
+        transform.LookAt(lookAtPos);
 
-        // --- ANTI-CLIPPING (Захист від провалювання під землю) ---
+        // 6. ANTI-CLIPPING (Захист від провалювання під землю)
         if (Terrain.activeTerrain != null)
         {
             float terrainHeight = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y;
@@ -67,14 +90,12 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
-    // Новий метод для MegaBoom: дозволяє задавати різну силу тряски
     public void TriggerShake(float duration, float intensity)
     {
         shakeTimer = duration;
         currentShakeIntensity = intensity;
     }
 
-    // Старий метод (для сумісності з отриманням шкоди)
     public void StartShake()
     {
         TriggerShake(0.2f, 0.3f);

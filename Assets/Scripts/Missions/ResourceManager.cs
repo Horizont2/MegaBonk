@@ -15,7 +15,7 @@ public class ResourceManager : MonoBehaviour
     public int baseMaxWood = 200;
     public int baseMaxStone = 100;
     public int baseMaxFood = 50;
-    public int extraCapacity = 0; // Цей бонус дає Склад!
+    public int extraCapacity = 0;
 
     [Header("UI Texts")]
     public TextMeshProUGUI woodText;
@@ -23,10 +23,26 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI foodText;
     public TextMeshProUGUI diamondsText;
 
+    [Header("UI Popups")]
+    public ResourcePopup woodPopup;
+    public ResourcePopup stonePopup;
+    public ResourcePopup foodPopup;
+
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        // РОБИМО МЕНЕДЖЕР "ВІЧНИМ"
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject); // Тепер він не зникне!
+        }
+        else
+        {
+            // Якщо ми завантажили нову сцену і там є свій ResourceManager - видаляємо його
+            Destroy(gameObject);
+            return;
+        }
+
         LoadResources();
     }
 
@@ -35,7 +51,6 @@ public class ResourceManager : MonoBehaviour
         UpdateUI();
     }
 
-    // Встановлюємо додаткове місце від Складу
     public void SetExtraCapacity(int bonusAmount)
     {
         extraCapacity = bonusAmount;
@@ -60,23 +75,38 @@ public class ResourceManager : MonoBehaviour
         wood -= costWood;
         stone -= costStone;
         food -= costFood;
+
+        if (woodPopup != null && costWood > 0) woodPopup.ShowChange(-costWood);
+        if (stonePopup != null && costStone > 0) stonePopup.ShowChange(-costStone);
+        // ВИПРАВЛЕНО ТУТ: costFood замість foodCost
+        if (foodPopup != null && costFood > 0) foodPopup.ShowChange(-costFood);
+
         SaveResources();
         UpdateUI();
     }
 
     public void AddResources(int addWood, int addStone, int addFood)
     {
-        // Додаємо ресурси, але не дозволяємо перевищити ЛІМІТ!
+        int oldWood = wood; int oldStone = stone; int oldFood = food;
+
         wood = Mathf.Min(wood + addWood, GetMax("Wood"));
         stone = Mathf.Min(stone + addStone, GetMax("Stone"));
         food = Mathf.Min(food + addFood, GetMax("Food"));
+
+        int actualAddedWood = wood - oldWood;
+        int actualAddedStone = stone - oldStone;
+        int actualAddedFood = food - oldFood;
+
+        if (woodPopup != null && actualAddedWood > 0) woodPopup.ShowChange(actualAddedWood);
+        if (stonePopup != null && actualAddedStone > 0) stonePopup.ShowChange(actualAddedStone);
+        if (foodPopup != null && actualAddedFood > 0) foodPopup.ShowChange(actualAddedFood);
+
         SaveResources();
         UpdateUI();
     }
 
     public void UpdateUI()
     {
-        // Тепер пишемо "150 / 200"
         if (woodText) woodText.text = $"{wood} / {GetMax("Wood")}";
         if (stoneText) stoneText.text = $"{stone} / {GetMax("Stone")}";
         if (foodText) foodText.text = $"{food} / {GetMax("Food")}";

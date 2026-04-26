@@ -39,9 +39,9 @@ public class LevelUpManager : MonoBehaviour
 
     private void Start()
     {
-        player = FindObjectOfType<PlayerController>();
-        hammer = FindObjectOfType<HammerDamage>();
-        weaponOrbit = FindObjectOfType<WeaponOrbit>();
+        player = FindFirstObjectByType<PlayerController>();
+        hammer = FindFirstObjectByType<HammerDamage>();
+        weaponOrbit = FindFirstObjectByType<WeaponOrbit>();
         levelUpPanel.SetActive(false);
     }
 

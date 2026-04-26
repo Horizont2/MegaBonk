@@ -28,11 +28,11 @@ public class ShopManager : MonoBehaviour
     public RectTransform mainUIPanel;
     public float panelHidePositionX = -1200f;
     private float panelStartX;
-    private Coroutine uiMoveCoroutine; // <-- Зберігаємо ТІЛЬКИ рух панелі, щоб не вбивати інші процеси
+    private Coroutine uiMoveCoroutine;
 
     [Header("Inspect Feature")]
     public CameraTransitionManager camManager;
-    public Camera mainCamera;                  // <-- ДОДАНО: Перетягни сюди ShopCamera зі сцени!
+    public Camera mainCamera;
     public GameObject inspectButton;
     private bool isInspectingWeapon = false;
 
@@ -54,6 +54,11 @@ public class ShopManager : MonoBehaviour
     [Header("Animation Settings")]
     public float swipeSpeed = 4f;
     public float rotationSpeed = 500f;
+
+    // --- НОВЕ: Блокування спаму кнопкою категорій ---
+    [Tooltip("Скільки секунд блокувати зміну категорії після натискання (щоб камера встигла долетіти)")]
+    public float modeSwitchCooldown = 1.5f;
+    private float nextModeSwitchTime = 0f;
 
     [Header("Scene Navigation")]
     public string campSceneName = "CampScene";
@@ -94,6 +99,8 @@ public class ShopManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
+        if (mainCamera == null) mainCamera = Camera.main; // Підстраховка
+
         panelStartX = mainUIPanel.anchoredPosition.x;
 
         if (!PlayerPrefs.HasKey(DIAMONDS_KEY)) PlayerPrefs.SetInt(DIAMONDS_KEY, 0);
@@ -126,10 +133,10 @@ public class ShopManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.RightArrow)) NextItem();
         if (Input.GetKeyDown(KeyCode.LeftArrow)) PreviousItem();
 
-        // ВИПРАВЛЕНА ЛОГІКА ЗАКРИТТЯ ОГЛЯДУ КЛІКОМ ПО ФОНУ АБО СТІНАХ
+        // --- ВИПРАВЛЕНА ЛОГІКА ОГЛЯДУ ЗБРОЇ ---
         if (isInspectingWeapon && Input.GetMouseButtonDown(0))
         {
-            // Якщо клікнули по кнопках (UI), ігноруємо
+            // Якщо клікнули по UI-кнопках
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
             if (mainCamera != null)
@@ -137,19 +144,17 @@ public class ShopManager : MonoBehaviour
                 Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
                 RaycastHit hit;
 
-                // Якщо ми влучили в якийсь 3D об'єкт на сцені (стіна, стіл, зброя)
                 if (Physics.Raycast(ray, out hit))
                 {
-                    // Перевіряємо, чи це НАША ЗБРОЯ. Якщо ні - закриваємо огляд!
-                    if (hit.collider.GetComponent<WeaponDisplayObject>() == null)
+                    // Шукаємо скрипт WeaponDisplayObject не тільки на самому об'єкті, а й на його батьках
+                    if (hit.collider.GetComponentInParent<WeaponDisplayObject>() == null)
                     {
-                        StopInspect();
+                        StopInspect(); // Влучили в стіну/стіл/підлогу - закриваємо!
                     }
                 }
                 else
                 {
-                    // Якщо влучили взагалі в пустоту
-                    StopInspect();
+                    StopInspect(); // Влучили в пустоту - закриваємо!
                 }
             }
         }
@@ -179,7 +184,6 @@ public class ShopManager : MonoBehaviour
             if (display != null) display.SetInspect(true);
         }
 
-        // Більше не вбиваємо всі корутини! Запускаємо тільки UI
         if (uiMoveCoroutine != null) StopCoroutine(uiMoveCoroutine);
         uiMoveCoroutine = StartCoroutine(MoveUIPanel(panelHidePositionX));
 
@@ -219,9 +223,14 @@ public class ShopManager : MonoBehaviour
         }
     }
 
+    // --- ВИПРАВЛЕНО: Додано кулдаун на натискання ---
     public void ToggleShopMode()
     {
-        if (isTransitioningUI) return;
+        if (isTransitioningUI || Time.time < nextModeSwitchTime) return;
+
+        // Запускаємо таймер блокування кнопки
+        nextModeSwitchTime = Time.time + modeSwitchCooldown;
+
         ShopMode targetMode = (currentMode == ShopMode.Heroes) ? ShopMode.Weapons : ShopMode.Heroes;
         if (isInspectingWeapon) StopInspect();
         StartCoroutine(TransitionShopMode(targetMode));
@@ -511,7 +520,6 @@ public class ShopManager : MonoBehaviour
 
     public void GoToCampScene()
     {
-        // Ставимо мітку в пам'ять, що ми вийшли з магазину
         PlayerPrefs.SetInt("ReturningFromShop", 1);
         PlayerPrefs.Save();
 

@@ -51,8 +51,10 @@ public class PlayerController : MonoBehaviour
     public float meleeDamage = 25f;
     public float meleeRadius = 2.5f;
     public Transform meleePoint;
+    public float attackCooldown = 0.6f; // НОВЕ: Затримка між ударами
+    private float lastAttackTime = -100f;
 
-    [Header("Grenade & Trajectory (NEW)")]
+    [Header("Grenade & Trajectory")]
     public GameObject grenadePrefab;
     public Transform throwPoint;
     public LineRenderer trajectoryLine;
@@ -69,7 +71,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Visual Effects")]
     public Image damageFlashImage;
-    private TrailRenderer weaponTrail; // <--- ДОДАНО ШЛЕЙФ ЗБРОЇ
+    private TrailRenderer weaponTrail;
 
     [Header("HUD UI References")]
     public Slider hpSlider;
@@ -78,7 +80,13 @@ public class PlayerController : MonoBehaviour
     public TextMeshProUGUI crystalText;
     public TextMeshProUGUI hpText;
 
-    [Header("Dash Settings")]
+    [Header("Juicy UI & Effects")]
+    public Slider hpCatchupSlider;
+    public float uiLerpSpeed = 5f;
+    private float visualXP = 0f;
+
+    [Header("Dash Juice")]
+    public ParticleSystem dashParticles;
     public float dashSpeed = 25f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 1.5f;
@@ -100,7 +108,6 @@ public class PlayerController : MonoBehaviour
     private BloodFlashEffect bloodEffect;
     private CharacterController characterController;
     private Vector3 velocity;
-
     private Animator anim;
 
     private void Awake()
@@ -124,11 +131,7 @@ public class PlayerController : MonoBehaviour
             Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
             if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > selectedWeaponID && weaponPrefabs[selectedWeaponID] != null)
             {
-                // Спавнимо зброю в руці
                 currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket.position, socket.rotation, socket);
-
-                // --- АВТОСКАНУВАННЯ ---
-                // Шукаємо Trail Renderer всередині щойно створеної зброї!
                 weaponTrail = currentWeapon.GetComponentInChildren<TrailRenderer>();
             }
         }
@@ -148,12 +151,12 @@ public class PlayerController : MonoBehaviour
     {
         if (!isCampMode) ApplyMetaUpgrades();
         currentHealth = maxHealth;
-        UpdateHUD();
+        visualXP = currentXP;
+        UpdateHUD(); // Це тепер правильно налаштує Catchup Slider!
 
         UIIconGlimmer glimmer = FindFirstObjectByType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
 
-        // Вимикаємо шлейф на старті, щоб він не малювався, коли гравець просто стоїть
         if (weaponTrail != null) weaponTrail.emitting = false;
 
         StartCoroutine(SpawnSafely());
@@ -161,13 +164,8 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator SpawnSafely()
     {
-        // 1. АБСОЛЮТНИЙ ЗАХИСТ: Якщо це Табір, ми миттєво зупиняємо цю корутину!
-        if (isCampMode)
-        {
-            yield break;
-        }
+        if (isCampMode) yield break;
 
-        // 2. Все, що нижче - працюватиме ТІЛЬКИ у бойовій сцені (вільній грі)
         if (characterController != null) characterController.enabled = false;
         yield return null;
         yield return null;
@@ -219,6 +217,7 @@ public class PlayerController : MonoBehaviour
     private void CheckStack()
     {
         if (isCampMode) return;
+
         Collider[] colliders = Physics.OverlapSphere(transform.position, stackRadius, 1 << 9);
         currentStack = 0;
 
@@ -243,6 +242,17 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        if (hpCatchupSlider != null && hpCatchupSlider.value > currentHealth)
+        {
+            hpCatchupSlider.value = Mathf.Lerp(hpCatchupSlider.value, currentHealth, Time.deltaTime * uiLerpSpeed);
+        }
+
+        if (xpSlider != null && visualXP < currentXP)
+        {
+            visualXP = Mathf.Lerp(visualXP, currentXP, Time.deltaTime * uiLerpSpeed);
+            xpSlider.value = visualXP;
+        }
+
         CheckStack();
 
         if (currentVisual != null)
@@ -325,7 +335,6 @@ public class PlayerController : MonoBehaviour
         }
 
         movement = currentVelocityMove;
-
         float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
 
         if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
@@ -337,7 +346,6 @@ public class PlayerController : MonoBehaviour
 
         Vector3 finalMove = movement + velocity;
 
-        // Рухаємо тільки якщо контролер увімкнений, щоб не було помилок!
         if (characterController.enabled)
         {
             characterController.Move(finalMove * safeDeltaTime);
@@ -352,9 +360,14 @@ public class PlayerController : MonoBehaviour
             {
                 if (!isCampMode)
                 {
+                    // --- НОВЕ: Перевірка КД Атаки ---
                     if (Input.GetMouseButtonDown(0))
                     {
-                        if (!isAimingGrenade) anim.SetTrigger("Attack");
+                        if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
+                        {
+                            lastAttackTime = Time.time;
+                            anim.SetTrigger("Attack");
+                        }
                     }
 
                     if (Input.GetMouseButtonDown(1))
@@ -464,7 +477,7 @@ public class PlayerController : MonoBehaviour
 
     public void TakeDamage(float damageAmount)
     {
-        if (isCampMode) return; // <-- ОСЬ ЦЕЙ РЯДОК ЗАБЛОКУЄ ШКОДУ В ТАБОРІ!
+        if (isCampMode) return;
 
         float finalDamage = damageAmount * (1f - damageReduction);
 
@@ -481,7 +494,12 @@ public class PlayerController : MonoBehaviour
         if (anim != null) anim.SetTrigger("Hit");
 
         UpdateHUD();
-        if (currentHealth <= 0) Die();
+
+        if (currentHealth <= 0)
+        {
+            if (hpCatchupSlider != null) hpCatchupSlider.value = 0;
+            Die();
+        }
     }
 
     private System.Collections.IEnumerator FlashRoutine()
@@ -501,19 +519,26 @@ public class PlayerController : MonoBehaviour
     private void Die()
     {
         SaveManager.AddCrystals(crystalsCollected);
+
         GameManager gm = FindFirstObjectByType<GameManager>();
         if (gm != null) gm.TriggerGameOver();
+
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
+
+        if (GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+        }
+
         gameObject.SetActive(false);
     }
 
     public void GainXP(float amount)
     {
-        if (isCampMode) return; // <-- І ТУТ ДОДАЛИ
+        if (isCampMode) return;
         currentXP += amount;
         if (currentXP >= xpToNextLevel) LevelUp();
-        UpdateHUD();
     }
 
     public void GainDiamond(int amount = 1)
@@ -532,6 +557,9 @@ public class PlayerController : MonoBehaviour
         currentLevel++;
         currentXP -= xpToNextLevel;
         xpToNextLevel *= 1.5f;
+
+        visualXP = 0f;
+
         LevelUpManager lum = FindFirstObjectByType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
         UpdateHUD();
@@ -540,8 +568,18 @@ public class PlayerController : MonoBehaviour
     public void UpdateHUD()
     {
         if (hpSlider != null) { hpSlider.maxValue = maxHealth; hpSlider.value = currentHealth; }
+
+        // --- НОВЕ: Синхронізуємо білу полоску при старті або лікуванні ---
+        if (hpCatchupSlider != null)
+        {
+            hpCatchupSlider.maxValue = maxHealth;
+            if (hpCatchupSlider.value < currentHealth) hpCatchupSlider.value = currentHealth;
+        }
+
         if (hpText != null) hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
-        if (xpSlider != null) { xpSlider.maxValue = xpToNextLevel; xpSlider.value = currentXP; }
+
+        if (xpSlider != null) { xpSlider.maxValue = xpToNextLevel; }
+
         if (levelText != null) levelText.text = "LVL: " + currentLevel;
         if (crystalText != null) crystalText.text = crystalsCollected.ToString();
     }
@@ -554,6 +592,9 @@ public class PlayerController : MonoBehaviour
 
         float originalFOV = Camera.main.fieldOfView;
         float targetFOV = originalFOV + 12f;
+
+        if (dashParticles != null) dashParticles.Play();
+        if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
 
         if (direction == Vector3.zero) direction = transform.forward;
         else
@@ -593,7 +634,7 @@ public class PlayerController : MonoBehaviour
     {
         currentHealth += amount;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
-        UpdateHUD();
+        UpdateHUD(); // Одразу підтягне білу полоску до нових значень
     }
 
     private Transform FindDeepChild(Transform parent, string name)
@@ -616,7 +657,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // --- ДОДАНО ДЛЯ ШЛЕЙФУ ЗБРОЇ ---
     public void StartSwing()
     {
         if (weaponTrail != null) weaponTrail.emitting = true;

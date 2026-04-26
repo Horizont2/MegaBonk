@@ -20,7 +20,7 @@ public class MetaUpgradeSlot : MonoBehaviour
 
     private void Start()
     {
-        menuManager = FindObjectOfType<MainMenuManager>();
+        menuManager = FindFirstObjectByType<MainMenuManager>();
 
         // Assign the click event to the button automatically
         if (buyButton != null)
@@ -83,7 +83,7 @@ public class MetaUpgradeSlot : MonoBehaviour
             if (menuManager != null) menuManager.UpdateCrystalsUI();
 
             // Refresh ALL upgrade slots on screen (in case player can no longer afford others)
-            MetaUpgradeSlot[] allSlots = FindObjectsOfType<MetaUpgradeSlot>();
+            MetaUpgradeSlot[] allSlots = FindObjectsByType<MetaUpgradeSlot>(FindObjectsSortMode.None);
             foreach (MetaUpgradeSlot slot in allSlots)
             {
                 slot.UpdateUI();

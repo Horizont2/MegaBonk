@@ -51,7 +51,12 @@ public class NoticeBoardManager : MonoBehaviour
     // Òğ³ãåğí³ çîíè
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player")) isPlayerNear = true;
+        if (other.CompareTag("Player"))
+        {
+            isPlayerNear = true;
+            // ÄÎÄÀÉ ÖÅÉ ĞßÄÎÊ:
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("Press E to Open Board");
+        }
     }
 
     private void OnTriggerExit(Collider other)
@@ -59,7 +64,10 @@ public class NoticeBoardManager : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             isPlayerNear = false;
-            if (isBoardOpen) CloseBoard(); // Çàêğèâàºìî, ÿêùî ãğàâåöü â³ä³éøîâ
+            if (isBoardOpen) CloseBoard();
+
+            // ÄÎÄÀÉ ÖÅÉ ĞßÄÎÊ:
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         }
     }
 
@@ -68,6 +76,8 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = true;
         boardCanvas.SetActive(true);
         CheckAndGenerateMissions();
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
 
         // ÂÌÈÊÀªÌÎ ÌÈØÊÓ
         Cursor.visible = true;
