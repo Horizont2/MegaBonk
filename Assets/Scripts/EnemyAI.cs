@@ -178,6 +178,11 @@ public class EnemyAI : MonoBehaviour
         if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
         if (diamondPrefab != null && Random.value <= diamondDropChance) Instantiate(diamondPrefab, transform.position, Quaternion.identity);
 
+        if (MissionManager.Instance != null)
+        {
+            MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
+        }
+
         Destroy(gameObject, 2f);
     }
 }

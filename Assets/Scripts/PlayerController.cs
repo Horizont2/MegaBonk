@@ -62,10 +62,11 @@ public class PlayerController : MonoBehaviour
 
     private float currentThrowForce;
     private bool isAimingGrenade = false;
-    private Vector3 savedThrowVelocity; // Зберігає вектор сили під час анімації
+    private Vector3 savedThrowVelocity;
 
     [Header("Visual Effects")]
     public Image damageFlashImage;
+    private TrailRenderer weaponTrail; // <--- ДОДАНО ШЛЕЙФ ЗБРОЇ
 
     [Header("HUD UI References")]
     public Slider hpSlider;
@@ -120,7 +121,12 @@ public class PlayerController : MonoBehaviour
             Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
             if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > selectedWeaponID && weaponPrefabs[selectedWeaponID] != null)
             {
+                // Спавнимо зброю в руці
                 currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket.position, socket.rotation, socket);
+
+                // --- АВТОСКАНУВАННЯ ---
+                // Шукаємо Trail Renderer всередині щойно створеної зброї!
+                weaponTrail = currentWeapon.GetComponentInChildren<TrailRenderer>();
             }
         }
         else
@@ -132,7 +138,6 @@ public class PlayerController : MonoBehaviour
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
         bloodEffect = FindFirstObjectByType<BloodFlashEffect>();
 
-        // Ховаємо лінію траєкторії на старті
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
     }
 
@@ -144,6 +149,9 @@ public class PlayerController : MonoBehaviour
 
         UIIconGlimmer glimmer = FindFirstObjectByType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
+
+        // Вимикаємо шлейф на старті, щоб він не малювався, коли гравець просто стоїть
+        if (weaponTrail != null) weaponTrail.emitting = false;
 
         StartCoroutine(SpawnSafely());
     }
@@ -316,25 +324,18 @@ public class PlayerController : MonoBehaviour
         Vector3 finalMove = movement + velocity;
         characterController.Move(finalMove * safeDeltaTime);
 
-        // --- УПРАВЛІННЯ АНІМАТОРОМ І БОЄМ ---
         if (anim != null)
         {
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
             anim.SetBool("IsGrounded", characterController.isGrounded);
 
-            // ДОДАНО: Перевірка на те, чи стоїмо ми на землі
             if (characterController.isGrounded)
             {
-                // МЕЧ (ЛІВА кнопка миші = 0)
                 if (Input.GetMouseButtonDown(0))
                 {
-                    if (!isAimingGrenade) // Якщо ми не тримаємо гранату, б'ємо мечем
-                    {
-                        anim.SetTrigger("Attack");
-                    }
+                    if (!isAimingGrenade) anim.SetTrigger("Attack");
                 }
 
-                // ГРАНАТА (ПРАВА кнопка миші = 1)
                 if (Input.GetMouseButtonDown(1))
                 {
                     isAimingGrenade = true;
@@ -343,7 +344,6 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            // Накопичення сили (тримаємо ПРАВУ кнопку)
             if (Input.GetMouseButton(1) && isAimingGrenade)
             {
                 currentThrowForce += chargeRate * Time.deltaTime;
@@ -351,7 +351,6 @@ public class PlayerController : MonoBehaviour
                 DrawTrajectory();
             }
 
-            // Відпускання кнопки кидка (можна відпустити навіть якщо впав зі скали)
             if (Input.GetMouseButtonUp(1))
             {
                 if (isAimingGrenade)
@@ -360,15 +359,12 @@ public class PlayerController : MonoBehaviour
                     savedThrowVelocity = GetThrowVelocity();
                     if (trajectoryLine != null) trajectoryLine.positionCount = 0;
 
-                    // Кидаємо тільки якщо на землі (щоб анімація не зламала стрибок)
                     if (characterController.isGrounded)
                     {
                         anim.SetTrigger("Throw");
                     }
                     else
                     {
-                        // Якщо відпустили кнопку в повітрі, просто кидаємо без анімації 
-                        // (або можеш видалити цей else, тоді граната просто скасується)
                         ExecuteThrow();
                     }
                 }
@@ -396,18 +392,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // --- ЛОГІКА ПРИЦІЛЮВАННЯ ТА ТРАЄКТОРІЇ ---
-    // --- ЛОГІКА ПРИЦІЛЮВАННЯ ТА ТРАЄКТОРІЇ ---
-    // --- ЛОГІКА ПРИЦІЛЮВАННЯ ТА ТРАЄКТОРІЇ ---
     private Vector3 GetThrowVelocity()
     {
-        // Беремо напрямок рівно туди, куди дивиться гравець
         Vector3 aimDir = transform.forward;
-
-        // Додаємо кут вгору, щоб граната летіла гарною дугою
         Vector3 throwDir = (aimDir + Vector3.up * upwardAngle).normalized;
-
-        // Множимо на поточну накопичену силу
         return throwDir * currentThrowForce;
     }
 
@@ -423,38 +411,26 @@ public class PlayerController : MonoBehaviour
         {
             float t = i * timeBetweenPoints;
             Vector3 point = startPosition + startVelocity * t + Physics.gravity * 0.5f * t * t;
-
             trajectoryLine.SetPosition(i, point);
-
-            if (point.y < 0f && i > 5)
-            {
-                trajectoryLine.positionCount = i + 1;
-                break;
-            }
+            if (point.y < 0f && i > 5) { trajectoryLine.positionCount = i + 1; break; }
         }
     }
 
-    // --- ФІЗИЧНА ЛОГІКА ---
     public void ExecuteAttack()
     {
         if (meleePoint == null) return;
 
-        Collider[] hitEnemies = Physics.OverlapSphere(meleePoint.position, meleeRadius, 1 << 9); // 1 << 9 це шар ворогів
+        Collider[] hitEnemies = Physics.OverlapSphere(meleePoint.position, meleeRadius, 1 << 9);
 
         foreach (Collider enemyCol in hitEnemies)
         {
             if (enemyCol.CompareTag("Enemy"))
             {
-                // ДОДАНО: Реальне нанесення шкоди ворогу!
                 EnemyAI enemy = enemyCol.GetComponent<EnemyAI>();
                 if (enemy != null)
                 {
-                    // Враховуємо базовий урон + мета-прокачку
                     float finalDamage = meleeDamage * globalDamageMultiplier;
                     enemy.TakeDamage(finalDamage);
-
-                    // Можеш залишити лог для перевірки, потім видалиш
-                    Debug.Log("Вдарили ворога на: " + finalDamage + " урону!");
                 }
             }
         }
@@ -466,11 +442,7 @@ public class PlayerController : MonoBehaviour
         {
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
             Rigidbody rb = grenade.GetComponent<Rigidbody>();
-            if (rb != null)
-            {
-                // Застосовуємо силу, яку ми розрахували ДО початку анімації
-                rb.linearVelocity = savedThrowVelocity;
-            }
+            if (rb != null) rb.linearVelocity = savedThrowVelocity;
         }
     }
 
@@ -529,6 +501,11 @@ public class PlayerController : MonoBehaviour
     {
         crystalsCollected += amount;
         UpdateHUD();
+
+        if (MissionManager.Instance != null)
+        {
+            MissionManager.Instance.AddProgress(MissionType.CollectCrystals, amount);
+        }
     }
 
     private void LevelUp()
@@ -618,5 +595,16 @@ public class PlayerController : MonoBehaviour
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(meleePoint.position, meleeRadius);
         }
+    }
+
+    // --- ДОДАНО ДЛЯ ШЛЕЙФУ ЗБРОЇ ---
+    public void StartSwing()
+    {
+        if (weaponTrail != null) weaponTrail.emitting = true;
+    }
+
+    public void EndSwing()
+    {
+        if (weaponTrail != null) weaponTrail.emitting = false;
     }
 }
