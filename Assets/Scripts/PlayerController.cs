@@ -5,6 +5,9 @@ using TMPro;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
+    [Header("Scene Mode")]
+    public bool isCampMode = false;
+
     [Header("Character & Weapon Spawning")]
     public GameObject[] heroPrefabs;
     public GameObject[] weaponPrefabs;
@@ -143,7 +146,7 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
-        ApplyMetaUpgrades();
+        if (!isCampMode) ApplyMetaUpgrades();
         currentHealth = maxHealth;
         UpdateHUD();
 
@@ -158,6 +161,13 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator SpawnSafely()
     {
+        // 1. АБСОЛЮТНИЙ ЗАХИСТ: Якщо це Табір, ми миттєво зупиняємо цю корутину!
+        if (isCampMode)
+        {
+            yield break;
+        }
+
+        // 2. Все, що нижче - працюватиме ТІЛЬКИ у бойовій сцені (вільній грі)
         if (characterController != null) characterController.enabled = false;
         yield return null;
         yield return null;
@@ -208,6 +218,7 @@ public class PlayerController : MonoBehaviour
 
     private void CheckStack()
     {
+        if (isCampMode) return;
         Collider[] colliders = Physics.OverlapSphere(transform.position, stackRadius, 1 << 9);
         currentStack = 0;
 
@@ -266,7 +277,7 @@ public class PlayerController : MonoBehaviour
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 inputDir = new Vector3(horizontal, 0f, vertical).normalized;
 
-        if (Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= lastDashTime + dashCooldown)
+        if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= lastDashTime + dashCooldown)
         {
             StartCoroutine(DashRoutine(inputDir));
         }
@@ -286,16 +297,19 @@ public class PlayerController : MonoBehaviour
 
         float currentAccel = normalAcceleration;
 
-        if (currentStack >= 30)
+        if (!isCampMode)
         {
-            currentAccel = dragAcceleration;
-            currentHealth -= criticalDamagePerSec * Time.deltaTime;
-            UpdateHUD();
-            if (currentHealth <= 0) Die();
-        }
-        else if (currentStack >= 15)
-        {
-            currentAccel = dragAcceleration;
+            if (currentStack >= 30)
+            {
+                currentAccel = dragAcceleration;
+                currentHealth -= criticalDamagePerSec * Time.deltaTime;
+                UpdateHUD();
+                if (currentHealth <= 0) Die();
+            }
+            else if (currentStack >= 15)
+            {
+                currentAccel = dragAcceleration;
+            }
         }
 
         float actualSpeed = isAimingGrenade ? moveSpeed * 0.5f : moveSpeed;
@@ -322,7 +336,12 @@ public class PlayerController : MonoBehaviour
         velocity.y += gravity * safeDeltaTime;
 
         Vector3 finalMove = movement + velocity;
-        characterController.Move(finalMove * safeDeltaTime);
+
+        // Рухаємо тільки якщо контролер увімкнений, щоб не було помилок!
+        if (characterController.enabled)
+        {
+            characterController.Move(finalMove * safeDeltaTime);
+        }
 
         if (anim != null)
         {
@@ -331,27 +350,30 @@ public class PlayerController : MonoBehaviour
 
             if (characterController.isGrounded)
             {
-                if (Input.GetMouseButtonDown(0))
+                if (!isCampMode)
                 {
-                    if (!isAimingGrenade) anim.SetTrigger("Attack");
-                }
+                    if (Input.GetMouseButtonDown(0))
+                    {
+                        if (!isAimingGrenade) anim.SetTrigger("Attack");
+                    }
 
-                if (Input.GetMouseButtonDown(1))
-                {
-                    isAimingGrenade = true;
-                    currentThrowForce = minThrowForce;
-                    if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+                    if (Input.GetMouseButtonDown(1))
+                    {
+                        isAimingGrenade = true;
+                        currentThrowForce = minThrowForce;
+                        if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+                    }
                 }
             }
 
-            if (Input.GetMouseButton(1) && isAimingGrenade)
+            if (!isCampMode && Input.GetMouseButton(1) && isAimingGrenade)
             {
                 currentThrowForce += chargeRate * Time.deltaTime;
                 if (currentThrowForce > maxThrowForce) currentThrowForce = maxThrowForce;
                 DrawTrajectory();
             }
 
-            if (Input.GetMouseButtonUp(1))
+            if (!isCampMode && Input.GetMouseButtonUp(1))
             {
                 if (isAimingGrenade)
                 {
@@ -359,19 +381,13 @@ public class PlayerController : MonoBehaviour
                     savedThrowVelocity = GetThrowVelocity();
                     if (trajectoryLine != null) trajectoryLine.positionCount = 0;
 
-                    if (characterController.isGrounded)
-                    {
-                        anim.SetTrigger("Throw");
-                    }
-                    else
-                    {
-                        ExecuteThrow();
-                    }
+                    if (characterController.isGrounded) anim.SetTrigger("Throw");
+                    else ExecuteThrow();
                 }
             }
         }
 
-        if (currentHealth < maxHealth && healthRegenRate > 0)
+        if (!isCampMode && currentHealth < maxHealth && healthRegenRate > 0)
         {
             currentHealth += healthRegenRate * Time.deltaTime;
             currentHealth = Mathf.Min(currentHealth, maxHealth);
@@ -418,7 +434,7 @@ public class PlayerController : MonoBehaviour
 
     public void ExecuteAttack()
     {
-        if (meleePoint == null) return;
+        if (meleePoint == null || isCampMode) return;
 
         Collider[] hitEnemies = Physics.OverlapSphere(meleePoint.position, meleeRadius, 1 << 9);
 
@@ -438,7 +454,7 @@ public class PlayerController : MonoBehaviour
 
     public void ExecuteThrow()
     {
-        if (grenadePrefab != null && throwPoint != null)
+        if (grenadePrefab != null && throwPoint != null && !isCampMode)
         {
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
             Rigidbody rb = grenade.GetComponent<Rigidbody>();
@@ -448,6 +464,8 @@ public class PlayerController : MonoBehaviour
 
     public void TakeDamage(float damageAmount)
     {
+        if (isCampMode) return; // <-- ОСЬ ЦЕЙ РЯДОК ЗАБЛОКУЄ ШКОДУ В ТАБОРІ!
+
         float finalDamage = damageAmount * (1f - damageReduction);
 
         currentHealth -= finalDamage;
@@ -492,6 +510,7 @@ public class PlayerController : MonoBehaviour
 
     public void GainXP(float amount)
     {
+        if (isCampMode) return; // <-- І ТУТ ДОДАЛИ
         currentXP += amount;
         if (currentXP >= xpToNextLevel) LevelUp();
         UpdateHUD();

@@ -3,20 +3,17 @@ using System.Collections.Generic;
 
 public class MissionManager : MonoBehaviour
 {
-    public static MissionManager Instance; // Щоб інші скрипти легко сюди зверталися
-
-    [Header("Level Configuration")]
-    public LevelData currentLevelData; // Сюди перетягуємо наш Level_1_Forest
+    public static MissionManager Instance;
 
     [Header("UI Setup")]
-    public GameObject missionUIPrefab; // Префаб плашки місії
-    public Transform missionUIParent;  // Об'єкт із Vertical Layout Group на Канвасі
+    public GameObject missionUIPrefab;
+    public Transform missionUIParent;  // Сюди будемо кидати плашки в HUD_Canvas
 
-    // Внутрішній клас для відстеження прогресу кожної місії
-    private class ActiveMission
+    public class ActiveMission
     {
         public MissionData data;
         public int currentProgress;
+        public int targetAmount;
         public MissionUIElement uiElement;
         public bool isCompleted;
     }
@@ -25,40 +22,52 @@ public class MissionManager : MonoBehaviour
 
     private void Awake()
     {
-        // Робимо Синглтон
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
 
     private void Start()
     {
-        InitializeMissions();
+        LoadAcceptedMissions();
     }
 
-    private void InitializeMissions()
+    // Завантажуємо місії, які гравець взяв на дошці
+    private void LoadAcceptedMissions()
     {
-        if (currentLevelData == null || currentLevelData.levelMissions.Length == 0) return;
-
-        foreach (MissionData mission in currentLevelData.levelMissions)
+        if (PlayerPrefs.HasKey("ActiveMissionType"))
         {
-            // Створюємо UI плашку
-            GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
-            MissionUIElement uiElement = uiObj.GetComponent<MissionUIElement>();
+            // Створюємо "фейковий" MissionData для збереження прогресу
+            MissionData savedMission = ScriptableObject.CreateInstance<MissionData>();
+            savedMission.missionName = PlayerPrefs.GetString("ActiveMissionName");
+            savedMission.missionType = (MissionType)System.Enum.Parse(typeof(MissionType), PlayerPrefs.GetString("ActiveMissionType"));
+            savedMission.woodReward = PlayerPrefs.GetInt("ActiveMissionRewardWood");
+            savedMission.metalReward = PlayerPrefs.GetInt("ActiveMissionRewardMetal");
+            savedMission.diamondReward = PlayerPrefs.GetInt("ActiveMissionRewardDiamond");
 
-            uiElement.Setup(mission.missionDescription, 0, mission.targetAmount);
+            int target = PlayerPrefs.GetInt("ActiveMissionTarget");
 
-            // Додаємо в список активних місій
-            activeMissions.Add(new ActiveMission
-            {
-                data = mission,
-                currentProgress = 0,
-                uiElement = uiElement,
-                isCompleted = false
-            });
+            AddActiveMissionUI(savedMission, target);
         }
     }
 
-    // Цей метод будуть викликати вороги при смерті або гравець при зборі луту
+    // Додає UI плашку на екран (викликається з дошки або при старті)
+    public void AddActiveMissionUI(MissionData data, int targetAmount)
+    {
+        GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
+        MissionUIElement uiElement = uiObj.GetComponent<MissionUIElement>();
+
+        uiElement.Setup(data.missionName, 0, targetAmount);
+
+        activeMissions.Add(new ActiveMission
+        {
+            data = data,
+            currentProgress = 0,
+            targetAmount = targetAmount,
+            uiElement = uiElement,
+            isCompleted = false
+        });
+    }
+
     public void AddProgress(MissionType type, int amount = 1)
     {
         foreach (ActiveMission mission in activeMissions)
@@ -67,13 +76,12 @@ public class MissionManager : MonoBehaviour
             {
                 mission.currentProgress += amount;
 
-                // Захист від переповнення (щоб не було 51/50)
-                if (mission.currentProgress > mission.data.targetAmount)
-                    mission.currentProgress = mission.data.targetAmount;
+                if (mission.currentProgress > mission.targetAmount)
+                    mission.currentProgress = mission.targetAmount;
 
-                mission.uiElement.UpdateProgress(mission.currentProgress, mission.data.targetAmount);
+                mission.uiElement.UpdateProgress(mission.currentProgress, mission.targetAmount);
 
-                if (mission.currentProgress >= mission.data.targetAmount)
+                if (mission.currentProgress >= mission.targetAmount)
                 {
                     CompleteMission(mission);
                 }
@@ -86,16 +94,13 @@ public class MissionManager : MonoBehaviour
         mission.isCompleted = true;
         mission.uiElement.CompleteMission();
 
-        // ВИДАЧА НАГОРОД (Зберігаємо в PlayerPrefs)
-        int currentWood = PlayerPrefs.GetInt("HubWood", 0);
-        int currentMetal = PlayerPrefs.GetInt("HubMetal", 0);
-        int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0);
+        if (ResourceManager.Instance != null)
+        {
+            ResourceManager.Instance.AddResources(mission.data.woodReward, mission.data.metalReward, 0);
+        }
 
-        PlayerPrefs.SetInt("HubWood", currentWood + mission.data.woodReward);
-        PlayerPrefs.SetInt("HubMetal", currentMetal + mission.data.metalReward);
-        PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + mission.data.diamondReward);
+        // Видаляємо з пам'яті, бо вона виконана
+        PlayerPrefs.DeleteKey("ActiveMissionType");
         PlayerPrefs.Save();
-
-        Debug.Log($"Місію '{mission.data.missionName}' виконано! Отримано {mission.data.woodReward} дерева та {mission.data.metalReward} металу.");
     }
 }

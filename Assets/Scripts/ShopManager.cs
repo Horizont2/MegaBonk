@@ -56,7 +56,7 @@ public class ShopManager : MonoBehaviour
     public float rotationSpeed = 500f;
 
     [Header("Scene Navigation")]
-    public string mainMenuSceneName = "MainMenu";
+    public string campSceneName = "CampScene";
 
     [Header("UI Main Elements")]
     public TextMeshProUGUI itemNameText;
@@ -91,6 +91,9 @@ public class ShopManager : MonoBehaviour
 
     private void Start()
     {
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
         panelStartX = mainUIPanel.anchoredPosition.x;
 
         if (!PlayerPrefs.HasKey(DIAMONDS_KEY)) PlayerPrefs.SetInt(DIAMONDS_KEY, 0);
@@ -114,7 +117,7 @@ public class ShopManager : MonoBehaviour
         if (leftArrow != null) leftArrow.onClick.AddListener(PreviousItem);
         if (rightArrow != null) rightArrow.onClick.AddListener(NextItem);
         if (buyButton != null) buyButton.onClick.AddListener(OnBuyOrSelectPressed);
-        if (backButton != null) backButton.onClick.AddListener(GoToMainMenu);
+        if (backButton != null) backButton.onClick.AddListener(GoToCampScene);
     }
 
     private void Update()
@@ -506,5 +509,15 @@ public class ShopManager : MonoBehaviour
         textComponent.transform.localScale = Vector3.one;
     }
 
-    public void GoToMainMenu() { SceneManager.LoadScene(mainMenuSceneName); }
+    public void GoToCampScene()
+    {
+        // Ставимо мітку в пам'ять, що ми вийшли з магазину
+        PlayerPrefs.SetInt("ReturningFromShop", 1);
+        PlayerPrefs.Save();
+
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+
+        SceneManager.LoadScene(campSceneName);
+    }
 }
