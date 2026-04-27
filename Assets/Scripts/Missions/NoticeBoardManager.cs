@@ -180,6 +180,8 @@ public class NoticeBoardManager : MonoBehaviour
 
     private void EmbarkOnJourney()
     {
+        CloseBoard(); // НОВЕ: Примусово закриваємо дошку перед початком завантаження
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(worldSceneName);
         else SceneManager.LoadScene(worldSceneName);
     }

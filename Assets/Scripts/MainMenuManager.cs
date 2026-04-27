@@ -12,9 +12,9 @@ public class MainMenuManager : MonoBehaviour
     [Header("Scene Settings")]
     public string gameSceneName = "GameScene";
     public string shopSceneName = "ShopScene";
-    public string campSceneName = "CampScene"; // НОВЕ: Посилання на табір
+    public string campSceneName = "CampScene";
 
-    [Header("Hero Spawning (NEW)")]
+    [Header("Hero Spawning")]
     public GameObject[] heroPrefabs;
     public GameObject[] weaponPrefabs;
     public Transform heroSpawnPoint;
@@ -88,7 +88,6 @@ public class MainMenuManager : MonoBehaviour
     {
         if (continueButton != null)
         {
-            // Перевіряємо, чи є збереження позиції в таборі
             bool hasSave = PlayerPrefs.GetInt("HasCampSave", 0) == 1;
             continueButton.interactable = hasSave;
 
@@ -123,7 +122,14 @@ public class MainMenuManager : MonoBehaviour
             crystalsText.text = targetCount.ToString("N0");
     }
 
-    // --- ЛОГІКА КНОПОК ---
+    // НОВЕ: Метод для вимкнення Канвасу меню перед завантаженням
+    private void HideMenuBeforeLoad()
+    {
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas != null) canvas.enabled = false;
+        else gameObject.SetActive(false);
+    }
+
     // --- ЛОГІКА КНОПОК ---
     public void StartNewRun()
     {
@@ -134,6 +140,8 @@ public class MainMenuManager : MonoBehaviour
 
         if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
 
+        HideMenuBeforeLoad();
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
         else SceneManager.LoadScene(campSceneName);
     }
@@ -143,12 +151,16 @@ public class MainMenuManager : MonoBehaviour
         PlayerPrefs.SetInt("IsContinuing", 1);
         PlayerPrefs.Save();
 
+        HideMenuBeforeLoad();
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
         else SceneManager.LoadScene(campSceneName);
     }
 
     public void OpenShop()
     {
+        HideMenuBeforeLoad();
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(shopSceneName);
         else SceneManager.LoadScene(shopSceneName);
     }

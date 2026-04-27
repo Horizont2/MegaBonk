@@ -55,7 +55,6 @@ public class ShopManager : MonoBehaviour
     public float swipeSpeed = 4f;
     public float rotationSpeed = 500f;
 
-    // --- НОВЕ: Блокування спаму кнопкою категорій ---
     [Tooltip("Скільки секунд блокувати зміну категорії після натискання (щоб камера встигла долетіти)")]
     public float modeSwitchCooldown = 1.5f;
     private float nextModeSwitchTime = 0f;
@@ -99,7 +98,7 @@ public class ShopManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        if (mainCamera == null) mainCamera = Camera.main; // Підстраховка
+        if (mainCamera == null) mainCamera = Camera.main;
 
         panelStartX = mainUIPanel.anchoredPosition.x;
 
@@ -133,10 +132,8 @@ public class ShopManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.RightArrow)) NextItem();
         if (Input.GetKeyDown(KeyCode.LeftArrow)) PreviousItem();
 
-        // --- ВИПРАВЛЕНА ЛОГІКА ОГЛЯДУ ЗБРОЇ ---
         if (isInspectingWeapon && Input.GetMouseButtonDown(0))
         {
-            // Якщо клікнули по UI-кнопках
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
             if (mainCamera != null)
@@ -146,15 +143,14 @@ public class ShopManager : MonoBehaviour
 
                 if (Physics.Raycast(ray, out hit))
                 {
-                    // Шукаємо скрипт WeaponDisplayObject не тільки на самому об'єкті, а й на його батьках
                     if (hit.collider.GetComponentInParent<WeaponDisplayObject>() == null)
                     {
-                        StopInspect(); // Влучили в стіну/стіл/підлогу - закриваємо!
+                        StopInspect();
                     }
                 }
                 else
                 {
-                    StopInspect(); // Влучили в пустоту - закриваємо!
+                    StopInspect();
                 }
             }
         }
@@ -223,12 +219,10 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    // --- ВИПРАВЛЕНО: Додано кулдаун на натискання ---
     public void ToggleShopMode()
     {
         if (isTransitioningUI || Time.time < nextModeSwitchTime) return;
 
-        // Запускаємо таймер блокування кнопки
         nextModeSwitchTime = Time.time + modeSwitchCooldown;
 
         ShopMode targetMode = (currentMode == ShopMode.Heroes) ? ShopMode.Weapons : ShopMode.Heroes;
@@ -526,6 +520,12 @@ public class ShopManager : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        SceneManager.LoadScene(campSceneName);
+        // НОВЕ: Примусово вимикаємо UI магазину, щоб він не просвічував через завантаження
+        if (mainUIPanel != null) mainUIPanel.gameObject.SetActive(false);
+        if (inspectButton != null) inspectButton.SetActive(false);
+
+        // Використовуємо красиве завантаження GlobalHUD
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
+        else SceneManager.LoadScene(campSceneName);
     }
 }
