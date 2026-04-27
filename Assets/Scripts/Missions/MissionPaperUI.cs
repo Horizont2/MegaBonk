@@ -13,10 +13,6 @@ public class MissionPaperUI : MonoBehaviour
     public Button acceptButton;
 
     private MissionData myMissionData;
-    private int scaledTargetAmount;
-    private int scaledWoodReward;
-    private int scaledMetalReward;
-    private int scaledDiamondReward;
 
     [Header("Animation Settings")]
     public float flyDuration = 0.8f;
@@ -32,16 +28,29 @@ public class MissionPaperUI : MonoBehaviour
 
     public void SetupPaper(MissionData baseData, float multiplier)
     {
+        // Оскільки NoticeBoardManager вже передає нам масштабовані значення, 
+        // multiplier тут зазвичай дорівнює 1f, тому ми беремо дані напряму.
         myMissionData = baseData;
 
-        scaledTargetAmount = Mathf.RoundToInt(baseData.targetAmount * multiplier);
-        scaledWoodReward = Mathf.RoundToInt(baseData.woodReward * multiplier);
-        scaledMetalReward = Mathf.RoundToInt(baseData.metalReward * multiplier);
-        scaledDiamondReward = Mathf.RoundToInt(baseData.diamondReward * multiplier);
+        int finalTarget = Mathf.RoundToInt(baseData.targetAmount * multiplier);
+        int finalWood = Mathf.RoundToInt(baseData.woodReward * multiplier);
+        int finalStone = Mathf.RoundToInt(baseData.stoneReward * multiplier);
+        int finalFood = Mathf.RoundToInt(baseData.foodReward * multiplier);
+        int finalDiamond = Mathf.RoundToInt(baseData.diamondReward * multiplier);
 
         titleText.text = baseData.missionName;
-        descText.text = $"{baseData.missionDescription}\n\n<color=#FF5555>Target: {scaledTargetAmount}</color>";
-        rewardText.text = $"Rewards:\n<color=#00FF00>+{scaledWoodReward} Wood</color>\n<color=#AAAAAA>+{scaledMetalReward} Stone</color>";
+
+        // Темно-бордовий (#8B0000) для цілі, щоб контрастувало з пергаментом
+        descText.text = $"{baseData.missionDescription}\n\n<color=#8B0000><b>Target: {finalTarget}</b></color>";
+
+        // Будуємо нагороди ГОРИЗОНТАЛЬНО в один рядок з темними кольорами
+        string rewText = "<b>Rewards:</b> ";
+        if (finalWood > 0) rewText += $"<color=#5C4033>{finalWood} Wood</color>  ";    // Темно-коричневий
+        if (finalStone > 0) rewText += $"<color=#4A4A4A>{finalStone} Stone</color>  ";   // Темно-сірий
+        if (finalFood > 0) rewText += $"<color=#B85E00>{finalFood} Food</color>  ";      // Темно-помаранчевий
+        if (finalDiamond > 0) rewText += $"<color=#005500>{finalDiamond} Gems</color>";  // Темно-зелений
+
+        rewardText.text = rewText;
     }
 
     private void AcceptMission()
@@ -57,18 +66,11 @@ public class MissionPaperUI : MonoBehaviour
 
     private void SaveMissionForWorld()
     {
-        PlayerPrefs.SetString("ActiveMissionType", myMissionData.missionType.ToString());
-        PlayerPrefs.SetString("ActiveMissionName", myMissionData.missionName);
-        PlayerPrefs.SetInt("ActiveMissionTarget", scaledTargetAmount);
-        PlayerPrefs.SetInt("ActiveMissionRewardWood", scaledWoodReward);
-        PlayerPrefs.SetInt("ActiveMissionRewardMetal", scaledMetalReward);
-        PlayerPrefs.SetInt("ActiveMissionRewardDiamond", scaledDiamondReward);
-        PlayerPrefs.Save();
-
-        // Кажемо MissionManager додати це в UI миттєво
+        // Викликаємо нову функцію (яка виправляє помилку)
+        // Вона автоматично збереже місію у масив
         if (MissionManager.Instance != null)
         {
-            MissionManager.Instance.AddActiveMissionUI(myMissionData, scaledTargetAmount);
+            MissionManager.Instance.AddNewMission(myMissionData, myMissionData.targetAmount);
         }
     }
 
@@ -77,7 +79,6 @@ public class MissionPaperUI : MonoBehaviour
         Vector2 startPos = rectTransform.anchoredPosition;
         Vector3 startScale = rectTransform.localScale;
 
-        // Правий верхній кут
         Vector2 targetPos = new Vector2(Screen.width / 2f - 50f, Screen.height / 2f - 50f);
 
         float timer = 0f;

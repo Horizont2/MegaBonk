@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Enemy
+  - ResourceNode
   layers:
   - Default
   - TransparentFX
@@ -15,10 +16,10 @@ TagManager:
   - Player
   - IgnorePlayer
   - PlayerPhysics
-  - LootPhysics
+  - Damageable
   - MinimapOnly
   - Obstacles
-  - 
+  - LootPhysics
   - 
   - 
   - 

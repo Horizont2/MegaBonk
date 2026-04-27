@@ -16,6 +16,7 @@ MonoBehaviour:
   missionDescription: Collect magical crystals dropped by defeated enemies.
   missionType: 1
   targetAmount: 10
-  woodReward: 10
-  metalReward: 5
-  diamondReward: 50
+  woodReward: 5
+  stoneReward: 5
+  foodReward: 3
+  diamondReward: 10

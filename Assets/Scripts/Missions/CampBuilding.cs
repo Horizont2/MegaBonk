@@ -37,13 +37,12 @@ public class CampBuilding : MonoBehaviour
 
     [Header("UI References")]
     public GameObject uiCanvas;
-    public Image holdFillImage; // Круговий прогрес
+    public Image holdFillImage;
 
-    // --- НОВЕ: Посилання на іконку 'E' та налаштування кольорів ---
     [Header("UI Visual Feedback (NEW)")]
-    public Image holdKeyIconImage; // Сама іконка букви 'E'
-    public Color normalColor = Color.white; // Звичайний колір
-    public Color pressedColor = new Color(0.6f, 0.6f, 0.6f, 1f); // Притемнений колір (темно-сірий)
+    public Image holdKeyIconImage;
+    public Color normalColor = Color.white;
+    public Color pressedColor = new Color(0.6f, 0.6f, 0.6f, 1f);
 
     [Header("UI Text References")]
     public TextMeshProUGUI titleTMP;
@@ -78,7 +77,6 @@ public class CampBuilding : MonoBehaviour
         if (uiCanvas != null) uiCanvas.SetActive(false);
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
 
-        // Встановлюємо звичайний колір іконки на старті
         if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
 
         StopDustEffect();
@@ -129,14 +127,15 @@ public class CampBuilding : MonoBehaviour
         }
 
         BuildingLevel nextLevelData = levels[currentLevel];
-        bool canAfford = ResourceManager.Instance.CanAfford(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
+
+        // ВИПРАВЛЕНО: Використовуємо CanAffordStash
+        bool canAfford = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
 
         if (Input.GetKey(KeyCode.E) && canAfford)
         {
             currentHoldTime += Time.deltaTime;
             if (holdFillImage != null) holdFillImage.fillAmount = currentHoldTime / holdTimeRequired;
 
-            // --- НОВЕ: Притемнюємо іконку при затисканні ---
             if (holdKeyIconImage != null) holdKeyIconImage.color = pressedColor;
 
             StartDustEffect();
@@ -144,13 +143,18 @@ public class CampBuilding : MonoBehaviour
             if (currentHoldTime >= holdTimeRequired)
             {
                 currentHoldTime = 0f;
-                ResourceManager.Instance.SpendResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
+                // ВИПРАВЛЕНО: Використовуємо SpendStashResources
+                ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
 
                 currentLevel++;
                 PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
                 PlayerPrefs.Save();
 
-                // Повертаємо нормальний колір після завершення побудови
+                if (MissionManager.Instance != null)
+                {
+                    MissionManager.Instance.AddProgress(MissionType.BuildStructures, 1);
+                }
+
                 if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
 
                 StartCoroutine(BuildSequence());
@@ -158,7 +162,6 @@ public class CampBuilding : MonoBehaviour
         }
         else
         {
-            // --- НОВЕ: Повертаємо нормальний колір, якщо кнопку відпустили ---
             if (Input.GetKeyUp(KeyCode.E) && holdKeyIconImage != null)
             {
                 holdKeyIconImage.color = normalColor;
@@ -184,7 +187,6 @@ public class CampBuilding : MonoBehaviour
                 playerInRange = true;
                 UpdateUIData();
 
-                // Переконуємось, що іконка біла, коли панель з'являється
                 if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
 
                 if (uiCanvas != null)
@@ -204,7 +206,6 @@ public class CampBuilding : MonoBehaviour
             currentHoldTime = 0f;
             if (uiCanvas != null) uiCanvas.SetActive(false);
 
-            // Скидаємо колір іконки про всяк випадок
             if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
 
             StopDustEffect();
@@ -234,9 +235,10 @@ public class CampBuilding : MonoBehaviour
 
         if (ResourceManager.Instance != null)
         {
-            string woodColor = ResourceManager.Instance.wood >= nextLevelData.costWood ? "#FFFFFF" : "#FF4444";
-            string stoneColor = ResourceManager.Instance.stone >= nextLevelData.costStone ? "#FFFFFF" : "#FF4444";
-            string foodColor = ResourceManager.Instance.food >= nextLevelData.costFood ? "#FFFFFF" : "#FF4444";
+            // ВИПРАВЛЕНО: Перевіряємо stashWood замість wood
+            string woodColor = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? "#FFFFFF" : "#FF4444";
+            string stoneColor = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? "#FFFFFF" : "#FF4444";
+            string foodColor = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? "#FFFFFF" : "#FF4444";
 
             if (costWoodTMP) costWoodTMP.text = $"<color={woodColor}>Logs: {nextLevelData.costWood}</color>";
             if (costStoneTMP) costStoneTMP.text = $"<color={stoneColor}>Stones: {nextLevelData.costStone}</color>";
@@ -270,7 +272,6 @@ public class CampBuilding : MonoBehaviour
 
         if (currentLevel == 1) realModel.transform.position -= new Vector3(0, spawnDepth, 0);
 
-        // ВМИКАЄМО ДИМ (на час анімації)
         StartDustEffect();
         if (buildAudio != null) buildAudio.Play();
 
@@ -299,7 +300,6 @@ public class CampBuilding : MonoBehaviour
         realModel.transform.position = finalPos;
         realModel.transform.localScale = originalScale;
 
-        // ТОЧНО ВИМИКАЄМО ДИМ (після завершення)
         StopDustEffect();
 
         ApplyBuildingEffects();
@@ -335,9 +335,10 @@ public class CampBuilding : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(60f);
-            if (buildingID.Contains("Lumberjack")) ResourceManager.Instance.AddResources(amountPerMinute, 0, 0);
-            else if (buildingID.Contains("Stone")) ResourceManager.Instance.AddResources(0, amountPerMinute, 0);
-            else if (buildingID.Contains("Hunter")) ResourceManager.Instance.AddResources(0, 0, amountPerMinute);
+            // ВИПРАВЛЕНО: Будівлі додають ресурси на склад (AddStashResources)
+            if (buildingID.Contains("Lumberjack")) ResourceManager.Instance.AddStashResources(amountPerMinute, 0, 0);
+            else if (buildingID.Contains("Stone")) ResourceManager.Instance.AddStashResources(0, amountPerMinute, 0);
+            else if (buildingID.Contains("Hunter")) ResourceManager.Instance.AddStashResources(0, 0, amountPerMinute);
         }
     }
 
@@ -351,14 +352,14 @@ public class CampBuilding : MonoBehaviour
             if (canBeUpgraded && ResourceManager.Instance != null)
             {
                 BuildingLevel nextLevelData = levels[currentLevel];
-                hasResources = ResourceManager.Instance.CanAfford(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
+                // ВИПРАВЛЕНО: Використовуємо CanAffordStash
+                hasResources = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             }
 
             upgradeGlimmer.SetActive(canBeUpgraded && hasResources);
         }
     }
 
-    // --- НОВІ ФУНКЦІЇ ДЛЯ КОНТРОЛЮ ДИМУ ---
     private void StartDustEffect()
     {
         if (buildDustVFX != null)

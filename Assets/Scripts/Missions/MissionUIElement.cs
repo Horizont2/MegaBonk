@@ -7,33 +7,61 @@ using System.Collections;
 public class MissionUIElement : MonoBehaviour
 {
     [Header("UI References")]
-    public TextMeshProUGUI missionText;
+    public TextMeshProUGUI progressText;    // Для цифр (0/50)
+    public TextMeshProUGUI descriptionText; // Для тексту "Kill 50 skeletons"
     public Image checkboxEmpty;
-    public Image checkboxDone; // Зображення галочки
+    public Image checkboxDone;
+
+    [Header("Slider (НОВЕ)")]
+    public Slider progressSlider;           // Посилання на твій Slider
 
     private CanvasGroup canvasGroup;
     private RectTransform rectTransform;
+    public bool isCompleted = false;
 
-    private string baseDescription;
-    private bool isCompleted = false;
+    private int currentVisualProgress = 0;
+    private int targetVisualProgress = 0;
 
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
         rectTransform = GetComponent<RectTransform>();
-        checkboxDone.gameObject.SetActive(false); // Ховаємо галочку на старті
+        if (checkboxDone != null) checkboxDone.gameObject.SetActive(false);
     }
 
     public void Setup(string description, int current, int target)
     {
-        baseDescription = description;
+        if (descriptionText != null) descriptionText.text = description;
+
+        if (progressSlider != null)
+        {
+            progressSlider.maxValue = target;
+            progressSlider.value = current;
+        }
+
+        currentVisualProgress = current;
+        targetVisualProgress = target;
+
         UpdateProgress(current, target);
     }
 
     public void UpdateProgress(int current, int target)
     {
         if (isCompleted) return;
-        missionText.text = $"{baseDescription} ({current}/{target})";
+
+        currentVisualProgress = current;
+        targetVisualProgress = target;
+
+        if (progressText != null) progressText.text = $"Progress: {current} / {target}";
+    }
+
+    private void Update()
+    {
+        // Плавна анімація слайдера кожного кадру
+        if (progressSlider != null && !isCompleted)
+        {
+            progressSlider.value = Mathf.Lerp(progressSlider.value, currentVisualProgress, Time.deltaTime * 5f);
+        }
     }
 
     public void CompleteMission()
@@ -41,45 +69,28 @@ public class MissionUIElement : MonoBehaviour
         if (isCompleted) return;
         isCompleted = true;
 
-        // Прибираємо цифри, залишаємо тільки текст
-        missionText.text = baseDescription;
+        if (progressText != null) progressText.text = "<color=#00FF00>COMPLETED</color>";
+        if (progressSlider != null) progressSlider.value = progressSlider.maxValue;
 
         StartCoroutine(CompleteAnimationRoutine());
     }
 
     private IEnumerator CompleteAnimationRoutine()
     {
-        // 1. Поп-анімація галочки
-        checkboxEmpty.gameObject.SetActive(false);
-        checkboxDone.gameObject.SetActive(true);
-        checkboxDone.transform.localScale = Vector3.zero;
-
-        float t = 0;
-        while (t < 1)
+        if (checkboxEmpty != null) checkboxEmpty.gameObject.SetActive(false);
+        if (checkboxDone != null)
         {
-            t += Time.deltaTime * 5f;
-            checkboxDone.transform.localScale = Vector3.Lerp(Vector3.zero, new Vector3(1.2f, 1.2f, 1.2f), t);
-            yield return null;
+            checkboxDone.gameObject.SetActive(true);
+            checkboxDone.transform.localScale = Vector3.zero;
+
+            float t = 0;
+            while (t < 1)
+            {
+                t += Time.deltaTime * 5f;
+                checkboxDone.transform.localScale = Vector3.Lerp(Vector3.zero, new Vector3(1.2f, 1.2f, 1.2f), t);
+                yield return null;
+            }
+            checkboxDone.transform.localScale = Vector3.one;
         }
-        checkboxDone.transform.localScale = Vector3.one;
-
-        // 2. Пауза, щоб гравець встиг прочитати
-        yield return new WaitForSeconds(1.5f);
-
-        // 3. Відліт вліво + прозорість
-        t = 0;
-        Vector2 startPos = rectTransform.anchoredPosition;
-        Vector2 endPos = startPos + new Vector2(-600f, 0); // Відлітає за екран
-
-        while (t < 1)
-        {
-            t += Time.deltaTime * 2f;
-            canvasGroup.alpha = Mathf.Lerp(1f, 0.5f, t);
-            rectTransform.anchoredPosition = Vector2.Lerp(startPos, endPos, Mathf.SmoothStep(0, 1, t));
-            yield return null;
-        }
-
-        // 4. Знищуємо плашку
-        Destroy(gameObject);
     }
 }

@@ -25,22 +25,17 @@ public class NoticeBoardManager : MonoBehaviour
     public float restockTimeMinutes = 5f;
 
     private List<GameObject> activePapers = new List<GameObject>();
-
-    // Çì³íí³ äëÿ òğ³ãåğà
     private bool isPlayerNear = false;
     private bool isBoardOpen = false;
 
     private void Start()
     {
-        if (embarkButton != null)
-            embarkButton.onClick.AddListener(EmbarkOnJourney);
-
-        boardCanvas.SetActive(false); // Õîâàºìî äîøêó íà ñòàğò³
+        if (embarkButton != null) embarkButton.onClick.AddListener(EmbarkOnJourney);
+        boardCanvas.SetActive(false);
     }
 
     private void Update()
     {
-        // ßêùî ãğàâåöü ïîğó÷ ³ òèñíå E
         if (isPlayerNear && Input.GetKeyDown(KeyCode.E))
         {
             if (!isBoardOpen) OpenBoard();
@@ -48,13 +43,11 @@ public class NoticeBoardManager : MonoBehaviour
         }
     }
 
-    // Òğ³ãåğí³ çîíè
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
             isPlayerNear = true;
-            // ÄÎÄÀÉ ÖÅÉ ĞßÄÎÊ:
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("Press E to Open Board");
         }
     }
@@ -65,8 +58,6 @@ public class NoticeBoardManager : MonoBehaviour
         {
             isPlayerNear = false;
             if (isBoardOpen) CloseBoard();
-
-            // ÄÎÄÀÉ ÖÅÉ ĞßÄÎÊ:
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         }
     }
@@ -79,7 +70,6 @@ public class NoticeBoardManager : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
 
-        // ÂÌÈÊÀªÌÎ ÌÈØÊÓ
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
     }
@@ -89,7 +79,6 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = false;
         boardCanvas.SetActive(false);
 
-        // ÂÈÌÈÊÀªÌÎ ÌÈØÊÓ (Õîâàºìî)
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }
@@ -109,6 +98,7 @@ public class NoticeBoardManager : MonoBehaviour
         if (needsRestock)
         {
             GenerateNewMissions();
+
             PlayerPrefs.SetString("LastMissionRestockTime", DateTime.Now.ToString());
             PlayerPrefs.Save();
         }
@@ -121,12 +111,16 @@ public class NoticeBoardManager : MonoBehaviour
         foreach (Transform child in paperLayoutGroup) Destroy(child.gameObject);
         activePapers.Clear();
 
-        int missionsToSpawn = UnityEngine.Random.Range(0, maxMissionsOnBoard + 1);
-        if (missionsToSpawn == 0) return;
+        int missionsToSpawn = UnityEngine.Random.Range(1, maxMissionsOnBoard + 1);
 
-        int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge_01", 1);
-        int storageLevel = PlayerPrefs.GetInt("SaveBld_Storage_01", 1);
-        float playerPowerMultiplier = 1f + ((forgeLevel + storageLevel) * 0.2f);
+        int powerLevel = 0;
+        powerLevel += PlayerPrefs.GetInt("UpgradeLevel_MetaHealth", 0);
+        powerLevel += PlayerPrefs.GetInt("UpgradeLevel_MetaDamage", 0);
+        powerLevel += PlayerPrefs.GetInt("UpgradeLevel_MetaArmor", 0);
+        powerLevel = Mathf.Min(powerLevel, 30);
+
+        float rewardMultiplier = 1f + (powerLevel * 0.15f);
+        float goalMultiplier = 1f + (powerLevel * 0.03f);
 
         List<MissionData> availableMissions = new List<MissionData>(baseMissions);
 
@@ -135,16 +129,41 @@ public class NoticeBoardManager : MonoBehaviour
             if (availableMissions.Count == 0) break;
 
             int randomIndex = UnityEngine.Random.Range(0, availableMissions.Count);
-            MissionData selectedMission = availableMissions[randomIndex];
+            MissionData baseMission = availableMissions[randomIndex];
             availableMissions.RemoveAt(randomIndex);
+
+            MissionData scaledMission = ScriptableObject.Instantiate(baseMission);
+
+            int rawTarget = Mathf.RoundToInt(scaledMission.targetAmount * goalMultiplier);
+            scaledMission.targetAmount = Mathf.Clamp(RoundToNearestFive(rawTarget), 5, 400);
+
+            scaledMission.woodReward = RoundToNearestFive(scaledMission.woodReward * rewardMultiplier);
+            scaledMission.stoneReward = RoundToNearestFive(scaledMission.stoneReward * rewardMultiplier);
+            scaledMission.foodReward = RoundToNearestFive(scaledMission.foodReward * rewardMultiplier);
+            scaledMission.diamondReward = RoundToNearestFive(scaledMission.diamondReward * rewardMultiplier);
 
             GameObject paperObj = Instantiate(missionPaperPrefab, paperLayoutGroup);
             MissionPaperUI paperUI = paperObj.GetComponent<MissionPaperUI>();
-            paperUI.SetupPaper(selectedMission, playerPowerMultiplier);
 
+            paperUI.SetupPaper(scaledMission, 1f);
+
+            // ÒÓÒ ÂÈÏĞÀÂËÅÍÎ: Ïğàâèëüíî äîäàºìî ì³ñ³ş ïğè êë³êó íà "Accept"
             paperUI.acceptButton.onClick.AddListener(UpdateEmptyMessage);
+
             activePapers.Add(paperObj);
         }
+    }
+
+    private int RoundToNearestFive(int value)
+    {
+        if (value <= 0) return 0;
+        return Mathf.RoundToInt(value / 5f) * 5;
+    }
+
+    private int RoundToNearestFive(float value)
+    {
+        if (value <= 0) return 0;
+        return Mathf.RoundToInt(value / 5f) * 5;
     }
 
     public void UpdateEmptyMessage()
@@ -161,6 +180,7 @@ public class NoticeBoardManager : MonoBehaviour
 
     private void EmbarkOnJourney()
     {
-        SceneManager.LoadScene(worldSceneName);
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(worldSceneName);
+        else SceneManager.LoadScene(worldSceneName);
     }
 }

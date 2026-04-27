@@ -29,26 +29,30 @@ public class WorldGenerator : MonoBehaviour
     [Range(0f, 1f)] public float forestThreshold = 0.50f;
     public float globalBiomeScale = 2.5f;
 
-    [Header("Trees")]
+    [Header("Breakable Trees")]
     public GameObject[] forestTrees;
     public GameObject[] desertTrees;
     public GameObject[] snowTrees;
 
-    [Header("Grass & Bushes")]
+    [Header("Grass & Bushes (Food)")]
     public GameObject[] forestGrass;
     public GameObject[] desertGrass;
     public GameObject[] snowGrass;
 
-    [Header("Rocks & Logs")]
+    [Header("Breakable Rocks & Logs")]
     public GameObject[] forestRocks;
     public GameObject[] desertRocks;
     public GameObject[] snowRocks;
     public GameObject[] logPrefabs;
 
-    [Header("Points of Interest (Багаття, Намети)")]
+    [Header("Points of Interest (Багаття, Намети, Бочки)")]
     public GameObject[] poiPrefabs;
     public int maxPOIs = 15;
     public float maxPOISteepness = 4f;
+
+    [Header("Extraction Settings (Коні з возом)")]
+    public GameObject extractionCartPrefab;
+    public int extractionCartsAmount = 3; // Скільки точок евакуації спавнити
 
     private Terrain terrain;
 
@@ -74,6 +78,9 @@ public class WorldGenerator : MonoBehaviour
         PaintTerrain(terrain.terrainData);
         PopulateBiomes();
         SpawnPOIs();
+
+        // --- НОВЕ: Спавнимо коней з возами ---
+        SpawnExtractionCarts();
 
         // Садимо гравця на землю
         GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -328,6 +335,45 @@ public class WorldGenerator : MonoBehaviour
             GameObject obj = Instantiate(prefabToSpawn, spawnPos, prefabToSpawn.transform.rotation, poiContainer);
             obj.transform.Rotate(0, Random.Range(0f, 360f), 0, Space.World);
             spawnedCount++;
+        }
+    }
+
+    private void SpawnExtractionCarts()
+    {
+        if (extractionCartPrefab == null) return;
+
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
+        int spawnedCarts = 0;
+
+        for (int i = 0; i < 5000; i++) // 5000 спроб знайти ідеальне місце
+        {
+            if (spawnedCarts >= extractionCartsAmount) break; // Якщо вже 3 є, виходимо
+
+            float px = Random.Range(30f, w - 30f);
+            float pz = Random.Range(30f, l - 30f);
+            float worldX = transform.position.x + px;
+            float worldZ = transform.position.z + pz;
+
+            float normalizedX = px / w;
+            float normalizedZ = pz / l;
+            float steepness = terrain.terrainData.GetSteepness(normalizedX, normalizedZ);
+
+            // Шукаємо дуже рівне місце (нахил менше 3 градусів)
+            if (steepness < 3f)
+            {
+                float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
+
+                // Спавнимо воза
+                Instantiate(extractionCartPrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0, 360f), 0));
+
+                spawnedCarts++; // Записуємо, що один з'явився
+            }
+        }
+
+        if (spawnedCarts < extractionCartsAmount)
+        {
+            Debug.LogWarning($"Змогли заспавнити тільки {spawnedCarts} возів з {extractionCartsAmount}. Мало рівних місць!");
         }
     }
 

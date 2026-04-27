@@ -16,6 +16,7 @@ MonoBehaviour:
   missionDescription: Clear the area of basic skeletons to secure the perimeter.
   missionType: 0
   targetAmount: 50
-  woodReward: 25
-  metalReward: 0
-  diamondReward: 10
+  woodReward: 12
+  stoneReward: 5
+  foodReward: 2
+  diamondReward: 0

@@ -17,6 +17,7 @@ MonoBehaviour:
     steel.
   missionType: 0
   targetAmount: 10
-  woodReward: 0
-  metalReward: 15
-  diamondReward: 20
+  woodReward: 5
+  stoneReward: 5
+  foodReward: 3
+  diamondReward: 0

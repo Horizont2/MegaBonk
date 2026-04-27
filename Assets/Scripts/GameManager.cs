@@ -16,23 +16,31 @@ public class GameManager : MonoBehaviour
     public static float survivalTime = 0f;
     private bool isGameOver = false;
 
+    private float nextSurvivalTick = 1f; // “‡ÈÏÂ ‰Îˇ Á‡‡ıÛ‚‡ÌÌˇ Ï≥Ò≥ø
+
     private void Start()
     {
         survivalTime = 0f;
+        nextSurvivalTick = 1f;
         isGameOver = false;
     }
 
     private void Update()
     {
-        // ESC Key logic: Return to main menu
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            ReturnToMenu();
-        }
-
         if (isGameOver) return;
 
         survivalTime += Time.deltaTime;
+
+        // ŸŒ—≈ ”Õƒ» ƒŒƒ¿™ÃŒ œ–Œ√–≈— Ã≤—≤Ø
+        if (survivalTime >= nextSurvivalTick)
+        {
+            nextSurvivalTick += 1f;
+            if (MissionManager.Instance != null)
+            {
+                // ﬂÍ˘Ó Ú‚≥È ÚËÔ Ï≥Ò≥ø Ì‡ÁË‚‡∫Ú¸Òˇ ≥Ì‡Í¯Â, ÁÏ≥ÌË MissionType.Survive Ì‡ Ò‚≥È
+                MissionManager.Instance.AddProgress(MissionType.Survive, 1);
+            }
+        }
 
         if (timerText != null)
         {
@@ -46,7 +54,6 @@ public class GameManager : MonoBehaviour
     {
         isGameOver = true;
 
-        // Mark that there is no active run anymore (0 = false)
         PlayerPrefs.SetInt("IsRunActive", 0);
         PlayerPrefs.Save();
 
@@ -64,15 +71,14 @@ public class GameManager : MonoBehaviour
         }
         yield return new WaitForSeconds(waitBeforeRestart);
 
-        // Load the Main Menu scene instead of restarting the current scene
-        SceneManager.LoadScene("MainMenu");
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Menu");
+        else SceneManager.LoadScene("Menu");
     }
 
     public void ReturnToMenu()
     {
         PlayerPrefs.SetInt("IsRunActive", 1);
 
-        // NEW: Save the exact player position before leaving
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
@@ -82,6 +88,8 @@ public class GameManager : MonoBehaviour
         }
 
         PlayerPrefs.Save();
-        SceneManager.LoadScene("Menu");
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Menu");
+        else SceneManager.LoadScene("Menu");
     }
 }

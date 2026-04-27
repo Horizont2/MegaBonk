@@ -16,6 +16,7 @@ MonoBehaviour:
   missionDescription: Survive the incoming horde until reinforcements arrive.
   missionType: 2
   targetAmount: 120
-  woodReward: 40
-  metalReward: 20
-  diamondReward: 100
+  woodReward: 20
+  stoneReward: 5
+  foodReward: 3
+  diamondReward: 0

@@ -12,20 +12,19 @@ public class MainMenuManager : MonoBehaviour
     [Header("Scene Settings")]
     public string gameSceneName = "GameScene";
     public string shopSceneName = "ShopScene";
+    public string campSceneName = "CampScene"; // НОВЕ: Посилання на табір
 
     [Header("Hero Spawning (NEW)")]
-    public GameObject[] heroPrefabs;   // Префаби героїв (перетягни сюди ті самі, що й у грі)
-    public GameObject[] weaponPrefabs; // Префаби зброї
-    public Transform heroSpawnPoint;   // Перетягни сюди створений пустий об'єкт з п'єдесталу
+    public GameObject[] heroPrefabs;
+    public GameObject[] weaponPrefabs;
+    public Transform heroSpawnPoint;
 
     private void Start()
     {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        // Замість звичайного оновлення запускаємо анімацію
         StartCoroutine(AnimateCrystals());
-
         CheckContinueStatus();
         SpawnSelectedHero();
     }
@@ -34,22 +33,18 @@ public class MainMenuManager : MonoBehaviour
     {
         if (crystalsText == null) yield break;
 
-        // Отримуємо реальну кількість кристалів
         int targetCrystals = PlayerPrefs.GetInt("PlayerDiamonds", 0);
         int currentCount = 0;
-        float duration = 1.2f; // Тривалість анімації в секундах
+        float duration = 1.2f;
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            // Плавне наближення до цілі
             currentCount = (int)Mathf.Lerp(0, targetCrystals, elapsed / duration);
             crystalsText.text = currentCount.ToString("N0");
             yield return null;
         }
-
-        // Встановлюємо фінальне точне значення
         crystalsText.text = targetCrystals.ToString("N0");
     }
 
@@ -60,14 +55,9 @@ public class MainMenuManager : MonoBehaviour
 
         if (heroPrefabs != null && selectedHeroID >= 0 && selectedHeroID < heroPrefabs.Length && heroPrefabs[selectedHeroID] != null)
         {
-            // 1. Створюємо модельку героя
             GameObject currentVisual = Instantiate(heroPrefabs[selectedHeroID], heroSpawnPoint.position, heroSpawnPoint.rotation);
-
-            // --- НОВИЙ РЯДОК: Зменшуємо героя на 30% ---
             currentVisual.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
-            // -------------------------------------------
 
-            // 2. Вмикаємо Idle анімацію
             Animator anim = currentVisual.GetComponent<Animator>();
             if (anim != null)
             {
@@ -75,7 +65,6 @@ public class MainMenuManager : MonoBehaviour
                 anim.SetFloat("Speed", 0f);
             }
 
-            // 3. Шукаємо кістку руки і даємо йому зброю
             Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
             if (socket != null && weaponPrefabs != null && selectedWeaponID >= 0 && selectedWeaponID < weaponPrefabs.Length && weaponPrefabs[selectedWeaponID] != null)
             {
@@ -84,7 +73,6 @@ public class MainMenuManager : MonoBehaviour
         }
     }
 
-    // Рекурсивний пошук кістки (скопійовано з PlayerController)
     private Transform FindDeepChild(Transform parent, string name)
     {
         foreach (Transform child in parent)
@@ -100,30 +88,30 @@ public class MainMenuManager : MonoBehaviour
     {
         if (continueButton != null)
         {
-            bool isActive = PlayerPrefs.GetInt("IsRunActive", 0) == 1;
-            continueButton.interactable = isActive;
+            // Перевіряємо, чи є збереження позиції в таборі
+            bool hasSave = PlayerPrefs.GetInt("HasCampSave", 0) == 1;
+            continueButton.interactable = hasSave;
 
             CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
-            if (cg != null) cg.alpha = isActive ? 1f : 0.5f;
+            if (cg != null) cg.alpha = hasSave ? 1f : 0.5f;
         }
     }
 
     public void UpdateCrystalsUI()
     {
-        int targetCrystals = SaveManager.GetTotalCrystals(); // Або PlayerPrefs.GetInt("PlayerDiamonds", 0);
+        int targetCrystals = SaveManager.GetTotalCrystals();
         StartCoroutine(AnimateCrystalCount(targetCrystals));
     }
 
     private System.Collections.IEnumerator AnimateCrystalCount(int targetCount)
     {
         int currentCount = 0;
-        float duration = 1.5f; // Скільки секунд триває анімація
+        float duration = 1.5f;
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            // Плавне математичне наближення
             currentCount = (int)Mathf.Lerp(0, targetCount, elapsed / duration);
             if (crystalsText != null)
                 crystalsText.text = currentCount.ToString("N0");
@@ -135,26 +123,34 @@ public class MainMenuManager : MonoBehaviour
             crystalsText.text = targetCount.ToString("N0");
     }
 
+    // --- ЛОГІКА КНОПОК ---
+    // --- ЛОГІКА КНОПОК ---
     public void StartNewRun()
     {
-        PlayerPrefs.SetInt("IsRunActive", 1);
+        PlayerPrefs.DeleteKey("HasCampSave");
+        PlayerPrefs.SetInt("IsRunActive", 0);
         PlayerPrefs.SetInt("IsContinuing", 0);
         PlayerPrefs.Save();
 
-        GameManager.survivalTime = 0f;
-        SceneManager.LoadScene(gameSceneName);
+        if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
+        else SceneManager.LoadScene(campSceneName);
     }
 
     public void ContinueGame()
     {
         PlayerPrefs.SetInt("IsContinuing", 1);
         PlayerPrefs.Save();
-        SceneManager.LoadScene(gameSceneName);
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
+        else SceneManager.LoadScene(campSceneName);
     }
 
     public void OpenShop()
     {
-        SceneManager.LoadScene(shopSceneName);
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(shopSceneName);
+        else SceneManager.LoadScene(shopSceneName);
     }
 
     public void OpenOptions()

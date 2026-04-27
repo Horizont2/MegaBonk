@@ -4,33 +4,39 @@ using TMPro;
 public class NeonFlicker : MonoBehaviour
 {
     private TextMeshProUGUI textComponent;
-    private Material textMaterial;
+    private float currentGlow;
 
     [Header("Налаштування мерехтіння")]
-    public float baseGlowPower = 0.4f; // Твоє стандартне значення Outer Glow
-    public float flickerAmount = 0.15f; // Наскільки сильно падає яскравість
-    public float speed = 10f;          // Швидкість "шуму"
+    public float baseGlowPower = 0.4f;
+    public float flickerAmount = 0.15f;
+    public float speed = 10f;
 
     void Start()
     {
-        textComponent = GetComponent<TextMeshProUGUI>();
-        // Створюємо копію матеріалу, щоб не міняти всі тексти одночасно
-        textMaterial = textComponent.fontSharedMaterial;
+        // Шукаємо текст на цьому об'єкті або всередині нього
+        textComponent = GetComponentInChildren<TextMeshProUGUI>();
+
+        if (textComponent != null)
+        {
+            currentGlow = baseGlowPower;
+        }
     }
 
     void Update()
     {
-        // Випадкові "стрибки" напруги
-        if (Random.value > 0.9f) // 10% шанс на різке мерехтіння в кожному кадрі
+        // Якщо тексту немає - просто нічого не робимо (захист від помилок)
+        if (textComponent == null) return;
+
+        if (Random.value > 0.9f)
         {
-            float flicker = Random.Range(baseGlowPower - flickerAmount, baseGlowPower);
-            textComponent.fontMaterial.SetFloat(ShaderUtilities.ID_GlowOuter, flicker);
+            currentGlow = Random.Range(baseGlowPower - flickerAmount, baseGlowPower);
         }
         else
         {
-            // Повертаємо до базового значення
-            float smoothGlow = Mathf.Lerp(textComponent.fontMaterial.GetFloat(ShaderUtilities.ID_GlowOuter), baseGlowPower, Time.deltaTime * speed);
-            textComponent.fontMaterial.SetFloat(ShaderUtilities.ID_GlowOuter, smoothGlow);
+            currentGlow = Mathf.Lerp(currentGlow, baseGlowPower, Time.deltaTime * speed);
         }
+
+        // Безпечно застосовуємо зміну
+        textComponent.fontSharedMaterial.SetFloat(ShaderUtilities.ID_GlowOuter, currentGlow);
     }
 }

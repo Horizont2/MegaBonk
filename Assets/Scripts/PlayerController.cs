@@ -51,7 +51,7 @@ public class PlayerController : MonoBehaviour
     public float meleeDamage = 25f;
     public float meleeRadius = 2.5f;
     public Transform meleePoint;
-    public float attackCooldown = 0.6f; // НОВЕ: Затримка між ударами
+    public float attackCooldown = 0.6f;
     private float lastAttackTime = -100f;
 
     [Header("Grenade & Trajectory")]
@@ -152,7 +152,7 @@ public class PlayerController : MonoBehaviour
         if (!isCampMode) ApplyMetaUpgrades();
         currentHealth = maxHealth;
         visualXP = currentXP;
-        UpdateHUD(); // Це тепер правильно налаштує Catchup Slider!
+        UpdateHUD();
 
         UIIconGlimmer glimmer = FindFirstObjectByType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
@@ -164,12 +164,25 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator SpawnSafely()
     {
-        if (isCampMode) yield break;
-
         if (characterController != null) characterController.enabled = false;
         yield return null;
         yield return null;
 
+        // ПЕРЕВІРКА ТАБОРУ: Якщо ми в таборі, завантажуємо координати і виходимо
+        if (isCampMode)
+        {
+            if (PlayerPrefs.GetInt("HasCampSave", 0) == 1)
+            {
+                float cx = PlayerPrefs.GetFloat("CampPosX");
+                float cy = PlayerPrefs.GetFloat("CampPosY");
+                float cz = PlayerPrefs.GetFloat("CampPosZ");
+                transform.position = new Vector3(cx, cy, cz);
+            }
+            if (characterController != null) characterController.enabled = true;
+            yield break;
+        }
+
+        // Логіка спавну в ігровій зоні
         if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
         {
             float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
@@ -360,7 +373,6 @@ public class PlayerController : MonoBehaviour
             {
                 if (!isCampMode)
                 {
-                    // --- НОВЕ: Перевірка КД Атаки ---
                     if (Input.GetMouseButtonDown(0))
                     {
                         if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
@@ -449,17 +461,29 @@ public class PlayerController : MonoBehaviour
     {
         if (meleePoint == null || isCampMode) return;
 
-        Collider[] hitEnemies = Physics.OverlapSphere(meleePoint.position, meleeRadius, 1 << 9);
+        // Шукаємо ВСІ об'єкти в радіусі (без жорсткого обмеження по шару ворогів)
+        Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
 
-        foreach (Collider enemyCol in hitEnemies)
+        foreach (Collider col in hitObjects)
         {
-            if (enemyCol.CompareTag("Enemy"))
+            // 1. Удар по ворогах
+            if (col.CompareTag("Enemy"))
             {
-                EnemyAI enemy = enemyCol.GetComponent<EnemyAI>();
+                EnemyAI enemy = col.GetComponent<EnemyAI>();
                 if (enemy != null)
                 {
-                    float finalDamage = meleeDamage * globalDamageMultiplier;
-                    enemy.TakeDamage(finalDamage);
+                    enemy.TakeDamage(meleeDamage * globalDamageMultiplier);
+                }
+            }
+            // 2. Удар по ресурсах (дерева, камені, бочки)
+            else
+            {
+                ResourceNode resource = col.GetComponent<ResourceNode>();
+                if (resource == null) resource = col.GetComponentInParent<ResourceNode>();
+
+                if (resource != null)
+                {
+                    resource.TakeDamage(meleeDamage * globalDamageMultiplier);
                 }
             }
         }
@@ -569,7 +593,6 @@ public class PlayerController : MonoBehaviour
     {
         if (hpSlider != null) { hpSlider.maxValue = maxHealth; hpSlider.value = currentHealth; }
 
-        // --- НОВЕ: Синхронізуємо білу полоску при старті або лікуванні ---
         if (hpCatchupSlider != null)
         {
             hpCatchupSlider.maxValue = maxHealth;
@@ -634,7 +657,7 @@ public class PlayerController : MonoBehaviour
     {
         currentHealth += amount;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
-        UpdateHUD(); // Одразу підтягне білу полоску до нових значень
+        UpdateHUD();
     }
 
     private Transform FindDeepChild(Transform parent, string name)
@@ -665,5 +688,18 @@ public class PlayerController : MonoBehaviour
     public void EndSwing()
     {
         if (weaponTrail != null) weaponTrail.emitting = false;
+    }
+
+    // ЗБЕРЕЖЕННЯ ПОЗИЦІЇ ПРИ ВИХОДІ
+    private void OnDestroy()
+    {
+        if (isCampMode)
+        {
+            PlayerPrefs.SetFloat("CampPosX", transform.position.x);
+            PlayerPrefs.SetFloat("CampPosY", transform.position.y);
+            PlayerPrefs.SetFloat("CampPosZ", transform.position.z);
+            PlayerPrefs.SetInt("HasCampSave", 1);
+            PlayerPrefs.Save();
+        }
     }
 }
