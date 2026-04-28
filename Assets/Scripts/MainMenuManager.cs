@@ -88,11 +88,32 @@ public class MainMenuManager : MonoBehaviour
     {
         if (continueButton != null)
         {
+            // Перевіряємо, чи є збереження
             bool hasSave = PlayerPrefs.GetInt("HasCampSave", 0) == 1;
-            continueButton.interactable = hasSave;
 
+            // 1. Шукаємо компонент тексту на самій кнопці або в її дочірніх об'єктах
+            TextMeshProUGUI btnText = continueButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (btnText != null)
+            {
+                // Якщо є сейв - пишемо Continue, якщо ні - Start Adventure!
+                btnText.text = hasSave ? "Continue" : "Start Adventure!";
+            }
+
+            // 2. Робимо кнопку завжди активною і непрозорою
+            continueButton.interactable = true;
             CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
-            if (cg != null) cg.alpha = hasSave ? 1f : 0.5f;
+            if (cg != null) cg.alpha = 1f;
+
+            // 3. Динамічно призначаємо дію при натисканні
+            continueButton.onClick.RemoveAllListeners();
+            if (hasSave)
+            {
+                continueButton.onClick.AddListener(ContinueGame); // Завантажує старий сейв
+            }
+            else
+            {
+                continueButton.onClick.AddListener(StartNewRun); // Запускає нову гру
+            }
         }
     }
 

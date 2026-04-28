@@ -22,6 +22,11 @@ public class CampBuilding : MonoBehaviour
     public GameObject ghostModel;
     public GameObject realModel;
 
+    [Header("Visual Production Piles (NEW)")]
+    [Tooltip("Поклади сюди об'єкти колод/каменів, які будуть з'являтися по черзі")]
+    public GameObject[] resourceVisuals;
+    private int currentVisualIndex = 0;
+
     [Header("Building Info")]
     public string buildingName = "BUILDING";
     [TextArea] public string description = "Building description.";
@@ -38,8 +43,6 @@ public class CampBuilding : MonoBehaviour
     [Header("UI References")]
     public GameObject uiCanvas;
     public Image holdFillImage;
-
-    [Header("UI Visual Feedback (NEW)")]
     public Image holdKeyIconImage;
     public Color normalColor = Color.white;
     public Color pressedColor = new Color(0.6f, 0.6f, 0.6f, 1f);
@@ -76,10 +79,10 @@ public class CampBuilding : MonoBehaviour
 
         if (uiCanvas != null) uiCanvas.SetActive(false);
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
-
         if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
 
         StopDustEffect();
+        HideAllVisualResources();
 
         currentLevel = PlayerPrefs.GetInt("SaveBld_" + buildingID, 0);
 
@@ -114,7 +117,6 @@ public class CampBuilding : MonoBehaviour
         {
             glimmerCheckTimer = 0f;
             UpdateGlimmerState();
-
             if (playerInRange) UpdateUIData();
         }
 
@@ -127,15 +129,12 @@ public class CampBuilding : MonoBehaviour
         }
 
         BuildingLevel nextLevelData = levels[currentLevel];
-
-        // ВИПРАВЛЕНО: Використовуємо CanAffordStash
         bool canAfford = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
 
         if (Input.GetKey(KeyCode.E) && canAfford)
         {
             currentHoldTime += Time.deltaTime;
             if (holdFillImage != null) holdFillImage.fillAmount = currentHoldTime / holdTimeRequired;
-
             if (holdKeyIconImage != null) holdKeyIconImage.color = pressedColor;
 
             StartDustEffect();
@@ -143,7 +142,6 @@ public class CampBuilding : MonoBehaviour
             if (currentHoldTime >= holdTimeRequired)
             {
                 currentHoldTime = 0f;
-                // ВИПРАВЛЕНО: Використовуємо SpendStashResources
                 ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
 
                 currentLevel++;
@@ -180,20 +178,16 @@ public class CampBuilding : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Player") && currentLevel < levels.Length)
         {
-            if (currentLevel < levels.Length)
+            playerInRange = true;
+            UpdateUIData();
+
+            if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
+            if (uiCanvas != null)
             {
-                playerInRange = true;
-                UpdateUIData();
-
-                if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
-
-                if (uiCanvas != null)
-                {
-                    uiCanvas.SetActive(true);
-                    StartCoroutine(PopUpUI());
-                }
+                uiCanvas.SetActive(true);
+                StartCoroutine(PopUpUI());
             }
         }
     }
@@ -205,9 +199,7 @@ public class CampBuilding : MonoBehaviour
             playerInRange = false;
             currentHoldTime = 0f;
             if (uiCanvas != null) uiCanvas.SetActive(false);
-
             if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
-
             StopDustEffect();
         }
     }
@@ -235,7 +227,6 @@ public class CampBuilding : MonoBehaviour
 
         if (ResourceManager.Instance != null)
         {
-            // ВИПРАВЛЕНО: Перевіряємо stashWood замість wood
             string woodColor = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? "#FFFFFF" : "#FF4444";
             string stoneColor = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? "#FFFFFF" : "#FF4444";
             string foodColor = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? "#FFFFFF" : "#FF4444";
@@ -315,6 +306,31 @@ public class CampBuilding : MonoBehaviour
         isAnimating = false;
     }
 
+    // --- ЛОГІКА ВІЗУАЛЬНИХ РЕСУРСІВ (НОВЕ) ---
+    public void ShowNextVisualResource()
+    {
+        if (resourceVisuals == null || resourceVisuals.Length == 0) return;
+
+        if (currentVisualIndex < resourceVisuals.Length)
+        {
+            if (resourceVisuals[currentVisualIndex] != null)
+            {
+                resourceVisuals[currentVisualIndex].SetActive(true);
+            }
+            currentVisualIndex++;
+        }
+    }
+
+    private void HideAllVisualResources()
+    {
+        currentVisualIndex = 0;
+        if (resourceVisuals == null) return;
+        foreach (var vis in resourceVisuals)
+        {
+            if (vis != null) vis.SetActive(false);
+        }
+    }
+
     private void ApplyBuildingEffects()
     {
         BuildingLevel currentData = levels[currentLevel - 1];
@@ -334,11 +350,17 @@ public class CampBuilding : MonoBehaviour
         if (amountPerMinute <= 0) yield break;
         while (true)
         {
-            yield return new WaitForSeconds(60f);
-            // ВИПРАВЛЕНО: Будівлі додають ресурси на склад (AddStashResources)
+            yield return new WaitForSeconds(60f); // Кожні 60 секунд
+
+            // 1. Нараховуємо ресурси
             if (buildingID.Contains("Lumberjack")) ResourceManager.Instance.AddStashResources(amountPerMinute, 0, 0);
             else if (buildingID.Contains("Stone")) ResourceManager.Instance.AddStashResources(0, amountPerMinute, 0);
             else if (buildingID.Contains("Hunter")) ResourceManager.Instance.AddStashResources(0, 0, amountPerMinute);
+
+            // 2. Ховаємо всі колоди/камені (ніби гравець їх забрав)
+            HideAllVisualResources();
+
+            // Тут можна додати якийсь ефект пилу чи звук "Ching!", щоб гравець зрозумів, що лут додано
         }
     }
 
@@ -352,7 +374,6 @@ public class CampBuilding : MonoBehaviour
             if (canBeUpgraded && ResourceManager.Instance != null)
             {
                 BuildingLevel nextLevelData = levels[currentLevel];
-                // ВИПРАВЛЕНО: Використовуємо CanAffordStash
                 hasResources = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             }
 

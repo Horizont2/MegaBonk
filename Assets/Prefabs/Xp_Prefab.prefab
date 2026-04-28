@@ -103,7 +103,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b1ef12667a8c2c409841232f6d91707, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::XpCrystal
-  xpAmount: 10
+  xpAmount: 5
   magnetSpeed: 15
   popRadius: 3
   popSpeed: 12
