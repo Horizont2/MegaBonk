@@ -49,7 +49,10 @@ public class LevelUpManager : MonoBehaviour
     {
         levelUpPanel.SetActive(true);
         Time.timeScale = 0f;
+
+        // Fix: Unlock AND Show the cursor
         Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
         if (starEffect != null) starEffect.PlayEffect();
 
@@ -118,6 +121,9 @@ public class LevelUpManager : MonoBehaviour
     {
         levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
+
+        // Fix: Lock AND Hide the cursor
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 }

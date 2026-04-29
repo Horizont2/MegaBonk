@@ -95,9 +95,38 @@ public class NoticeBoardManager : MonoBehaviour
                 needsRestock = true;
         }
 
+        // --- НОВА ПЕРЕВІРКА ЛІМІТУ ---
+        int currentActiveMissions = 0;
+        if (MissionManager.Instance != null)
+        {
+            currentActiveMissions = MissionManager.Instance.GetActiveMissionCount();
+        }
+
+        // Якщо вже є 3 місії (або більше), ми не робимо ресток, навіть якщо час вийшов
+        if (currentActiveMissions >= 3)
+        {
+            needsRestock = false;
+
+            // Якщо на дошці залишились якісь папірці (наприклад, згенерувались раніше) - чистимо їх
+            foreach (Transform child in paperLayoutGroup) Destroy(child.gameObject);
+            activePapers.Clear();
+
+            if (emptyBoardMessage != null)
+            {
+                emptyBoardMessage.text = "You already have 3 active missions.\nComplete them first!";
+            }
+        }
+        else
+        {
+            if (emptyBoardMessage != null)
+            {
+                emptyBoardMessage.text = "No new missions available right now.\nCheck back later.";
+            }
+        }
+
         if (needsRestock)
         {
-            GenerateNewMissions();
+            GenerateNewMissions(3 - currentActiveMissions); // Передаємо скільки МАКСИМУМ можна згенерувати
 
             PlayerPrefs.SetString("LastMissionRestockTime", DateTime.Now.ToString());
             PlayerPrefs.Save();
@@ -106,12 +135,19 @@ public class NoticeBoardManager : MonoBehaviour
         UpdateEmptyMessage();
     }
 
-    private void GenerateNewMissions()
+    // --- ЗМІНЕНО МЕТОД: Тепер він приймає параметр maxAllowed ---
+    private void GenerateNewMissions(int maxAllowed)
     {
         foreach (Transform child in paperLayoutGroup) Destroy(child.gameObject);
         activePapers.Clear();
 
-        int missionsToSpawn = UnityEngine.Random.Range(1, maxMissionsOnBoard + 1);
+        // Спавнимо місії, але не більше ніж (Ліміт на дошці) і не більше ніж (Можна взяти гравцю)
+        int maxToSpawn = Mathf.Min(maxMissionsOnBoard, maxAllowed);
+
+        // Якщо раптом ліміт 0 - просто виходимо
+        if (maxToSpawn <= 0) return;
+
+        int missionsToSpawn = UnityEngine.Random.Range(1, maxToSpawn + 1);
 
         int powerLevel = 0;
         powerLevel += PlayerPrefs.GetInt("UpgradeLevel_MetaHealth", 0);
@@ -146,8 +182,6 @@ public class NoticeBoardManager : MonoBehaviour
             MissionPaperUI paperUI = paperObj.GetComponent<MissionPaperUI>();
 
             paperUI.SetupPaper(scaledMission, 1f);
-
-            // ТУТ ВИПРАВЛЕНО: Правильно додаємо місію при кліку на "Accept"
             paperUI.acceptButton.onClick.AddListener(UpdateEmptyMessage);
 
             activePapers.Add(paperObj);

@@ -181,6 +181,20 @@ public class MissionManager : MonoBehaviour
         if (wasUpdated) SaveMissions();
     }
 
+    // НОВИЙ МЕТОД: Повертає кількість активних (незавершених) місій
+    public int GetActiveMissionCount()
+    {
+        int count = 0;
+        foreach (var mission in activeMissions)
+        {
+            if (!mission.isCompleted)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private void CompleteMission(ActiveMission mission)
     {
         mission.isCompleted = true;

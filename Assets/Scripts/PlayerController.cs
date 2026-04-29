@@ -461,21 +461,26 @@ public class PlayerController : MonoBehaviour
     {
         if (meleePoint == null || isCampMode) return;
 
-        // Шукаємо ВСІ об'єкти в радіусі (без жорсткого обмеження по шару ворогів)
         Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
+        bool hitSomething = false; // Перевірка, чи ми влучили хоч у когось
 
         foreach (Collider col in hitObjects)
         {
-            // 1. Удар по ворогах
             if (col.CompareTag("Enemy"))
             {
                 EnemyAI enemy = col.GetComponent<EnemyAI>();
                 if (enemy != null)
                 {
                     enemy.TakeDamage(meleeDamage * globalDamageMultiplier);
+
+                    // Відкидаємо ворога від нас
+                    Vector3 pushDir = (enemy.transform.position - transform.position).normalized;
+                    pushDir.y = 0;
+                    enemy.ApplyKnockback(pushDir, 8f, 0.4f); // Відкидаємо з силою 8 і глушимо на 0.4 сек
+
+                    hitSomething = true;
                 }
             }
-            // 2. Удар по ресурсах (дерева, камені, бочки)
             else
             {
                 ResourceNode resource = col.GetComponent<ResourceNode>();
@@ -484,9 +489,25 @@ public class PlayerController : MonoBehaviour
                 if (resource != null)
                 {
                     resource.TakeDamage(meleeDamage * globalDamageMultiplier);
+                    hitSomething = true;
                 }
             }
         }
+
+        // --- ВІДЧУТТЯ УДАРУ (JUICE) ---
+        if (hitSomething)
+        {
+            if (cameraFollow != null) cameraFollow.TriggerShake(0.1f, 0.15f); // Трясемо камеру
+            StartCoroutine(HitStopRoutine(0.05f)); // Зупиняємо час на долю секунди!
+        }
+    }
+
+    // Додай цей метод поруч:
+    private System.Collections.IEnumerator HitStopRoutine(float duration)
+    {
+        Time.timeScale = 0.1f; // Сповільнюємо гру майже до зупинки
+        yield return new WaitForSecondsRealtime(duration); // Чекаємо реальний час
+        Time.timeScale = 1f; // Повертаємо все в норму
     }
 
     public void ExecuteThrow()

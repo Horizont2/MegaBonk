@@ -122,10 +122,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourceNode
   nodeType: 2
-  minHealth: 50
+  minHealth: 1
   maxHealth: 1
   dropPrefab: {fileID: 4974451591028166963, guid: 20a2049a67389164998d1464b536d198, type: 3}
   minDrops: 1
-  maxDrops: 3
+  maxDrops: 1
   hitEffect: {fileID: 0}
   stumpPrefab: {fileID: 0}

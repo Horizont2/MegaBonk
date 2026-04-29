@@ -75,7 +75,6 @@ public class CampHunterAI : MonoBehaviour
 
     private IEnumerator WanderAround()
     {
-        // Знімаємо з ручника
         if (agent != null && agent.isOnNavMesh) agent.isStopped = false;
 
         while (true)
@@ -112,6 +111,7 @@ public class CampHunterAI : MonoBehaviour
             if (carryItemVisual != null) carryItemVisual.SetActive(false);
             if (!agent.isOnNavMesh) yield break;
 
+            // --- ЙДЕМО ДО ТАБОРУ ---
             agent.isStopped = false;
             if (lodgePoint != null) agent.SetDestination(lodgePoint.position);
             yield return StartCoroutine(WaitForDestination());
@@ -122,13 +122,29 @@ public class CampHunterAI : MonoBehaviour
             if (anim != null) anim.SetTrigger("Work");
             yield return new WaitForSeconds(prepDuration);
 
+            // --- ЙДЕМО ДО ЛІСУ ---
             agent.isStopped = false;
-            if (forestEdgePoint != null) agent.SetDestination(forestEdgePoint.position);
+
+            if (forestEdgePoint != null)
+            {
+                NavMeshHit forestHit;
+                // Шукаємо валідну точку в радіусі аж 20 метрів
+                if (NavMesh.SamplePosition(forestEdgePoint.position, out forestHit, 20.0f, NavMesh.AllAreas))
+                {
+                    agent.SetDestination(forestHit.position);
+                }
+                else
+                {
+                    agent.SetDestination(forestEdgePoint.position);
+                }
+            }
+
             yield return StartCoroutine(WaitForDestination());
 
-            if (forestEdgePoint == null || Vector3.Distance(transform.position, forestEdgePoint.position) > 3f)
+            // ВИПРАВЛЕННЯ: Порівнюємо поточну позицію з кінцевою точкою шляху (agent.destination), а не зі статичним об'єктом
+            if (Vector3.Distance(transform.position, agent.destination) > 2.5f)
             {
-                Debug.LogWarning("[Hunter AI] Не зміг дійти до лісу. Починаю цикл заново.");
+                Debug.LogWarning("[Hunter AI] Не зміг дійти до лісу. Застряг або шлях не знайдено. Починаю цикл заново.");
                 continue;
             }
 
@@ -139,6 +155,7 @@ public class CampHunterAI : MonoBehaviour
             if (carryItemVisual != null) carryItemVisual.SetActive(true);
             yield return StartCoroutine(VFXTransitionRoutine(true));
 
+            // --- ПОВЕРТАЄМОСЬ ДО ТАБОРУ ---
             agent.isStopped = false;
             if (lodgePoint != null) agent.SetDestination(lodgePoint.position);
             yield return StartCoroutine(WaitForDestination());
@@ -167,14 +184,33 @@ public class CampHunterAI : MonoBehaviour
 
     private IEnumerator WaitForDestination()
     {
+        // ГОЛОВНЕ ВИПРАВЛЕННЯ: Чекаємо 1 кадр, щоб Unity встиг почати прораховувати шлях
+        yield return null;
+
         float timeout = 0f;
-        while (timeout < 20f)
+        while (timeout < 45f)
         {
             timeout += Time.deltaTime;
-            if (agent != null && agent.isOnNavMesh && !agent.pathPending)
+            if (agent != null && agent.isOnNavMesh)
             {
-                if (agent.pathStatus == NavMeshPathStatus.PathInvalid || agent.pathStatus == NavMeshPathStatus.PathPartial) break;
-                if (agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
+                // Поки шлях в стадії прорахунку - просто чекаємо і нічого не робимо
+                if (agent.pathPending)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                // Якщо шлях зламався
+                if (agent.pathStatus == NavMeshPathStatus.PathInvalid || agent.pathStatus == NavMeshPathStatus.PathPartial)
+                {
+                    break;
+                }
+
+                // Якщо ми дійшли
+                if (agent.remainingDistance <= agent.stoppingDistance + 0.5f)
+                {
+                    break;
+                }
             }
             yield return null;
         }

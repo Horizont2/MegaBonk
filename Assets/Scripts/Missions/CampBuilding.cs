@@ -2,7 +2,7 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
-using System; // НОВЕ: Потрібно для роботи з часом (DateTime)
+using System;
 
 public enum ResourceType { Wood, Stone, Food }
 
@@ -31,6 +31,7 @@ public class CampBuilding : MonoBehaviour
     [Header("Building Objects")]
     public GameObject ghostModel;
     public GameObject realModel;
+    public Sprite buildingIconSprite; // НОВЕ: Іконка для цієї будівлі
 
     [Header("Visual Production Piles")]
     public GameObject[] resourceVisuals;
@@ -58,6 +59,7 @@ public class CampBuilding : MonoBehaviour
     public TextMeshProUGUI descTMP;
     public TextMeshProUGUI infoTMP;
     public TextMeshProUGUI progressTMP;
+    public Image buildingIconImage; // НОВЕ: Посилання на картинку в панелі
 
     [Header("Resource Cost Texts")]
     public TextMeshProUGUI costWoodTMP;
@@ -92,13 +94,11 @@ public class CampBuilding : MonoBehaviour
         StopDustEffect();
         HideAllVisualResources();
 
-        // --- НОВА СИСТЕМА ЗАВАНТАЖЕННЯ ---
         currentLevel = PlayerPrefs.GetInt("SaveBld_" + buildingID, 0);
         bool isUpgrading = PlayerPrefs.GetInt("SaveBld_Upg_" + buildingID, 0) == 1;
 
         if (isUpgrading && levels != null && currentLevel < levels.Length)
         {
-            // Якщо гравець вийшов з гри під час апгрейду
             string timeStr = PlayerPrefs.GetString("SaveBld_Time_" + buildingID, "");
             if (DateTime.TryParse(timeStr, out DateTime targetTime))
             {
@@ -106,19 +106,23 @@ public class CampBuilding : MonoBehaviour
 
                 if (remainingSeconds <= 0)
                 {
-                    // Час пройшов, поки гри не було - миттєво закінчуємо
                     CompleteUpgradeOffline();
                 }
                 else
                 {
-                    // Час ще йде - відновлюємо анімацію і таймер!
                     float totalTime = levels[currentLevel].buildTime;
+
+                    // НОВЕ: Відновлюємо віджет на екрані, якщо гравець зайшов під час будівництва!
+                    if (ActiveBuildManager.Instance != null)
+                    {
+                        ActiveBuildManager.Instance.AddBuildTask(buildingName, buildingIconSprite, targetTime, totalTime);
+                    }
+
                     StartCoroutine(BuildSequence((float)remainingSeconds, totalTime, currentLevel + 1));
                 }
             }
             else
             {
-                // Запобіжник на випадок помилки
                 PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0);
                 SetupVisualsForCurrentLevel();
                 if (currentLevel > 0) ApplyBuildingEffects();
@@ -126,7 +130,6 @@ public class CampBuilding : MonoBehaviour
         }
         else
         {
-            // Нормальне завантаження
             SetupVisualsForCurrentLevel();
             if (currentLevel > 0) ApplyBuildingEffects();
         }
@@ -168,7 +171,7 @@ public class CampBuilding : MonoBehaviour
             snowClumps.SetActive(isBuilt && isWinter && !isAnimating);
         }
 
-        if (isAnimating) return; // Блокуємо будь-яку взаємодію під час апгрейду
+        if (isAnimating) return;
 
         glimmerCheckTimer += Time.deltaTime;
         if (glimmerCheckTimer >= 1f)
@@ -210,14 +213,18 @@ public class CampBuilding : MonoBehaviour
                     currentHoldTime = 0f;
                     if (progressTMP != null) progressTMP.text = "100%";
 
-                    // 1. СПИСУЄМО РЕСУРСИ ОДРАЗУ
                     ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
 
-                    // 2. ЗАПИСУЄМО ЧАС СТАРТУ У РЕАЛЬНОМУ СВІТІ (currentLevel НЕ підвищуємо!)
                     PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 1);
                     DateTime endTime = DateTime.UtcNow.AddSeconds(nextLevelData.buildTime);
-                    PlayerPrefs.SetString("SaveBld_Time_" + buildingID, endTime.ToString("o")); // Формат "o" ідеально зберігає дати
+                    PlayerPrefs.SetString("SaveBld_Time_" + buildingID, endTime.ToString("o"));
                     PlayerPrefs.Save();
+
+                    // НОВЕ: Створюємо віджет на головному екрані!
+                    if (ActiveBuildManager.Instance != null)
+                    {
+                        ActiveBuildManager.Instance.AddBuildTask(buildingName, buildingIconSprite, endTime, nextLevelData.buildTime);
+                    }
 
                     ClosePanel();
                     StartCoroutine(BuildSequence(nextLevelData.buildTime, nextLevelData.buildTime, currentLevel + 1));
@@ -314,6 +321,12 @@ public class CampBuilding : MonoBehaviour
         if (lvlTMP) lvlTMP.text = currentLevel == 0 ? "(Unbuilt)" : $"(Level {currentLevel})";
         if (descTMP) descTMP.text = description;
 
+        // НОВЕ: Встановлюємо іконку в панель
+        if (buildingIconImage != null && buildingIconSprite != null)
+        {
+            buildingIconImage.sprite = buildingIconSprite;
+        }
+
         string infoText = "";
         if (currentLevel == 0)
         {
@@ -357,27 +370,32 @@ public class CampBuilding : MonoBehaviour
         StartDustEffect();
         if (buildAudio != null) buildAudio.Play();
 
-        // Відновлюємо таймер відносно того, скільки часу вже пройшло
         float timer = totalTime - remainingTime;
-        Vector3 finalPos = realModel.transform.position;
+
+        // ВИПРАВЛЕННЯ: Використовуємо localPosition замість position
+        Vector3 finalPos = realModel.transform.localPosition;
         Vector3 originalScale = realModel.transform.localScale;
 
         if (targetLevel == 1)
         {
             ghostModel.SetActive(false);
             realModel.SetActive(true);
+
+            // Будівля стартує глибоко під землею
             Vector3 startPos = finalPos - new Vector3(0, spawnDepth, 0);
 
             while (timer < totalTime)
             {
                 timer += Time.deltaTime;
                 float progress = timer / totalTime;
-                realModel.transform.position = Vector3.Lerp(startPos, finalPos, Mathf.SmoothStep(0f, 1f, progress));
+
+                // Плавно підіймаємо її
+                realModel.transform.localPosition = Vector3.Lerp(startPos, finalPos, Mathf.SmoothStep(0f, 1f, progress));
 
                 if (buildDustVFX != null && !buildDustVFX.isPlaying) buildDustVFX.Play();
                 yield return null;
             }
-            realModel.transform.position = finalPos;
+            realModel.transform.localPosition = finalPos;
         }
         else
         {
@@ -411,10 +429,9 @@ public class CampBuilding : MonoBehaviour
 
         StopDustEffect();
 
-        // --- ФІНАЛ: ТІЛЬКИ ТЕПЕР МИ ПІДВИЩУЄМО РІВЕНЬ І ЗБЕРІГАЄМО ЙОГО ---
         currentLevel = targetLevel;
         PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
-        PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0); // Знімаємо статус будівництва
+        PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0);
         PlayerPrefs.Save();
 
         ApplyBuildingEffects();

@@ -15,7 +15,7 @@ public class MissionPaperUI : MonoBehaviour
     private MissionData myMissionData;
 
     [Header("Animation Settings")]
-    public float flyDuration = 0.8f;
+    public float flyDuration = 0.6f;
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
 
@@ -28,8 +28,6 @@ public class MissionPaperUI : MonoBehaviour
 
     public void SetupPaper(MissionData baseData, float multiplier)
     {
-        // Оскільки NoticeBoardManager вже передає нам масштабовані значення, 
-        // multiplier тут зазвичай дорівнює 1f, тому ми беремо дані напряму.
         myMissionData = baseData;
 
         int finalTarget = Mathf.RoundToInt(baseData.targetAmount * multiplier);
@@ -39,16 +37,13 @@ public class MissionPaperUI : MonoBehaviour
         int finalDiamond = Mathf.RoundToInt(baseData.diamondReward * multiplier);
 
         titleText.text = baseData.missionName;
-
-        // Темно-бордовий (#8B0000) для цілі, щоб контрастувало з пергаментом
         descText.text = $"{baseData.missionDescription}\n\n<color=#8B0000><b>Target: {finalTarget}</b></color>";
 
-        // Будуємо нагороди ГОРИЗОНТАЛЬНО в один рядок з темними кольорами
         string rewText = "<b>Rewards:</b> ";
-        if (finalWood > 0) rewText += $"<color=#5C4033>{finalWood} Wood</color>  ";    // Темно-коричневий
-        if (finalStone > 0) rewText += $"<color=#4A4A4A>{finalStone} Stone</color>  ";   // Темно-сірий
-        if (finalFood > 0) rewText += $"<color=#B85E00>{finalFood} Food</color>  ";      // Темно-помаранчевий
-        if (finalDiamond > 0) rewText += $"<color=#005500>{finalDiamond} Gems</color>";  // Темно-зелений
+        if (finalWood > 0) rewText += $"<color=#5C4033>{finalWood} Wood</color>  ";
+        if (finalStone > 0) rewText += $"<color=#4A4A4A>{finalStone} Stone</color>  ";
+        if (finalFood > 0) rewText += $"<color=#B85E00>{finalFood} Food</color>  ";
+        if (finalDiamond > 0) rewText += $"<color=#005500>{finalDiamond} Gems</color>";
 
         rewardText.text = rewText;
     }
@@ -66,8 +61,6 @@ public class MissionPaperUI : MonoBehaviour
 
     private void SaveMissionForWorld()
     {
-        // Викликаємо нову функцію (яка виправляє помилку)
-        // Вона автоматично збереже місію у масив
         if (MissionManager.Instance != null)
         {
             MissionManager.Instance.AddNewMission(myMissionData, myMissionData.targetAmount);
@@ -76,21 +69,31 @@ public class MissionPaperUI : MonoBehaviour
 
     private IEnumerator FlyToCornerRoutine()
     {
-        Vector2 startPos = rectTransform.anchoredPosition;
-        Vector3 startScale = rectTransform.localScale;
+        Vector3 startPos = rectTransform.localPosition;
 
-        Vector2 targetPos = new Vector2(Screen.width / 2f - 50f, Screen.height / 2f - 50f);
+        // Замість координат екрану беремо локальне зміщення: летимо вгору і вправо 
+        // (Приблизно туди, де зазвичай лежить To-Do лист)
+        // -600 по осі X відправить папірець різко вліво!
+        Vector3 targetPos = startPos + new Vector3(-600f, 300f, 0f);
+        Vector3 startScale = rectTransform.localScale;
 
         float timer = 0f;
         while (timer < flyDuration)
         {
             timer += Time.deltaTime;
             float progress = timer / flyDuration;
-            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
 
-            rectTransform.anchoredPosition = Vector2.Lerp(startPos, targetPos, smoothProgress);
-            rectTransform.localScale = Vector3.Lerp(startScale, new Vector3(0.1f, 0.1f, 0.1f), smoothProgress);
-            canvasGroup.alpha = Mathf.Lerp(1f, 0f, Mathf.Pow(progress, 3));
+            // Математика для ефекту віддалення (спочатку трохи збільшується, потім різко летить)
+            float easeInBack = progress * progress * (2.70158f * progress - 1.70158f);
+
+            // Інтерполяція
+            rectTransform.localPosition = Vector3.LerpUnclamped(startPos, targetPos, easeInBack);
+            rectTransform.localScale = Vector3.Lerp(startScale, Vector3.zero, progress);
+
+            // Легке обертання під час польоту для краси
+            rectTransform.localRotation = Quaternion.Euler(0, 0, Mathf.Lerp(0, -25f, progress));
+
+            canvasGroup.alpha = Mathf.Lerp(1f, 0f, progress);
 
             yield return null;
         }
