@@ -72,7 +72,6 @@ public class CampWorkerAI : MonoBehaviour
 
     private IEnumerator WanderAround()
     {
-        // Знімаємо з ручника
         if (agent != null && agent.isOnNavMesh) agent.isStopped = false;
 
         while (true)
@@ -134,6 +133,10 @@ public class CampWorkerAI : MonoBehaviour
                     transform.LookAt(lookPos);
 
                     if (anim != null) anim.SetTrigger("Work");
+
+                    // ЗВУК: Робота NPC (рубка дерева)
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.NPC_Work);
+
                     yield return new WaitForSeconds(timeBetweenHits);
 
                     if (targetTree != null && !targetTree.isChopped) targetTree.TakeHit();

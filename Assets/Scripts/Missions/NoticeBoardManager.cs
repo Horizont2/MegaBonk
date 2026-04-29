@@ -66,6 +66,10 @@ public class NoticeBoardManager : MonoBehaviour
     {
         isBoardOpen = true;
         boardCanvas.SetActive(true);
+
+        // ЗВУК: Відкриття дошки
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         CheckAndGenerateMissions();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
@@ -78,6 +82,9 @@ public class NoticeBoardManager : MonoBehaviour
     {
         isBoardOpen = false;
         boardCanvas.SetActive(false);
+
+        // ЗВУК: Закриття дошки
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
@@ -95,19 +102,16 @@ public class NoticeBoardManager : MonoBehaviour
                 needsRestock = true;
         }
 
-        // --- НОВА ПЕРЕВІРКА ЛІМІТУ ---
         int currentActiveMissions = 0;
         if (MissionManager.Instance != null)
         {
             currentActiveMissions = MissionManager.Instance.GetActiveMissionCount();
         }
 
-        // Якщо вже є 3 місії (або більше), ми не робимо ресток, навіть якщо час вийшов
         if (currentActiveMissions >= 3)
         {
             needsRestock = false;
 
-            // Якщо на дошці залишились якісь папірці (наприклад, згенерувались раніше) - чистимо їх
             foreach (Transform child in paperLayoutGroup) Destroy(child.gameObject);
             activePapers.Clear();
 
@@ -126,8 +130,7 @@ public class NoticeBoardManager : MonoBehaviour
 
         if (needsRestock)
         {
-            GenerateNewMissions(3 - currentActiveMissions); // Передаємо скільки МАКСИМУМ можна згенерувати
-
+            GenerateNewMissions(3 - currentActiveMissions);
             PlayerPrefs.SetString("LastMissionRestockTime", DateTime.Now.ToString());
             PlayerPrefs.Save();
         }
@@ -135,16 +138,12 @@ public class NoticeBoardManager : MonoBehaviour
         UpdateEmptyMessage();
     }
 
-    // --- ЗМІНЕНО МЕТОД: Тепер він приймає параметр maxAllowed ---
     private void GenerateNewMissions(int maxAllowed)
     {
         foreach (Transform child in paperLayoutGroup) Destroy(child.gameObject);
         activePapers.Clear();
 
-        // Спавнимо місії, але не більше ніж (Ліміт на дошці) і не більше ніж (Можна взяти гравцю)
         int maxToSpawn = Mathf.Min(maxMissionsOnBoard, maxAllowed);
-
-        // Якщо раптом ліміт 0 - просто виходимо
         if (maxToSpawn <= 0) return;
 
         int missionsToSpawn = UnityEngine.Random.Range(1, maxToSpawn + 1);
@@ -182,7 +181,13 @@ public class NoticeBoardManager : MonoBehaviour
             MissionPaperUI paperUI = paperObj.GetComponent<MissionPaperUI>();
 
             paperUI.SetupPaper(scaledMission, 1f);
-            paperUI.acceptButton.onClick.AddListener(UpdateEmptyMessage);
+
+            // ЗВУК ТА ДІЯ: При натисканні на Accept
+            paperUI.acceptButton.onClick.AddListener(() =>
+            {
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
+                UpdateEmptyMessage();
+            });
 
             activePapers.Add(paperObj);
         }
@@ -214,7 +219,10 @@ public class NoticeBoardManager : MonoBehaviour
 
     private void EmbarkOnJourney()
     {
-        CloseBoard(); // НОВЕ: Примусово закриваємо дошку перед початком завантаження
+        // ЗВУК: Натискання кнопки
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+        CloseBoard();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(worldSceneName);
         else SceneManager.LoadScene(worldSceneName);

@@ -7,16 +7,18 @@ using System.Collections;
 public class MissionUIElement : MonoBehaviour
 {
     [Header("UI References")]
-    public TextMeshProUGUI progressText;    // Для цифр (0/50)
-    public TextMeshProUGUI descriptionText; // Для тексту "Kill 50 skeletons"
+    public TextMeshProUGUI titleText;       // Головний заголовок (твоє поле MissionText)
+    public TextMeshProUGUI descriptionText; // Опис місії (твоє поле DescText)
+    public TextMeshProUGUI progressText;    // Цифри (твоє поле ProgressText)
+
     public Image checkboxEmpty;
     public Image checkboxDone;
+    public Image backgroundImage;
 
-    [Header("Slider (НОВЕ)")]
-    public Slider progressSlider;           // Посилання на твій Slider
+    [Header("Slider")]
+    public Slider progressSlider;
 
     private CanvasGroup canvasGroup;
-    private RectTransform rectTransform;
     public bool isCompleted = false;
 
     private int currentVisualProgress = 0;
@@ -25,12 +27,13 @@ public class MissionUIElement : MonoBehaviour
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
-        rectTransform = GetComponent<RectTransform>();
         if (checkboxDone != null) checkboxDone.gameObject.SetActive(false);
     }
 
-    public void Setup(string description, int current, int target)
+    // НОВЕ: Тепер ми приймаємо і Title, і Description окремо
+    public void Setup(string title, string description, int current, int target)
     {
+        if (titleText != null) titleText.text = title;
         if (descriptionText != null) descriptionText.text = description;
 
         if (progressSlider != null)
@@ -52,15 +55,16 @@ public class MissionUIElement : MonoBehaviour
         currentVisualProgress = current;
         targetVisualProgress = target;
 
-        if (progressText != null) progressText.text = $"Progress: {current} / {target}";
+        // Цифри окремо: "4 / 10"
+        if (progressText != null)
+            progressText.text = $"<color=#FFD700>{current}</color> / {target}";
     }
 
     private void Update()
     {
-        // Плавна анімація слайдера кожного кадру
         if (progressSlider != null && !isCompleted)
         {
-            progressSlider.value = Mathf.Lerp(progressSlider.value, currentVisualProgress, Time.deltaTime * 5f);
+            progressSlider.value = Mathf.Lerp(progressSlider.value, currentVisualProgress, Time.deltaTime * 8f);
         }
     }
 
@@ -69,7 +73,10 @@ public class MissionUIElement : MonoBehaviour
         if (isCompleted) return;
         isCompleted = true;
 
-        if (progressText != null) progressText.text = "<color=#00FF00>COMPLETED</color>";
+        // Закреслюємо заголовок і пишемо DONE замість цифр
+        if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
+        if (progressText != null) progressText.text = "<color=#00FF00>DONE</color>";
+
         if (progressSlider != null) progressSlider.value = progressSlider.maxValue;
 
         StartCoroutine(CompleteAnimationRoutine());
@@ -86,11 +93,36 @@ public class MissionUIElement : MonoBehaviour
             float t = 0;
             while (t < 1)
             {
-                t += Time.deltaTime * 5f;
-                checkboxDone.transform.localScale = Vector3.Lerp(Vector3.zero, new Vector3(1.2f, 1.2f, 1.2f), t);
+                t += Time.deltaTime * 6f;
+                float scale = Mathf.LerpUnclamped(0f, 1.2f, Mathf.Sin(t * Mathf.PI * 0.5f));
+                checkboxDone.transform.localScale = new Vector3(scale, scale, scale);
                 yield return null;
             }
             checkboxDone.transform.localScale = Vector3.one;
+        }
+
+        if (backgroundImage != null)
+        {
+            Color originalColor = backgroundImage.color;
+            backgroundImage.color = Color.white;
+            yield return new WaitForSeconds(0.1f);
+
+            float flashT = 0;
+            while (flashT < 1)
+            {
+                flashT += Time.deltaTime * 3f;
+                backgroundImage.color = Color.Lerp(Color.white, originalColor, flashT);
+                yield return null;
+            }
+        }
+
+        float alphaT = 0;
+        float startAlpha = canvasGroup.alpha;
+        while (alphaT < 1)
+        {
+            alphaT += Time.deltaTime * 2f;
+            canvasGroup.alpha = Mathf.Lerp(startAlpha, 0.6f, alphaT);
+            yield return null;
         }
     }
 }

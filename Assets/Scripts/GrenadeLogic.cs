@@ -21,8 +21,6 @@ public class GrenadeLogic : MonoBehaviour
     private float countdown;
     private bool hasExploded = false;
     private CameraFollow mainCameraScript;
-
-    // Для мигання
     private MeshRenderer meshRenderer;
     private Color originalColor;
 
@@ -41,12 +39,9 @@ public class GrenadeLogic : MonoBehaviour
 
         countdown -= Time.deltaTime;
 
-        // --- ЛОГІКА МИГАННЯ ---
         if (meshRenderer != null)
         {
-            // Чим менше часу залишилось, тим швидше мигає (від 2 до 15 разів на секунду)
             float blinkRate = Mathf.Lerp(15f, 2f, countdown / delay);
-            // Плавний перехід між оригінальним кольором і білим (світіння)
             meshRenderer.material.color = Color.Lerp(originalColor, Color.white, Mathf.PingPong(Time.time * blinkRate, 1f));
         }
 
@@ -59,6 +54,10 @@ public class GrenadeLogic : MonoBehaviour
     private void Explode()
     {
         hasExploded = true;
+
+        // ЗВУК: Потужний вибух
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Explosion);
+
         if (explosionEffect != null) Instantiate(explosionEffect, transform.position, Quaternion.identity);
 
         Collider[] colliders = Physics.OverlapSphere(transform.position, explosionRadius);

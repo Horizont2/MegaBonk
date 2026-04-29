@@ -168,7 +168,6 @@ public class PlayerController : MonoBehaviour
         yield return null;
         yield return null;
 
-        // ПЕРЕВІРКА ТАБОРУ: Якщо ми в таборі, завантажуємо координати і виходимо
         if (isCampMode)
         {
             if (PlayerPrefs.GetInt("HasCampSave", 0) == 1)
@@ -182,7 +181,6 @@ public class PlayerController : MonoBehaviour
             yield break;
         }
 
-        // Логіка спавну в ігровій зоні
         if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
         {
             float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
@@ -461,8 +459,12 @@ public class PlayerController : MonoBehaviour
     {
         if (meleePoint == null || isCampMode) return;
 
+        // ЗВУК: Замах зброєю 
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
+
         Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
-        bool hitSomething = false; // Перевірка, чи ми влучили хоч у когось
+        bool hitEnemy = false;
+        bool hitResource = false;
 
         foreach (Collider col in hitObjects)
         {
@@ -472,13 +474,10 @@ public class PlayerController : MonoBehaviour
                 if (enemy != null)
                 {
                     enemy.TakeDamage(meleeDamage * globalDamageMultiplier);
-
-                    // Відкидаємо ворога від нас
                     Vector3 pushDir = (enemy.transform.position - transform.position).normalized;
                     pushDir.y = 0;
-                    enemy.ApplyKnockback(pushDir, 8f, 0.4f); // Відкидаємо з силою 8 і глушимо на 0.4 сек
-
-                    hitSomething = true;
+                    enemy.ApplyKnockback(pushDir, 8f, 0.4f);
+                    hitEnemy = true;
                 }
             }
             else
@@ -489,31 +488,40 @@ public class PlayerController : MonoBehaviour
                 if (resource != null)
                 {
                     resource.TakeDamage(meleeDamage * globalDamageMultiplier);
-                    hitSomething = true;
+                    hitResource = true;
                 }
             }
         }
 
-        // --- ВІДЧУТТЯ УДАРУ (JUICE) ---
-        if (hitSomething)
+        if (hitEnemy)
         {
-            if (cameraFollow != null) cameraFollow.TriggerShake(0.1f, 0.15f); // Трясемо камеру
-            StartCoroutine(HitStopRoutine(0.05f)); // Зупиняємо час на долю секунди!
+            // ЗВУК: Влучання по м'ясу
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
+            if (cameraFollow != null) cameraFollow.TriggerShake(0.1f, 0.15f);
+            StartCoroutine(HitStopRoutine(0.05f));
+        }
+        else if (hitResource)
+        {
+            // ЗВУК: Влучання по ресурсу
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitResource);
+            if (cameraFollow != null) cameraFollow.TriggerShake(0.05f, 0.1f);
         }
     }
 
-    // Додай цей метод поруч:
     private System.Collections.IEnumerator HitStopRoutine(float duration)
     {
-        Time.timeScale = 0.1f; // Сповільнюємо гру майже до зупинки
-        yield return new WaitForSecondsRealtime(duration); // Чекаємо реальний час
-        Time.timeScale = 1f; // Повертаємо все в норму
+        Time.timeScale = 0.1f;
+        yield return new WaitForSecondsRealtime(duration);
+        Time.timeScale = 1f;
     }
 
     public void ExecuteThrow()
     {
         if (grenadePrefab != null && throwPoint != null && !isCampMode)
         {
+            // ЗВУК: Кидок гранати
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Throw);
+
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
             Rigidbody rb = grenade.GetComponent<Rigidbody>();
             if (rb != null) rb.linearVelocity = savedThrowVelocity;
@@ -525,8 +533,11 @@ public class PlayerController : MonoBehaviour
         if (isCampMode) return;
 
         float finalDamage = damageAmount * (1f - damageReduction);
-
         currentHealth -= finalDamage;
+
+        // ЗВУК: Гравцю боляче
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Hurt);
+
         if (cameraFollow != null) cameraFollow.StartShake();
         if (bloodEffect != null) bloodEffect.Flash();
 
@@ -537,7 +548,6 @@ public class PlayerController : MonoBehaviour
         }
 
         if (anim != null) anim.SetTrigger("Hit");
-
         UpdateHUD();
 
         if (currentHealth <= 0)
@@ -589,6 +599,10 @@ public class PlayerController : MonoBehaviour
     public void GainDiamond(int amount = 1)
     {
         crystalsCollected += amount;
+
+        // ЗВУК: Збір діаманту
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
+
         UpdateHUD();
 
         if (MissionManager.Instance != null)
@@ -604,6 +618,9 @@ public class PlayerController : MonoBehaviour
         xpToNextLevel *= 1.5f;
 
         visualXP = 0f;
+
+        // ЗВУК: Підвищення рівня
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
 
         LevelUpManager lum = FindFirstObjectByType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
@@ -633,6 +650,9 @@ public class PlayerController : MonoBehaviour
         isDashing = true;
         lastDashTime = Time.time;
         float startTime = Time.time;
+
+        // ЗВУК: Ривок (Dash)
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
 
         float originalFOV = Camera.main.fieldOfView;
         float targetFOV = originalFOV + 12f;
@@ -711,7 +731,6 @@ public class PlayerController : MonoBehaviour
         if (weaponTrail != null) weaponTrail.emitting = false;
     }
 
-    // ЗБЕРЕЖЕННЯ ПОЗИЦІЇ ПРИ ВИХОДІ
     private void OnDestroy()
     {
         if (isCampMode)

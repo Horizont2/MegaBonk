@@ -1732,6 +1732,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b1d9f444538f83498573f802e014674, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GlobalHUD
+  gameplayPanels:
+  - {fileID: 1224944045351426516}
+  - {fileID: 5595048629771125017}
+  - {fileID: 7589752071298528027}
   promptCanvasGroup: {fileID: 5124428673518271519}
   promptText: {fileID: 3320825653205544310}
   promptFadeSpeed: 5

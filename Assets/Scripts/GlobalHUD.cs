@@ -10,6 +10,10 @@ public class GlobalHUD : MonoBehaviour
 {
     public static GlobalHUD Instance;
 
+    [Header("Visibility Control")]
+    [Tooltip("Закинь сюди батьківські об'єкти місій та рюкзака, щоб вони ховалися в Меню")]
+    public GameObject[] gameplayPanels;
+
     [Header("Interaction Prompt")]
     public CanvasGroup promptCanvasGroup;
     public TextMeshProUGUI promptText;
@@ -18,11 +22,11 @@ public class GlobalHUD : MonoBehaviour
 
     [Header("Scene Transition & Loading")]
     public float sceneFadeSpeed = 1.5f;
-    public CanvasGroup loadingPanelGroup; // Панель екрану завантаження
-    public Slider loadingSlider;          // Слайдер прогресу
-    public TextMeshProUGUI loadingText;   // Текст "LOADING... 45%"
-    public TextMeshProUGUI hintText;      // Текст підказки
-    public float hintChangeInterval = 10f; // Кожні 10 секунд змінюється підказка
+    public CanvasGroup loadingPanelGroup;
+    public Slider loadingSlider;
+    public TextMeshProUGUI loadingText;
+    public TextMeshProUGUI hintText;
+    public float hintChangeInterval = 10f;
 
     [TextArea(2, 3)]
     public string[] gameHints = new string[]
@@ -56,7 +60,6 @@ public class GlobalHUD : MonoBehaviour
     private bool isConfirmingGiveUp = false;
     private DepthOfField dofEffect;
 
-    // Окремі корутини для кожної дії
     private Coroutine promptFadeCoroutine;
     private Coroutine promptTypingCoroutine;
     private Coroutine hintTypingCoroutine;
@@ -108,6 +111,16 @@ public class GlobalHUD : MonoBehaviour
     {
         StartCoroutine(SyncCameraAndVolumeRoutine());
 
+        // --- НОВЕ: ВМИКАЄМО/ВИМИКАЄМО ІГРОВИЙ ІНТЕРФЕЙС ---
+        bool showGameplayUI = (scene.name != "Menu");
+        if (gameplayPanels != null)
+        {
+            foreach (GameObject panel in gameplayPanels)
+            {
+                if (panel != null) panel.SetActive(showGameplayUI);
+            }
+        }
+
         if (loadingPanelGroup != null && loadingPanelGroup.gameObject.activeSelf)
         {
             if (hintCycleCoroutine != null) StopCoroutine(hintCycleCoroutine);
@@ -143,7 +156,6 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // --- АСИНХРОННЕ ЗАВАНТАЖЕННЯ ---
     public void FadeAndLoadScene(string sceneName)
     {
         if (isPaused) TogglePause();
@@ -160,7 +172,6 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator LoadSceneAsyncRoutine(string sceneToLoad)
     {
-        // НОВЕ: Примусово підіймаємо пріоритет малювання цього Канвасу на максимум!
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) canvas.sortingOrder = 999;
 
@@ -209,12 +220,10 @@ public class GlobalHUD : MonoBehaviour
         }
         loadingPanelGroup.gameObject.SetActive(false);
 
-        // НОВЕ: Повертаємо нормальний пріоритет малювання
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) canvas.sortingOrder = 0;
     }
 
-    // --- АНІМАЦІЯ ПІДКАЗОК (LOADING SCREEN) ---
     private IEnumerator CycleHintsRoutine()
     {
         while (true)
@@ -240,7 +249,6 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // --- ПІДКАЗКИ ВЗАЄМОДІЇ (Press E) ---
     public void ShowPrompt(string message)
     {
         if (promptFadeCoroutine != null) StopCoroutine(promptFadeCoroutine);
@@ -269,13 +277,14 @@ public class GlobalHUD : MonoBehaviour
         promptCanvasGroup.alpha = targetAlpha;
     }
 
-    // --- ПАУЗА ТА МЕНЮ ---
     public void TogglePause()
     {
         if (pausePanelGroup == null) return;
 
         isPaused = !isPaused;
         Time.timeScale = isPaused ? 0f : 1f;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         if (dofEffect != null) dofEffect.active = isPaused;
 
@@ -356,9 +365,10 @@ public class GlobalHUD : MonoBehaviour
         pausePanelGroup.gameObject.SetActive(false);
     }
 
-    // --- ЛОГІКА КНОПКИ GIVE UP ---
     public void OnGiveUpClicked()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         if (!isConfirmingGiveUp)
         {
             isConfirmingGiveUp = true;

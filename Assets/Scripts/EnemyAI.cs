@@ -10,8 +10,8 @@ public class EnemyAI : MonoBehaviour
 
     [Header("Combat Settings")]
     public float attackRange = 1.6f;
-    public float attackCooldown = 1.5f; // Збільшено для кращого ритму
-    public float attackTelegraphTime = 0.5f; // Час на "замах" (попередження гравця)
+    public float attackCooldown = 1.5f;
+    public float attackTelegraphTime = 0.5f;
     private float lastAttackTime;
     private bool isPreparingAttack = false;
 
@@ -41,7 +41,6 @@ public class EnemyAI : MonoBehaviour
     private Animator animator;
     private bool isDead = false;
 
-    // --- НОВЕ: Логіка бою ---
     private Vector3 knockbackVelocity = Vector3.zero;
     private float stunTimer = 0f;
 
@@ -83,25 +82,23 @@ public class EnemyAI : MonoBehaviour
     {
         if (isDead || target == null) return;
 
-        // --- ВІДКИДАННЯ ТА ОГЛУШЕННЯ ---
         if (knockbackVelocity.magnitude > 0.1f)
         {
             transform.position += knockbackVelocity * Time.deltaTime;
-            knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f); // Сила тертя
+            knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f);
         }
 
         if (stunTimer > 0)
         {
             stunTimer -= Time.deltaTime;
-            return; // Ворог оглушений, не може рухатись чи атакувати
+            return;
         }
 
-        if (isPreparingAttack) return; // Стоїть на місці під час замаху
+        if (isPreparingAttack) return;
 
         Vector3 currentPos = transform.position;
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
 
-        // Swarm logic (без змін)
         Vector3 repulsion = Vector3.zero;
         Collider[] neighbors = Physics.OverlapSphere(transform.position, repulsionRadius, 1 << 9);
         foreach (Collider neighbor in neighbors)
@@ -130,7 +127,6 @@ public class EnemyAI : MonoBehaviour
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), 15f * Time.deltaTime);
             }
 
-            // --- ТЕЛЕГРАФУВАННЯ АТАКИ ---
             if (Time.time >= lastAttackTime + attackCooldown && !isPreparingAttack)
             {
                 StartCoroutine(AttackRoutine());
@@ -158,12 +154,13 @@ public class EnemyAI : MonoBehaviour
     {
         isPreparingAttack = true;
 
-        // Ворог завмирає і блимає червоним перед ударом (даємо гравцю час зреагувати!)
+        // ЗВУК: Попередження про атаку
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
+
         SetColor(Color.red);
         yield return new WaitForSeconds(attackTelegraphTime);
         ResetColor();
 
-        // Перевіряємо, чи гравець досі близько (можливо, він ухилився через Dash)
         if (!isDead && stunTimer <= 0 && Vector3.Distance(transform.position, target.position) <= attackRange + 0.5f)
         {
             lastAttackTime = Time.time;
@@ -183,14 +180,13 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    // --- НОВЕ: Метод для прийому відкидання від гравця ---
     public void ApplyKnockback(Vector3 direction, float force, float stunDuration)
     {
         if (isDead) return;
 
         knockbackVelocity = direction * force;
         stunTimer = stunDuration;
-        isPreparingAttack = false; // Перериваємо атаку гравця!
+        isPreparingAttack = false;
         ResetColor();
 
         if (animator != null) animator.SetTrigger("Hit");
@@ -202,7 +198,10 @@ public class EnemyAI : MonoBehaviour
 
         currentHealth -= damageAmount;
 
-        StartCoroutine(HitFlashRoutine()); // Запускаємо всплеск білого кольору
+        // ЗВУК: Ворогу боляче
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
+
+        StartCoroutine(HitFlashRoutine());
 
         if (damagePopupPrefab != null)
         {
@@ -218,7 +217,7 @@ public class EnemyAI : MonoBehaviour
     {
         SetColor(Color.white);
         yield return new WaitForSeconds(0.1f);
-        if (!isPreparingAttack) ResetColor(); // Якщо він не готується до атаки, повертаємо нормальний колір
+        if (!isPreparingAttack) ResetColor();
     }
 
     private void SetColor(Color c)
@@ -242,6 +241,9 @@ public class EnemyAI : MonoBehaviour
         isDead = true;
 
         if (animator != null) animator.SetTrigger("Die");
+
+        // ЗВУК: Смерть
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
         Collider[] cols = GetComponentsInChildren<Collider>();
         foreach (Collider c in cols) c.enabled = false;

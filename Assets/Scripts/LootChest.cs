@@ -19,11 +19,10 @@ public class LootChest : MonoBehaviour
     public int minLootItems = 3;
     public int maxLootItems = 6;
 
-    [Tooltip("Затримка перед вильотом луту (збільш це значення, щоб ресурси вилітали пізніше)")]
     public float delayForLoot = 1.5f;
 
     [Header("Destruction")]
-    public float destroyDelay = 10f; // Через скільки секунд після відкриття скриня зникне
+    public float destroyDelay = 10f;
 
     private bool isInteracted = false;
     private Transform player;
@@ -56,7 +55,9 @@ public class LootChest : MonoBehaviour
     {
         isInteracted = true;
 
-        // 1. ТРЯСКА
+        // ЗВУК: Скриня відкривається/ламається
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitResource);
+
         float elapsed = 0f;
         while (elapsed < shakeDuration)
         {
@@ -66,21 +67,15 @@ public class LootChest : MonoBehaviour
         }
         transform.position = originalPos;
 
-        // 2. АНІМАЦІЯ ВІДКРИТТЯ
         if (chestAnimator != null)
         {
             chestAnimator.SetTrigger("Open");
         }
 
-        // 3. ПАУЗА ПЕРЕД ВИЛЬОТОМ (Ми її збільшили)
-        // Поки йде ця пауза, програється анімація відкриття кришки
         yield return new WaitForSeconds(delayForLoot);
 
-        // 4. ВИЛІТ РЕСУРСІВ
         SpawnLoot();
 
-        // 5. САМОЗНИЩЕННЯ
-        // Скриня просто видалиться зі сцени через 10 секунд
         Destroy(gameObject, destroyDelay);
     }
 

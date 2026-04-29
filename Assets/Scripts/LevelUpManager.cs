@@ -8,8 +8,8 @@ public enum UpgradeType
     Damage,
     PickupRadius,
     AttackSpeed,
-    Armor,       // На майбутнє
-    HealthRegen  // На майбутнє
+    Armor,
+    HealthRegen
 }
 
 [System.Serializable]
@@ -35,7 +35,7 @@ public class LevelUpManager : MonoBehaviour
 
     private PlayerController player;
     private HammerDamage hammer;
-    private WeaponOrbit weaponOrbit; // ДОДАНО: Для управління швидкістю обертання молота
+    private WeaponOrbit weaponOrbit;
 
     private void Start()
     {
@@ -50,7 +50,6 @@ public class LevelUpManager : MonoBehaviour
         levelUpPanel.SetActive(true);
         Time.timeScale = 0f;
 
-        // Fix: Unlock AND Show the cursor
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
@@ -70,7 +69,6 @@ public class LevelUpManager : MonoBehaviour
             int randomIndex = Random.Range(0, availablePool.Count);
             UpgradeData chosenUpgrade = availablePool[randomIndex];
 
-            // ВАЖЛИВО: Робимо локальну копію, щоб уникнути багу перекриття подій у кнопках (Closure Bug)
             UpgradeData upgradeToApply = chosenUpgrade;
 
             uiButtons[i].titleText.text = upgradeToApply.upgradeName;
@@ -87,6 +85,9 @@ public class LevelUpManager : MonoBehaviour
 
     public void ApplyUpgrade(UpgradeData upgrade)
     {
+        // ЗВУК: Вибір апгрейду
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         switch (upgrade.type)
         {
             case UpgradeType.Health:
@@ -103,7 +104,6 @@ public class LevelUpManager : MonoBehaviour
                 if (player != null) player.pickupRadius += upgrade.amount;
                 break;
             case UpgradeType.AttackSpeed:
-                // Збільшуємо швидкість обертання молота!
                 if (weaponOrbit != null) weaponOrbit.rotationSpeed += upgrade.amount;
                 break;
             case UpgradeType.HealthRegen:
@@ -111,7 +111,6 @@ public class LevelUpManager : MonoBehaviour
                 break;
         }
 
-        // Оновлюємо інтерфейс гравця одразу після апгрейду (щоб нове ХП одразу відмалювалося)
         if (player != null) player.UpdateHUD();
 
         ResumeGame();
@@ -122,7 +121,6 @@ public class LevelUpManager : MonoBehaviour
         levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
 
-        // Fix: Lock AND Hide the cursor
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }

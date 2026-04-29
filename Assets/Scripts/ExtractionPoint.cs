@@ -12,11 +12,12 @@ public class ExtractionPoint : MonoBehaviour
             {
                 GlobalHUD.Instance.HidePrompt();
 
-                // Зберігаємо зібрані діаманти гравця
+                // ЗВУК: Успішна евакуація (Фанфари)
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
+
                 PlayerController pc = FindFirstObjectByType<PlayerController>();
                 if (pc != null) SaveManager.AddCrystals(pc.crystalsCollected);
 
-                // МАГІЯ: Переносимо зібрані ресурси на склад (з авто-продажем надлишку)
                 if (ResourceManager.Instance != null)
                 {
                     ResourceManager.Instance.EvacuateRunToStash();

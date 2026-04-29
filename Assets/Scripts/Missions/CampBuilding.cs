@@ -31,7 +31,7 @@ public class CampBuilding : MonoBehaviour
     [Header("Building Objects")]
     public GameObject ghostModel;
     public GameObject realModel;
-    public Sprite buildingIconSprite; // НОВЕ: Іконка для цієї будівлі
+    public Sprite buildingIconSprite;
 
     [Header("Visual Production Piles")]
     public GameObject[] resourceVisuals;
@@ -59,7 +59,7 @@ public class CampBuilding : MonoBehaviour
     public TextMeshProUGUI descTMP;
     public TextMeshProUGUI infoTMP;
     public TextMeshProUGUI progressTMP;
-    public Image buildingIconImage; // НОВЕ: Посилання на картинку в панелі
+    public Image buildingIconImage;
 
     [Header("Resource Cost Texts")]
     public TextMeshProUGUI costWoodTMP;
@@ -73,7 +73,7 @@ public class CampBuilding : MonoBehaviour
 
     [Header("Cinematic Effects")]
     public ParticleSystem buildDustVFX;
-    public AudioSource buildAudio;
+    // public AudioSource buildAudio; // Більше не потрібен, використовуємо AudioManager
     public float spawnDepth = 12f;
     public float upgradeBounceAmount = 1.15f;
 
@@ -112,7 +112,6 @@ public class CampBuilding : MonoBehaviour
                 {
                     float totalTime = levels[currentLevel].buildTime;
 
-                    // НОВЕ: Відновлюємо віджет на екрані, якщо гравець зайшов під час будівництва!
                     if (ActiveBuildManager.Instance != null)
                     {
                         ActiveBuildManager.Instance.AddBuildTask(buildingName, buildingIconSprite, targetTime, totalTime);
@@ -220,7 +219,6 @@ public class CampBuilding : MonoBehaviour
                     PlayerPrefs.SetString("SaveBld_Time_" + buildingID, endTime.ToString("o"));
                     PlayerPrefs.Save();
 
-                    // НОВЕ: Створюємо віджет на головному екрані!
                     if (ActiveBuildManager.Instance != null)
                     {
                         ActiveBuildManager.Instance.AddBuildTask(buildingName, buildingIconSprite, endTime, nextLevelData.buildTime);
@@ -274,6 +272,10 @@ public class CampBuilding : MonoBehaviour
     private void OpenPanel()
     {
         isPanelOpen = true;
+
+        // ЗВУК: Відкриття панелі (можна використати UI_Click або додати свій)
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         UpdateUIData();
 
         if (aaaPanel != null)
@@ -321,7 +323,6 @@ public class CampBuilding : MonoBehaviour
         if (lvlTMP) lvlTMP.text = currentLevel == 0 ? "(Unbuilt)" : $"(Level {currentLevel})";
         if (descTMP) descTMP.text = description;
 
-        // НОВЕ: Встановлюємо іконку в панель
         if (buildingIconImage != null && buildingIconSprite != null)
         {
             buildingIconImage.sprite = buildingIconSprite;
@@ -368,11 +369,11 @@ public class CampBuilding : MonoBehaviour
         }
 
         StartDustEffect();
-        if (buildAudio != null) buildAudio.Play();
+
+        // ЗВУК: Початок будівництва
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildStart);
 
         float timer = totalTime - remainingTime;
-
-        // ВИПРАВЛЕННЯ: Використовуємо localPosition замість position
         Vector3 finalPos = realModel.transform.localPosition;
         Vector3 originalScale = realModel.transform.localScale;
 
@@ -380,16 +381,12 @@ public class CampBuilding : MonoBehaviour
         {
             ghostModel.SetActive(false);
             realModel.SetActive(true);
-
-            // Будівля стартує глибоко під землею
             Vector3 startPos = finalPos - new Vector3(0, spawnDepth, 0);
 
             while (timer < totalTime)
             {
                 timer += Time.deltaTime;
                 float progress = timer / totalTime;
-
-                // Плавно підіймаємо її
                 realModel.transform.localPosition = Vector3.Lerp(startPos, finalPos, Mathf.SmoothStep(0f, 1f, progress));
 
                 if (buildDustVFX != null && !buildDustVFX.isPlaying) buildDustVFX.Play();
@@ -428,6 +425,9 @@ public class CampBuilding : MonoBehaviour
         }
 
         StopDustEffect();
+
+        // ЗВУК: Завершення будівництва
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
 
         currentLevel = targetLevel;
         PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
@@ -514,6 +514,10 @@ public class CampBuilding : MonoBehaviour
                 if (productionType == ResourceType.Wood) ResourceManager.Instance.AddStashResources(amountPerMinute, 0, 0);
                 else if (productionType == ResourceType.Food) ResourceManager.Instance.AddStashResources(0, 0, amountPerMinute);
                 else if (productionType == ResourceType.Stone) ResourceManager.Instance.AddStashResources(0, amountPerMinute, 0);
+
+                // ЗВУК: Автоматичний збір ресурсів, якщо немає сховища
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+
                 HideAllVisualResources();
             }
         }

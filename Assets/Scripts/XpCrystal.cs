@@ -23,15 +23,12 @@ public class XpCrystal : MonoBehaviour
 
     private void Awake()
     {
-        // 1. —тавимо сам кристал на 9 шар (LootPhysics)
         gameObject.layer = 9;
 
-        // 2. «ј’»—“ ћ≤Ќ≤ћјѕ»: «м≥нюЇмо шари ф≥зики, јЋ≈ ≥гноруЇмо об'Їкти м≥н≥мапи
         int minimapLayer = LayerMask.NameToLayer("MinimapOnly");
 
         foreach (Transform t in GetComponentsInChildren<Transform>(true))
         {
-            // якщо це не ≥конка м≥н≥мапи - в≥дправл€Їмо на 9 шар
             if (t.gameObject.layer != minimapLayer)
             {
                 t.gameObject.layer = 9;
@@ -98,6 +95,9 @@ public class XpCrystal : MonoBehaviour
 
             if (Vector3.Distance(transform.position, targetPos) < 0.5f)
             {
+                // «¬” : «б≥р кристалу досв≥ду
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
+
                 playerController.GainXP(xpAmount);
                 Destroy(gameObject);
             }

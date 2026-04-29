@@ -88,31 +88,26 @@ public class MainMenuManager : MonoBehaviour
     {
         if (continueButton != null)
         {
-            // Перевіряємо, чи є збереження
             bool hasSave = PlayerPrefs.GetInt("HasCampSave", 0) == 1;
 
-            // 1. Шукаємо компонент тексту на самій кнопці або в її дочірніх об'єктах
             TextMeshProUGUI btnText = continueButton.GetComponentInChildren<TextMeshProUGUI>();
             if (btnText != null)
             {
-                // Якщо є сейв - пишемо Continue, якщо ні - Start Adventure!
                 btnText.text = hasSave ? "Continue" : "Start Adventure!";
             }
 
-            // 2. Робимо кнопку завжди активною і непрозорою
             continueButton.interactable = true;
             CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
             if (cg != null) cg.alpha = 1f;
 
-            // 3. Динамічно призначаємо дію при натисканні
             continueButton.onClick.RemoveAllListeners();
             if (hasSave)
             {
-                continueButton.onClick.AddListener(ContinueGame); // Завантажує старий сейв
+                continueButton.onClick.AddListener(ContinueGame);
             }
             else
             {
-                continueButton.onClick.AddListener(StartNewRun); // Запускає нову гру
+                continueButton.onClick.AddListener(StartNewRun);
             }
         }
     }
@@ -143,7 +138,6 @@ public class MainMenuManager : MonoBehaviour
             crystalsText.text = targetCount.ToString("N0");
     }
 
-    // НОВЕ: Метод для вимкнення Канвасу меню перед завантаженням
     private void HideMenuBeforeLoad()
     {
         Canvas canvas = GetComponentInParent<Canvas>();
@@ -151,9 +145,15 @@ public class MainMenuManager : MonoBehaviour
         else gameObject.SetActive(false);
     }
 
-    // --- ЛОГІКА КНОПОК ---
+    // --- ЛОГІКА КНОПОК ІЗ ЗВУКОМ ---
+    private void PlayClickSound()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+    }
+
     public void StartNewRun()
     {
+        PlayClickSound();
         PlayerPrefs.DeleteKey("HasCampSave");
         PlayerPrefs.SetInt("IsRunActive", 0);
         PlayerPrefs.SetInt("IsContinuing", 0);
@@ -169,6 +169,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void ContinueGame()
     {
+        PlayClickSound();
         PlayerPrefs.SetInt("IsContinuing", 1);
         PlayerPrefs.Save();
 
@@ -180,6 +181,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void OpenShop()
     {
+        PlayClickSound();
         HideMenuBeforeLoad();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(shopSceneName);
@@ -188,16 +190,19 @@ public class MainMenuManager : MonoBehaviour
 
     public void OpenOptions()
     {
+        PlayClickSound();
         Debug.Log("Options clicked! (Show options panel)");
     }
 
     public void OpenAchievements()
     {
+        PlayClickSound();
         Debug.Log("Achievements clicked! (Show achievements panel)");
     }
 
     public void QuitGame()
     {
+        PlayClickSound();
         Debug.Log("Quitting Game...");
         Application.Quit();
 

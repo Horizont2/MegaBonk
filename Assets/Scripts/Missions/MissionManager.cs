@@ -70,7 +70,6 @@ public class MissionManager : MonoBehaviour
         SaveMissions();
     }
 
-    // --- НОВА СИСТЕМА ЗБЕРЕЖЕННЯ (ПІДТРИМУЄ БАГАТО МІСІЙ) ---
     public void SaveMissions()
     {
         PlayerPrefs.SetInt("ActiveMissionCount", activeMissions.Count);
@@ -126,7 +125,6 @@ public class MissionManager : MonoBehaviour
         }
     }
 
-    // --- ДОДАВАННЯ НОВОЇ МІСІЇ (Викликати з Дошки Оголошень) ---
     public void AddNewMission(MissionData data, int targetAmount)
     {
         ActiveMission newMission = new ActiveMission
@@ -149,9 +147,8 @@ public class MissionManager : MonoBehaviour
         GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
         mission.uiElement = uiObj.GetComponent<MissionUIElement>();
 
-        // ТУТ ВИПРАВЛЕНО: Завжди береться опис, а не ім'я
-        string desc = string.IsNullOrEmpty(mission.data.missionDescription) ? mission.data.missionName : mission.data.missionDescription;
-        mission.uiElement.Setup(desc, mission.currentProgress, mission.targetAmount);
+        // ПЕРЕДАЄМО ДАНІ РОЗДІЛЬНО!
+        mission.uiElement.Setup(mission.data.missionName, mission.data.missionDescription, mission.currentProgress, mission.targetAmount);
     }
 
     public void AddProgress(MissionType type, int amount = 1)
@@ -177,11 +174,9 @@ public class MissionManager : MonoBehaviour
             }
         }
 
-        // Зберігаємо змінений прогрес (наприклад, скільки секунд вижили)
         if (wasUpdated) SaveMissions();
     }
 
-    // НОВИЙ МЕТОД: Повертає кількість активних (незавершених) місій
     public int GetActiveMissionCount()
     {
         int count = 0;
@@ -199,6 +194,9 @@ public class MissionManager : MonoBehaviour
     {
         mission.isCompleted = true;
         if (mission.uiElement != null) mission.uiElement.CompleteMission();
+
+        // ЗВУК: Тріумфальне виконання місії
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
 
         if (ResourceManager.Instance != null)
         {

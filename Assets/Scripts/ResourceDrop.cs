@@ -8,10 +8,10 @@ public class ResourceDrop : MonoBehaviour
     [Header("Drop Settings")]
     public ResourceType resourceType;
     public int amount = 1;
-    public float popForce = 6f; // Сила вибуху вгору
+    public float popForce = 6f;
 
     [Header("Idle Animation")]
-    public float spinSpeed = 120f; // Як швидко крутиться на землі
+    public float spinSpeed = 120f;
 
     [Header("Magnet Settings")]
     public float magnetSpeed = 20f;
@@ -25,7 +25,6 @@ public class ResourceDrop : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
 
-        // 1. Потужний стрибок вгору і в боки
         Vector3 randomDir = new Vector3(Random.Range(-1f, 1f), 2f, Random.Range(-1f, 1f)).normalized;
         rb.AddForce(randomDir * popForce, ForceMode.Impulse);
         rb.AddTorque(Random.insideUnitSphere * popForce * 2f, ForceMode.Impulse);
@@ -37,7 +36,6 @@ public class ResourceDrop : MonoBehaviour
             playerController = p.GetComponent<PlayerController>();
         }
 
-        // 2. Через 1.5с предмети падають на землю, і ми вмикаємо їм красиве обертання
         Invoke(nameof(StartSpinning), 1.5f);
     }
 
@@ -45,7 +43,7 @@ public class ResourceDrop : MonoBehaviour
     {
         if (!isMagnetizing)
         {
-            rb.isKinematic = true; // Вимикаємо фізику, щоб не заважала
+            rb.isKinematic = true;
             Collider col = GetComponent<Collider>();
             if (col != null) col.isTrigger = true;
         }
@@ -55,8 +53,6 @@ public class ResourceDrop : MonoBehaviour
     {
         if (player == null || playerController == null) return;
 
-        // --- АНІМАЦІЯ ОБЕРТАННЯ ---
-        // Якщо фізика вимкнена (предмет впав) і він ще не магнітиться
         if (rb.isKinematic && !isMagnetizing)
         {
             transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
@@ -64,7 +60,6 @@ public class ResourceDrop : MonoBehaviour
 
         float dist = Vector3.Distance(transform.position, player.position);
 
-        // Починаємо магнітитись до гравця
         if (!isMagnetizing && dist <= playerController.pickupRadius)
         {
             isMagnetizing = true;
@@ -75,7 +70,6 @@ public class ResourceDrop : MonoBehaviour
 
         if (isMagnetizing)
         {
-            // Летимо в груди гравцю (Vector3.up)
             transform.position = Vector3.MoveTowards(transform.position, player.position + Vector3.up, magnetSpeed * Time.deltaTime);
 
             if (Vector3.Distance(transform.position, player.position + Vector3.up) < 0.5f)
@@ -89,11 +83,26 @@ public class ResourceDrop : MonoBehaviour
     {
         if (ResourceManager.Instance != null)
         {
-            // ЗАМІНЕНО AddResources на AddRunResources
-            if (resourceType == ResourceType.Wood) ResourceManager.Instance.AddRunResources(amount, 0, 0);
-            else if (resourceType == ResourceType.Stone) ResourceManager.Instance.AddRunResources(0, amount, 0);
-            else if (resourceType == ResourceType.Food) ResourceManager.Instance.AddRunResources(0, 0, amount);
-            else if (resourceType == ResourceType.Diamond) playerController.GainDiamond(amount);
+            if (resourceType == ResourceType.Wood)
+            {
+                ResourceManager.Instance.AddRunResources(amount, 0, 0);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+            }
+            else if (resourceType == ResourceType.Stone)
+            {
+                ResourceManager.Instance.AddRunResources(0, amount, 0);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+            }
+            else if (resourceType == ResourceType.Food)
+            {
+                ResourceManager.Instance.AddRunResources(0, 0, amount);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+            }
+            else if (resourceType == ResourceType.Diamond)
+            {
+                // Звук діаманта вже викликається всередині GainDiamond, тому тут його не дублюємо
+                playerController.GainDiamond(amount);
+            }
         }
 
         Destroy(gameObject);

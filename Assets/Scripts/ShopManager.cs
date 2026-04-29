@@ -55,7 +55,6 @@ public class ShopManager : MonoBehaviour
     public float swipeSpeed = 4f;
     public float rotationSpeed = 500f;
 
-    [Tooltip("Скільки секунд блокувати зміну категорії після натискання (щоб камера встигла долетіти)")]
     public float modeSwitchCooldown = 1.5f;
     private float nextModeSwitchTime = 0f;
 
@@ -171,6 +170,9 @@ public class ShopManager : MonoBehaviour
     public void StartInspect()
     {
         if (currentMode != ShopMode.Weapons || isSwapping || isTransitioningUI) return;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         isInspectingWeapon = true;
 
         if (camManager != null) camManager.GoToInspect();
@@ -189,6 +191,9 @@ public class ShopManager : MonoBehaviour
     public void StopInspect()
     {
         if (!isInspectingWeapon) return;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         isInspectingWeapon = false;
 
         if (camManager != null) camManager.GoToArsenal();
@@ -222,6 +227,8 @@ public class ShopManager : MonoBehaviour
     public void ToggleShopMode()
     {
         if (isTransitioningUI || Time.time < nextModeSwitchTime) return;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         nextModeSwitchTime = Time.time + modeSwitchCooldown;
 
@@ -303,6 +310,8 @@ public class ShopManager : MonoBehaviour
     {
         if (isSwapping || isTransitioningUI) return;
 
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         if (isInspectingWeapon)
         {
             StartCoroutine(StopInspectAndSwap(true));
@@ -314,6 +323,8 @@ public class ShopManager : MonoBehaviour
     public void PreviousItem()
     {
         if (isSwapping || isTransitioningUI) return;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         if (isInspectingWeapon)
         {
@@ -404,15 +415,26 @@ public class ShopManager : MonoBehaviour
             int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY);
             if (myDiamonds >= price)
             {
+                // ЗВУК: Успішна покупка
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
                 PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 PlayerPrefs.SetInt(selectKey, id);
                 PlayerPrefs.Save();
                 UpdateUI(true);
             }
+            else
+            {
+                // ЗВУК: Помилка (недостатньо кристалів)
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
+            }
         }
         else
         {
+            // ЗВУК: Вибір героя/зброї
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
             PlayerPrefs.SetInt(selectKey, id);
             PlayerPrefs.Save();
             UpdateUI(true);
@@ -514,17 +536,17 @@ public class ShopManager : MonoBehaviour
 
     public void GoToCampScene()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         PlayerPrefs.SetInt("ReturningFromShop", 1);
         PlayerPrefs.Save();
 
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // НОВЕ: Примусово вимикаємо UI магазину, щоб він не просвічував через завантаження
         if (mainUIPanel != null) mainUIPanel.gameObject.SetActive(false);
         if (inspectButton != null) inspectButton.SetActive(false);
 
-        // Використовуємо красиве завантаження GlobalHUD
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
         else SceneManager.LoadScene(campSceneName);
     }
