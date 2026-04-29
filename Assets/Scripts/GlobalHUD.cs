@@ -20,6 +20,10 @@ public class GlobalHUD : MonoBehaviour
     public float promptFadeSpeed = 5f;
     public float typingSpeed = 0.03f;
 
+    [Header("Level Objective UI")]
+    public CanvasGroup objectivePanelGroup;
+    public TextMeshProUGUI objectiveText;
+
     [Header("Scene Transition & Loading")]
     public float sceneFadeSpeed = 1.5f;
     public CanvasGroup loadingPanelGroup;
@@ -404,5 +408,16 @@ public class GlobalHUD : MonoBehaviour
                 btn.interactable = true;
             }
         }
+    }
+
+    public void SetLevelObjective(string message)
+    {
+        if (objectiveText != null) objectiveText.text = message;
+        if (objectivePanelGroup != null) objectivePanelGroup.alpha = 1f;
+    }
+
+    public void HideLevelObjective()
+    {
+        if (objectivePanelGroup != null) objectivePanelGroup.alpha = 0f;
     }
 }
