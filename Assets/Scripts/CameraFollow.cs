@@ -5,19 +5,20 @@ public class CameraFollow : MonoBehaviour
     [Header("Target Settings")]
     public Transform target;
     public Vector3 targetOffset = new Vector3(0, 1.5f, 0);
-
-    // Замінили distance на maxDistance для зручності
     public float maxDistance = 8f;
     public float minDistance = 1.0f;
 
-    [Header("Collision Settings (NEW)")]
-    public LayerMask collisionLayers; // Шари, крізь які камера не може пройти
+    [Header("Collision Settings")]
+    public LayerMask collisionLayers; // Шари перешкод
     public float smoothSpeed = 10f;   // Швидкість повернення камери
 
     [Header("Mouse Control")]
     public float mouseSensitivity = 3f;
     public float minYAngle = -20f;
     public float maxYAngle = 80f;
+
+    [Header("Cinematic Bridge")]
+    public bool isCinematicMode = false; // Нове: вмикається Директором
 
     [Header("Shake Settings")]
     private float shakeTimer;
@@ -36,48 +37,45 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (Time.timeScale == 0f) return;
+        // Якщо працює катсцена або пауза — скрипт не перехоплює камеру[cite: 7]
+        if (isCinematicMode || Time.timeScale == 0f) return;
 
         if (target == null) return;
 
-        // 1. Керування мишею
+        // 1. Керування мишею[cite: 7]
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
         currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
 
-        // 2. Розрахунок бажаної позиції (ніби перешкод немає)
+        // 2. Розрахунок позиції[cite: 7]
         Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
         Vector3 lookAtPos = target.position + targetOffset;
         Vector3 direction = -(rotation * Vector3.forward);
         Vector3 desiredPosition = lookAtPos + direction * maxDistance;
 
-        // 3. ПЕРЕВІРКА КОЛІЗІЙ (Щоб не заглядати в будинки)
+        // 3. ПЕРЕВІРКА КОЛІЗІЙ (Твоя оригінальна логіка)[cite: 7]
         if (Physics.Linecast(lookAtPos, desiredPosition, out RaycastHit hit, collisionLayers))
         {
-            // Якщо промінь вдарився - наближаємо камеру (множимо на 0.85, щоб вона не влипала в саму текстуру)
             currentDistance = Mathf.Clamp(hit.distance * 0.85f, minDistance, maxDistance);
         }
         else
         {
-            // Якщо перешкод немає - плавно повертаємо камеру на максимальну відстань
             currentDistance = Mathf.Lerp(currentDistance, maxDistance, Time.deltaTime * smoothSpeed);
         }
 
-        // Обчислюємо фінальну позицію з урахуванням колізій
         Vector3 finalPosition = lookAtPos + direction * currentDistance;
 
-        // 4. ДИНАМІЧНА ТРЯСКА
+        // 4. ДИНАМІЧНА ТРЯСКА (Твоя оригінальна логіка)[cite: 7]
         if (shakeTimer > 0)
         {
             finalPosition += Random.insideUnitSphere * currentShakeIntensity;
             shakeTimer -= Time.unscaledDeltaTime;
         }
 
-        // 5. Застосування позиції
+        // 5. Застосування позиції та ANTI-CLIPPING[cite: 7]
         transform.position = finalPosition;
         transform.LookAt(lookAtPos);
 
-        // 6. ANTI-CLIPPING (Захист від провалювання під землю)
         if (Terrain.activeTerrain != null)
         {
             float terrainHeight = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y;
@@ -92,6 +90,7 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
+    // Твої оригінальні методи для тряски[cite: 7]
     public void TriggerShake(float duration, float intensity)
     {
         shakeTimer = duration;
@@ -101,5 +100,12 @@ public class CameraFollow : MonoBehaviour
     public void StartShake()
     {
         TriggerShake(0.2f, 0.3f);
+    }
+
+    // Метод для безшовного повернення з катсцени
+    public void SyncRotation(float x, float y)
+    {
+        currentX = x;
+        currentY = y;
     }
 }

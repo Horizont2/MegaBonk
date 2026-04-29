@@ -190,22 +190,33 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            float spawnX = 0f;
-            float spawnZ = 0f;
-            float spawnY = 20f;
-
-            Vector3 skyPos = new Vector3(spawnX, 1000f, spawnZ);
-
-            if (Physics.Raycast(skyPos, Vector3.down, out RaycastHit hit, 2000f))
+            // НОВЕ: Шукаємо точку спавну на поточній сцені
+            GameObject spawnPoint = GameObject.Find("PlayerSpawnPoint");
+            if (spawnPoint != null)
             {
-                spawnY = hit.point.y + 2f;
+                transform.position = spawnPoint.transform.position;
+                transform.rotation = spawnPoint.transform.rotation; // Гравець одразу буде дивитися куди треба
             }
-            else if (Terrain.activeTerrain != null)
+            else
             {
-                spawnY = Terrain.activeTerrain.SampleHeight(new Vector3(spawnX, 0, spawnZ)) + Terrain.activeTerrain.transform.position.y + 2f;
-            }
+                // Резервна логіка, якщо точки спавну немає
+                float spawnX = 0f;
+                float spawnZ = 0f;
+                float spawnY = 20f;
 
-            transform.position = new Vector3(spawnX, spawnY, spawnZ);
+                Vector3 skyPos = new Vector3(spawnX, 1000f, spawnZ);
+
+                if (Physics.Raycast(skyPos, Vector3.down, out RaycastHit hit, 2000f))
+                {
+                    spawnY = hit.point.y + 2f;
+                }
+                else if (Terrain.activeTerrain != null)
+                {
+                    spawnY = Terrain.activeTerrain.SampleHeight(new Vector3(spawnX, 0, spawnZ)) + Terrain.activeTerrain.transform.position.y + 2f;
+                }
+
+                transform.position = new Vector3(spawnX, spawnY, spawnZ);
+            }
         }
 
         if (characterController != null) characterController.enabled = true;
@@ -583,7 +594,17 @@ public class PlayerController : MonoBehaviour
 
         if (GlobalHUD.Instance != null)
         {
-            GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+
+            // НОВИЙ ФІКС: Якщо ми не в Таборі і не в Меню - просто перезапускаємо поточну сцену
+            if (currentSceneName != "CampScene" && currentSceneName != "Menu")
+            {
+                GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
+            }
+            else
+            {
+                GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+            }
         }
 
         gameObject.SetActive(false);

@@ -33,11 +33,25 @@ public class MissionUIElement : MonoBehaviour
     // НОВЕ: Тепер ми приймаємо і Title, і Description окремо
     public void Setup(string title, string description, int current, int target)
     {
+        // Скидаємо стан "виконано" для повторного використання віджета
+        isCompleted = false;
+        StopAllCoroutines();
+        if (canvasGroup != null) canvasGroup.alpha = 1f;
+
+        if (checkboxEmpty != null) checkboxEmpty.gameObject.SetActive(true);
+        if (checkboxDone != null)
+        {
+            checkboxDone.gameObject.SetActive(false);
+            checkboxDone.transform.localScale = Vector3.one;
+        }
+
         if (titleText != null) titleText.text = title;
         if (descriptionText != null) descriptionText.text = description;
 
         if (progressSlider != null)
         {
+            // Ховаємо слайдер, якщо це просте завдання на 1 дію
+            progressSlider.gameObject.SetActive(target > 1);
             progressSlider.maxValue = target;
             progressSlider.value = current;
         }

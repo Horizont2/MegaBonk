@@ -280,6 +280,16 @@ public class GlobalHUD : MonoBehaviour
         }
         promptCanvasGroup.alpha = targetAlpha;
     }
+    public void SetGameplayPanelsActive(bool active)
+    {
+        if (gameplayPanels != null)
+        {
+            foreach (GameObject panel in gameplayPanels)
+            {
+                if (panel != null) panel.SetActive(active);
+            }
+        }
+    }
 
     public void TogglePause()
     {

@@ -2,9 +2,6 @@ using UnityEngine;
 
 public class NPC_Dialogue : MonoBehaviour
 {
-    [Header("Settings")]
-    public string npcName = "Stranger";
-
     private bool isPlayerInRange = false;
     private bool hasTalked = false;
 
@@ -13,8 +10,7 @@ public class NPC_Dialogue : MonoBehaviour
         if (other.CompareTag("Player") && !hasTalked)
         {
             isPlayerInRange = true;
-            if (GlobalHUD.Instance != null)
-                GlobalHUD.Instance.ShowPrompt("[E] Talk to " + npcName);
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Talk to Stranger");
         }
     }
 
@@ -23,8 +19,7 @@ public class NPC_Dialogue : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             isPlayerInRange = false;
-            if (GlobalHUD.Instance != null)
-                GlobalHUD.Instance.HidePrompt();
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         }
     }
 
@@ -32,28 +27,22 @@ public class NPC_Dialogue : MonoBehaviour
     {
         if (isPlayerInRange && !hasTalked && Input.GetKeyDown(KeyCode.E))
         {
-            StartDialogue();
-        }
-    }
+            hasTalked = true;
+            isPlayerInRange = false;
 
-    private void StartDialogue()
-    {
-        hasTalked = true;
-        isPlayerInRange = false;
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
 
-        if (GlobalHUD.Instance != null)
-            GlobalHUD.Instance.HidePrompt();
+            // Повертаємо ковбоя до гравця
+            Transform player = GameObject.FindGameObjectWithTag("Player").transform;
+            Vector3 lookPos = player.position - transform.position;
+            lookPos.y = 0;
+            transform.rotation = Quaternion.LookRotation(lookPos);
 
-        // Повертаємо ковбоя обличчям до гравця
-        Transform player = GameObject.FindGameObjectWithTag("Player").transform;
-        Vector3 lookPos = player.position - transform.position;
-        lookPos.y = 0;
-        transform.rotation = Quaternion.LookRotation(lookPos);
-
-        // Передаємо сигнал режисеру рівня
-        if (Level1_QuestManager.Instance != null)
-        {
-            Level1_QuestManager.Instance.AdvanceQuest();
+            // ЗАПУСКАЄМО ДІАЛОГ
+            if (Level1_QuestManager.Instance != null)
+            {
+                Level1_QuestManager.Instance.StartIntroDialogue();
+            }
         }
     }
 }

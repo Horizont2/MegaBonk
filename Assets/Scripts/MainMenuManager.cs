@@ -163,8 +163,9 @@ public class MainMenuManager : MonoBehaviour
 
         HideMenuBeforeLoad();
 
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
-        else SceneManager.LoadScene(campSceneName);
+        // нанб'ъгйнбн оепеб╡п мюгбс яжемх рср:
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
+        else SceneManager.LoadScene("Lvl_1");
     }
 
     public void ContinueGame()
