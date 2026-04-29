@@ -2,6 +2,9 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using System; // НОВЕ: Потрібно для роботи з часом (DateTime)
+
+public enum ResourceType { Wood, Stone, Food }
 
 [System.Serializable]
 public class BuildingLevel
@@ -11,10 +14,17 @@ public class BuildingLevel
     public int costFood;
     public int productionValue;
     public string productionDescription;
+    public float buildTime = 5f;
 }
 
 public class CampBuilding : MonoBehaviour
 {
+    [Header("Logistics (NEW)")]
+    public ResourceType productionType;
+    public Transform pickupPoint;
+    public int pendingResourcesCount = 0;
+    public bool hasStorageInCamp = false;
+
     [Header("Unique ID")]
     public string buildingID = "Building_01";
 
@@ -22,8 +32,7 @@ public class CampBuilding : MonoBehaviour
     public GameObject ghostModel;
     public GameObject realModel;
 
-    [Header("Visual Production Piles (NEW)")]
-    [Tooltip("Поклади сюди об'єкти колод/каменів, які будуть з'являтися по черзі")]
+    [Header("Visual Production Piles")]
     public GameObject[] resourceVisuals;
     private int currentVisualIndex = 0;
 
@@ -36,21 +45,21 @@ public class CampBuilding : MonoBehaviour
     public int currentLevel = 0;
     public BuildingLevel[] levels;
 
-    [Header("Hold To Build Mechanic")]
-    public float holdTimeRequired = 5f;
-    private float currentHoldTime = 0f;
-
-    [Header("UI References")]
-    public GameObject uiCanvas;
+    [Header("UI & Interaction (NEW)")]
+    public GameObject aaaPanel;
     public Image holdFillImage;
-    public Image holdKeyIconImage;
-    public Color normalColor = Color.white;
-    public Color pressedColor = new Color(0.6f, 0.6f, 0.6f, 1f);
+    public float holdTimeRequired = 1.5f;
+    private float currentHoldTime = 0f;
+    private bool isPanelOpen = false;
 
     [Header("UI Text References")]
     public TextMeshProUGUI titleTMP;
+    public TextMeshProUGUI lvlTMP;
     public TextMeshProUGUI descTMP;
-    public TextMeshProUGUI prodTMP;
+    public TextMeshProUGUI infoTMP;
+    public TextMeshProUGUI progressTMP;
+
+    [Header("Resource Cost Texts")]
     public TextMeshProUGUI costWoodTMP;
     public TextMeshProUGUI costStoneTMP;
     public TextMeshProUGUI costFoodTMP;
@@ -63,29 +72,70 @@ public class CampBuilding : MonoBehaviour
     [Header("Cinematic Effects")]
     public ParticleSystem buildDustVFX;
     public AudioSource buildAudio;
-    public float buildDuration = 2.5f;
     public float spawnDepth = 12f;
     public float upgradeBounceAmount = 1.15f;
 
     private bool playerInRange = false;
     private bool isAnimating = false;
     private float glimmerCheckTimer = 0f;
-
     private SmartSeasonManager seasonManager;
+    private Coroutine productionCoroutine;
 
     private void Start()
     {
         seasonManager = FindFirstObjectByType<SmartSeasonManager>();
 
-        if (uiCanvas != null) uiCanvas.SetActive(false);
+        if (aaaPanel != null) aaaPanel.SetActive(false);
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
-        if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
+        if (progressTMP != null) progressTMP.text = "0%";
 
         StopDustEffect();
         HideAllVisualResources();
 
+        // --- НОВА СИСТЕМА ЗАВАНТАЖЕННЯ ---
         currentLevel = PlayerPrefs.GetInt("SaveBld_" + buildingID, 0);
+        bool isUpgrading = PlayerPrefs.GetInt("SaveBld_Upg_" + buildingID, 0) == 1;
 
+        if (isUpgrading && levels != null && currentLevel < levels.Length)
+        {
+            // Якщо гравець вийшов з гри під час апгрейду
+            string timeStr = PlayerPrefs.GetString("SaveBld_Time_" + buildingID, "");
+            if (DateTime.TryParse(timeStr, out DateTime targetTime))
+            {
+                double remainingSeconds = (targetTime - DateTime.UtcNow).TotalSeconds;
+
+                if (remainingSeconds <= 0)
+                {
+                    // Час пройшов, поки гри не було - миттєво закінчуємо
+                    CompleteUpgradeOffline();
+                }
+                else
+                {
+                    // Час ще йде - відновлюємо анімацію і таймер!
+                    float totalTime = levels[currentLevel].buildTime;
+                    StartCoroutine(BuildSequence((float)remainingSeconds, totalTime, currentLevel + 1));
+                }
+            }
+            else
+            {
+                // Запобіжник на випадок помилки
+                PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0);
+                SetupVisualsForCurrentLevel();
+                if (currentLevel > 0) ApplyBuildingEffects();
+            }
+        }
+        else
+        {
+            // Нормальне завантаження
+            SetupVisualsForCurrentLevel();
+            if (currentLevel > 0) ApplyBuildingEffects();
+        }
+
+        UpdateGlimmerState();
+    }
+
+    private void SetupVisualsForCurrentLevel()
+    {
         if (currentLevel == 0)
         {
             ghostModel.SetActive(true);
@@ -95,10 +145,18 @@ public class CampBuilding : MonoBehaviour
         {
             ghostModel.SetActive(false);
             realModel.SetActive(true);
-            ApplyBuildingEffects();
         }
+    }
 
-        UpdateGlimmerState();
+    private void CompleteUpgradeOffline()
+    {
+        currentLevel++;
+        PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
+        PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0);
+        PlayerPrefs.Save();
+
+        SetupVisualsForCurrentLevel();
+        ApplyBuildingEffects();
     }
 
     private void Update()
@@ -107,87 +165,87 @@ public class CampBuilding : MonoBehaviour
         {
             bool isWinter = (seasonManager.currentSeason == Season.Winter);
             bool isBuilt = (currentLevel > 0);
-            snowClumps.SetActive(isBuilt && isWinter);
+            snowClumps.SetActive(isBuilt && isWinter && !isAnimating);
         }
 
-        if (isAnimating) return;
+        if (isAnimating) return; // Блокуємо будь-яку взаємодію під час апгрейду
 
         glimmerCheckTimer += Time.deltaTime;
         if (glimmerCheckTimer >= 1f)
         {
             glimmerCheckTimer = 0f;
             UpdateGlimmerState();
-            if (playerInRange) UpdateUIData();
+            if (isPanelOpen) UpdateUIData();
         }
 
         if (!playerInRange) return;
 
-        if (currentLevel >= levels.Length)
+        if (levels == null || levels.Length == 0 || currentLevel >= levels.Length)
         {
-            if (uiCanvas.activeSelf) uiCanvas.SetActive(false);
+            if (isPanelOpen) ClosePanel();
             return;
         }
 
-        BuildingLevel nextLevelData = levels[currentLevel];
-        bool canAfford = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
-
-        if (Input.GetKey(KeyCode.E) && canAfford)
+        if (Input.GetKeyDown(KeyCode.F))
         {
-            currentHoldTime += Time.deltaTime;
-            if (holdFillImage != null) holdFillImage.fillAmount = currentHoldTime / holdTimeRequired;
-            if (holdKeyIconImage != null) holdKeyIconImage.color = pressedColor;
-
-            StartDustEffect();
-
-            if (currentHoldTime >= holdTimeRequired)
-            {
-                currentHoldTime = 0f;
-                ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
-
-                currentLevel++;
-                PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
-                PlayerPrefs.Save();
-
-                if (MissionManager.Instance != null)
-                {
-                    MissionManager.Instance.AddProgress(MissionType.BuildStructures, 1);
-                }
-
-                if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
-
-                StartCoroutine(BuildSequence());
-            }
+            if (isPanelOpen) ClosePanel();
+            else OpenPanel();
         }
-        else
+
+        if (isPanelOpen)
         {
-            if (Input.GetKeyUp(KeyCode.E) && holdKeyIconImage != null)
-            {
-                holdKeyIconImage.color = normalColor;
-            }
+            BuildingLevel nextLevelData = levels[currentLevel];
+            bool canAfford = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
 
-            if (currentHoldTime > 0)
+            if (Input.GetKey(KeyCode.E) && canAfford)
             {
-                currentHoldTime -= Time.deltaTime * 2f;
-                currentHoldTime = Mathf.Max(0, currentHoldTime);
-                if (holdFillImage != null) holdFillImage.fillAmount = currentHoldTime / holdTimeRequired;
-            }
+                currentHoldTime += Time.deltaTime;
+                float fillRatio = currentHoldTime / holdTimeRequired;
 
-            StopDustEffect();
+                if (holdFillImage != null) holdFillImage.fillAmount = fillRatio;
+                if (progressTMP != null) progressTMP.text = $"{(int)(fillRatio * 100)}%";
+
+                if (currentHoldTime >= holdTimeRequired)
+                {
+                    currentHoldTime = 0f;
+                    if (progressTMP != null) progressTMP.text = "100%";
+
+                    // 1. СПИСУЄМО РЕСУРСИ ОДРАЗУ
+                    ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
+
+                    // 2. ЗАПИСУЄМО ЧАС СТАРТУ У РЕАЛЬНОМУ СВІТІ (currentLevel НЕ підвищуємо!)
+                    PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 1);
+                    DateTime endTime = DateTime.UtcNow.AddSeconds(nextLevelData.buildTime);
+                    PlayerPrefs.SetString("SaveBld_Time_" + buildingID, endTime.ToString("o")); // Формат "o" ідеально зберігає дати
+                    PlayerPrefs.Save();
+
+                    ClosePanel();
+                    StartCoroutine(BuildSequence(nextLevelData.buildTime, nextLevelData.buildTime, currentLevel + 1));
+                }
+            }
+            else
+            {
+                if (currentHoldTime > 0)
+                {
+                    currentHoldTime -= Time.deltaTime * 3f;
+                    currentHoldTime = Mathf.Max(0, currentHoldTime);
+                    float fillRatio = currentHoldTime / holdTimeRequired;
+
+                    if (holdFillImage != null) holdFillImage.fillAmount = fillRatio;
+                    if (progressTMP != null) progressTMP.text = $"{(int)(fillRatio * 100)}%";
+                }
+            }
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player") && currentLevel < levels.Length)
+        if (other.CompareTag("Player") && levels != null && currentLevel < levels.Length && !isAnimating)
         {
             playerInRange = true;
-            UpdateUIData();
-
-            if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
-            if (uiCanvas != null)
+            if (GlobalHUD.Instance != null && !isPanelOpen)
             {
-                uiCanvas.SetActive(true);
-                StartCoroutine(PopUpUI());
+                GlobalHUD.Instance.ShowPrompt("[F] Inspect " + buildingName);
             }
         }
     }
@@ -197,33 +255,80 @@ public class CampBuilding : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             playerInRange = false;
-            currentHoldTime = 0f;
-            if (uiCanvas != null) uiCanvas.SetActive(false);
-            if (holdKeyIconImage != null) holdKeyIconImage.color = normalColor;
-            StopDustEffect();
+            ClosePanel();
+
+            if (GlobalHUD.Instance != null)
+            {
+                GlobalHUD.Instance.HidePrompt();
+            }
+        }
+    }
+
+    private void OpenPanel()
+    {
+        isPanelOpen = true;
+        UpdateUIData();
+
+        if (aaaPanel != null)
+        {
+            aaaPanel.SetActive(true);
+            StartCoroutine(PopUpUI(aaaPanel.transform));
+        }
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+    }
+
+    private void ClosePanel()
+    {
+        isPanelOpen = false;
+        currentHoldTime = 0f;
+        if (holdFillImage != null) holdFillImage.fillAmount = 0f;
+        if (progressTMP != null) progressTMP.text = "0%";
+
+        if (aaaPanel != null) aaaPanel.SetActive(false);
+
+        if (playerInRange && GlobalHUD.Instance != null && currentLevel < levels.Length && !isAnimating)
+        {
+            GlobalHUD.Instance.ShowPrompt("[F] Inspect " + buildingName);
+        }
+    }
+
+    private IEnumerator PopUpUI(Transform targetTransform)
+    {
+        targetTransform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
+        float t = 0;
+        while (t < 1)
+        {
+            t += Time.deltaTime * 8f;
+            targetTransform.localScale = Vector3.Lerp(new Vector3(0.8f, 0.8f, 0.8f), Vector3.one, Mathf.SmoothStep(0, 1, t));
+            yield return null;
         }
     }
 
     private void UpdateUIData()
     {
-        if (currentLevel >= levels.Length) return;
-
+        if (levels == null || levels.Length == 0 || currentLevel >= levels.Length) return;
         BuildingLevel nextLevelData = levels[currentLevel];
 
-        if (titleTMP) titleTMP.text = buildingName + $" (LVL {currentLevel})";
+        if (titleTMP) titleTMP.text = buildingName.ToUpper();
+        if (lvlTMP) lvlTMP.text = currentLevel == 0 ? "(Unbuilt)" : $"(Level {currentLevel})";
         if (descTMP) descTMP.text = description;
 
+        string infoText = "";
         if (currentLevel == 0)
         {
-            if (prodTMP) prodTMP.text = nextLevelData.productionDescription;
-            if (buildHintTMP) buildHintTMP.text = "Press E to Build";
+            infoText += $"Production: <b><color=#FFFFFF>{nextLevelData.productionDescription}</color></b>\n";
+            infoText += $"Build Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
+            if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO BUILD";
         }
         else
         {
             BuildingLevel currentData = levels[currentLevel - 1];
-            if (prodTMP) prodTMP.text = $"{currentData.productionDescription}\n<color=#00FF00>-> {nextLevelData.productionDescription}</color>";
-            if (buildHintTMP) buildHintTMP.text = "Press E to Upgrade";
+            infoText += $"Production: <b><color=#AAAAAA>{currentData.productionDescription}</color></b> -> <b><color=#00FF00>{nextLevelData.productionDescription}</color></b>\n";
+            infoText += $"Upgrade Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
+            if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO UPGRADE";
         }
+        if (infoTMP) infoTMP.text = infoText;
 
         if (ResourceManager.Instance != null)
         {
@@ -231,94 +336,120 @@ public class CampBuilding : MonoBehaviour
             string stoneColor = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? "#FFFFFF" : "#FF4444";
             string foodColor = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? "#FFFFFF" : "#FF4444";
 
-            if (costWoodTMP) costWoodTMP.text = $"<color={woodColor}>Logs: {nextLevelData.costWood}</color>";
-            if (costStoneTMP) costStoneTMP.text = $"<color={stoneColor}>Stones: {nextLevelData.costStone}</color>";
-            if (costFoodTMP) costFoodTMP.text = $"<color={foodColor}>Food: {nextLevelData.costFood}</color>";
+            if (costWoodTMP) costWoodTMP.text = $"<color=#CCCCCC>WOOD</color>\n<size=130%><color={woodColor}>{nextLevelData.costWood}</color></size>";
+            if (costStoneTMP) costStoneTMP.text = $"<color=#CCCCCC>STONE</color>\n<size=130%><color={stoneColor}>{nextLevelData.costStone}</color></size>";
+            if (costFoodTMP) costFoodTMP.text = $"<color=#CCCCCC>FOOD</color>\n<size=130%><color={foodColor}>{nextLevelData.costFood}</color></size>";
         }
     }
 
-    private IEnumerator PopUpUI()
-    {
-        uiCanvas.transform.localScale = Vector3.zero;
-        float t = 0;
-        while (t < 1)
-        {
-            t += Time.deltaTime * 5f;
-            uiCanvas.transform.localScale = Vector3.Lerp(Vector3.zero, new Vector3(0.005f, 0.005f, 0.005f), Mathf.SmoothStep(0, 1, t));
-            yield return null;
-        }
-    }
-
-    private IEnumerator BuildSequence()
+    private IEnumerator BuildSequence(float remainingTime, float totalTime, int targetLevel)
     {
         isAnimating = true;
-        if (uiCanvas != null) uiCanvas.SetActive(false);
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         if (upgradeGlimmer != null) upgradeGlimmer.SetActive(false);
 
-        ghostModel.SetActive(false);
-        realModel.SetActive(true);
-
-        Vector3 finalPos = realModel.transform.position;
-        Vector3 originalScale = realModel.transform.localScale;
-
-        if (currentLevel == 1) realModel.transform.position -= new Vector3(0, spawnDepth, 0);
+        if (productionCoroutine != null)
+        {
+            StopCoroutine(productionCoroutine);
+            productionCoroutine = null;
+        }
 
         StartDustEffect();
         if (buildAudio != null) buildAudio.Play();
 
-        float timer = 0f;
-        Vector3 startPos = realModel.transform.position;
-        Vector3 bounceScale = originalScale * upgradeBounceAmount;
+        // Відновлюємо таймер відносно того, скільки часу вже пройшло
+        float timer = totalTime - remainingTime;
+        Vector3 finalPos = realModel.transform.position;
+        Vector3 originalScale = realModel.transform.localScale;
 
-        while (timer < buildDuration)
+        if (targetLevel == 1)
         {
-            timer += Time.deltaTime;
-            float progress = timer / buildDuration;
+            ghostModel.SetActive(false);
+            realModel.SetActive(true);
+            Vector3 startPos = finalPos - new Vector3(0, spawnDepth, 0);
 
-            if (currentLevel == 1)
+            while (timer < totalTime)
             {
+                timer += Time.deltaTime;
+                float progress = timer / totalTime;
                 realModel.transform.position = Vector3.Lerp(startPos, finalPos, Mathf.SmoothStep(0f, 1f, progress));
+
+                if (buildDustVFX != null && !buildDustVFX.isPlaying) buildDustVFX.Play();
+                yield return null;
             }
-            else
+            realModel.transform.position = finalPos;
+        }
+        else
+        {
+            ghostModel.SetActive(true);
+            realModel.SetActive(false);
+
+            while (timer < totalTime)
             {
+                timer += Time.deltaTime;
+                if (buildDustVFX != null && !buildDustVFX.isPlaying) buildDustVFX.Play();
+                yield return null;
+            }
+
+            ghostModel.SetActive(false);
+            realModel.SetActive(true);
+
+            float popTimer = 0f;
+            float popDuration = 0.5f;
+            Vector3 bounceScale = originalScale * upgradeBounceAmount;
+
+            while (popTimer < popDuration)
+            {
+                popTimer += Time.deltaTime;
+                float progress = popTimer / popDuration;
                 float scaleCurve = Mathf.PingPong(progress * 2f, 1f);
                 realModel.transform.localScale = Vector3.Lerp(originalScale, bounceScale, Mathf.SmoothStep(0f, 1f, scaleCurve));
+                yield return null;
             }
-
-            yield return null;
+            realModel.transform.localScale = originalScale;
         }
 
-        realModel.transform.position = finalPos;
-        realModel.transform.localScale = originalScale;
-
         StopDustEffect();
+
+        // --- ФІНАЛ: ТІЛЬКИ ТЕПЕР МИ ПІДВИЩУЄМО РІВЕНЬ І ЗБЕРІГАЄМО ЙОГО ---
+        currentLevel = targetLevel;
+        PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
+        PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0); // Знімаємо статус будівництва
+        PlayerPrefs.Save();
 
         ApplyBuildingEffects();
         UpdateGlimmerState();
 
-        if (playerInRange && currentLevel < levels.Length)
-        {
-            UpdateUIData();
-            uiCanvas.SetActive(true);
-            StartCoroutine(PopUpUI());
-        }
-
         isAnimating = false;
+
+        if (playerInRange && levels != null && currentLevel < levels.Length)
+        {
+            OpenPanel();
+        }
     }
 
-    // --- ЛОГІКА ВІЗУАЛЬНИХ РЕСУРСІВ (НОВЕ) ---
+    public int CollectResourcesByStorageNPC()
+    {
+        int amount = pendingResourcesCount;
+        pendingResourcesCount = 0;
+        HideAllVisualResources();
+        return amount;
+    }
+
     public void ShowNextVisualResource()
     {
         if (resourceVisuals == null || resourceVisuals.Length == 0) return;
-
         if (currentVisualIndex < resourceVisuals.Length)
         {
-            if (resourceVisuals[currentVisualIndex] != null)
-            {
-                resourceVisuals[currentVisualIndex].SetActive(true);
-            }
+            if (resourceVisuals[currentVisualIndex] != null) resourceVisuals[currentVisualIndex].SetActive(true);
             currentVisualIndex++;
         }
+    }
+
+    public bool IsVisualsFull()
+    {
+        if (resourceVisuals == null || resourceVisuals.Length == 0) return false;
+        return currentVisualIndex >= resourceVisuals.Length;
     }
 
     private void HideAllVisualResources()
@@ -333,6 +464,8 @@ public class CampBuilding : MonoBehaviour
 
     private void ApplyBuildingEffects()
     {
+        if (levels == null || levels.Length == 0 || currentLevel == 0) return;
+
         BuildingLevel currentData = levels[currentLevel - 1];
         if (isStorageVault && ResourceManager.Instance != null)
         {
@@ -340,8 +473,8 @@ public class CampBuilding : MonoBehaviour
         }
         else if (!isStorageVault)
         {
-            StopAllCoroutines();
-            StartCoroutine(ProductionRoutine(currentData.productionValue));
+            if (productionCoroutine != null) StopCoroutine(productionCoroutine);
+            productionCoroutine = StartCoroutine(ProductionRoutine(currentData.productionValue));
         }
     }
 
@@ -350,33 +483,45 @@ public class CampBuilding : MonoBehaviour
         if (amountPerMinute <= 0) yield break;
         while (true)
         {
-            yield return new WaitForSeconds(60f); // Кожні 60 секунд
+            yield return new WaitForSeconds(60f);
 
-            // 1. Нараховуємо ресурси
-            if (buildingID.Contains("Lumberjack")) ResourceManager.Instance.AddStashResources(amountPerMinute, 0, 0);
-            else if (buildingID.Contains("Stone")) ResourceManager.Instance.AddStashResources(0, amountPerMinute, 0);
-            else if (buildingID.Contains("Hunter")) ResourceManager.Instance.AddStashResources(0, 0, amountPerMinute);
+            CampBuilding storage = FindStorageBuilding();
+            hasStorageInCamp = (storage != null && storage.currentLevel > 0);
 
-            // 2. Ховаємо всі колоди/камені (ніби гравець їх забрав)
-            HideAllVisualResources();
-
-            // Тут можна додати якийсь ефект пилу чи звук "Ching!", щоб гравець зрозумів, що лут додано
+            if (hasStorageInCamp)
+            {
+                pendingResourcesCount += amountPerMinute;
+            }
+            else
+            {
+                if (productionType == ResourceType.Wood) ResourceManager.Instance.AddStashResources(amountPerMinute, 0, 0);
+                else if (productionType == ResourceType.Food) ResourceManager.Instance.AddStashResources(0, 0, amountPerMinute);
+                else if (productionType == ResourceType.Stone) ResourceManager.Instance.AddStashResources(0, amountPerMinute, 0);
+                HideAllVisualResources();
+            }
         }
+    }
+
+    private CampBuilding FindStorageBuilding()
+    {
+        CampBuilding[] all = FindObjectsByType<CampBuilding>(FindObjectsSortMode.None);
+        foreach (var b in all) if (b.isStorageVault) return b;
+        return null;
     }
 
     private void UpdateGlimmerState()
     {
         if (upgradeGlimmer != null)
         {
-            bool canBeUpgraded = (currentLevel > 0 && currentLevel < levels.Length);
-            bool hasResources = false;
+            if (levels == null || levels.Length == 0) return;
 
+            bool canBeUpgraded = (currentLevel > 0 && currentLevel < levels.Length && !isAnimating);
+            bool hasResources = false;
             if (canBeUpgraded && ResourceManager.Instance != null)
             {
                 BuildingLevel nextLevelData = levels[currentLevel];
                 hasResources = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             }
-
             upgradeGlimmer.SetActive(canBeUpgraded && hasResources);
         }
     }
@@ -386,6 +531,8 @@ public class CampBuilding : MonoBehaviour
         if (buildDustVFX != null)
         {
             buildDustVFX.gameObject.SetActive(true);
+            var main = buildDustVFX.main;
+            main.loop = true;
             if (!buildDustVFX.isPlaying) buildDustVFX.Play();
         }
     }
@@ -394,8 +541,9 @@ public class CampBuilding : MonoBehaviour
     {
         if (buildDustVFX != null)
         {
+            var main = buildDustVFX.main;
+            main.loop = false;
             buildDustVFX.Stop();
-            buildDustVFX.gameObject.SetActive(false);
         }
     }
 }

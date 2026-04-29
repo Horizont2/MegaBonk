@@ -25,16 +25,12 @@ public class CampHunterAI : MonoBehaviour
     public GameObject leavesVFX;
 
     private NavMeshAgent agent;
-    private Vector3 originalVisualsScale = Vector3.one; // «апам'€товуЇмо розм≥р модельки
 
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         if (anim == null) anim = GetComponentInChildren<Animator>();
         if (carryItemVisual != null) carryItemVisual.SetActive(false);
-
-        // «бер≥гаЇмо ориг≥нальний масштаб (наприклад, 0.8)
-        if (visualsParent != null) originalVisualsScale = visualsParent.transform.localScale;
 
         StartCoroutine(InitAndStartRoutine());
     }
@@ -54,14 +50,11 @@ public class CampHunterAI : MonoBehaviour
         if (transform.position.y < -2f)
         {
             if (agent != null) agent.enabled = false;
-
             yield return new WaitForSeconds(2.5f);
 
             NavMeshHit hit;
             if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
-            {
                 transform.position = hit.position;
-            }
         }
 
         if (agent != null)
@@ -74,15 +67,49 @@ public class CampHunterAI : MonoBehaviour
         StartCoroutine(HunterRoutine());
     }
 
+    private bool CheckIfWorkAvailable()
+    {
+        if (myBuilding != null && myBuilding.IsVisualsFull()) return false;
+        return true;
+    }
+
+    private IEnumerator WanderAround()
+    {
+        // «н≥маЇмо з ручника
+        if (agent != null && agent.isOnNavMesh) agent.isStopped = false;
+
+        while (true)
+        {
+            if (CheckIfWorkAvailable()) break;
+
+            if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
+            {
+                Vector3 randomDirection = Random.insideUnitSphere * 8f;
+                randomDirection += transform.position;
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(randomDirection, out hit, 8f, NavMesh.AllAreas))
+                {
+                    agent.SetDestination(hit.position);
+                }
+            }
+            yield return new WaitForSeconds(Random.Range(4f, 8f));
+        }
+    }
+
     private IEnumerator HunterRoutine()
     {
         yield return new WaitForSeconds(Random.Range(0f, 2f));
 
         while (true)
         {
-            // --- 1. ѕ≤ƒ√ќ“ќ¬ ј ¬ƒќћј ---
-            if (carryItemVisual != null) carryItemVisual.SetActive(false);
+            if (!CheckIfWorkAvailable())
+            {
+                if (carryItemVisual != null) carryItemVisual.SetActive(false);
+                yield return StartCoroutine(WanderAround());
+                continue;
+            }
 
+            if (carryItemVisual != null) carryItemVisual.SetActive(false);
             if (!agent.isOnNavMesh) yield break;
 
             agent.isStopped = false;
@@ -95,7 +122,6 @@ public class CampHunterAI : MonoBehaviour
             if (anim != null) anim.SetTrigger("Work");
             yield return new WaitForSeconds(prepDuration);
 
-            // --- 2. …ƒ≈ ¬ Ћ≤— ---
             agent.isStopped = false;
             if (forestEdgePoint != null) agent.SetDestination(forestEdgePoint.position);
             yield return StartCoroutine(WaitForDestination());
@@ -106,33 +132,13 @@ public class CampHunterAI : MonoBehaviour
                 continue;
             }
 
-            // --- 3. «Ќ» ј™ (ѕЋј¬Ќќ) ---
             agent.isStopped = true;
-
-            if (leavesVFX != null)
-            {
-                GameObject fx = Instantiate(leavesVFX, transform.position + Vector3.up, Quaternion.identity);
-                Destroy(fx, 3f);
-            }
-
-            // ¬икликаЇмо плавне зменшенн€ зам≥сть р≥зкого SetActive(false)
-            yield return StartCoroutine(FadeVisualsRoutine(false));
-
+            yield return StartCoroutine(VFXTransitionRoutine(false));
             yield return new WaitForSeconds(huntDuration);
 
-            // --- 4. ѕќ¬≈–“ј™“№—я (ѕЋј¬Ќќ) ---
             if (carryItemVisual != null) carryItemVisual.SetActive(true);
+            yield return StartCoroutine(VFXTransitionRoutine(true));
 
-            if (leavesVFX != null)
-            {
-                GameObject fx = Instantiate(leavesVFX, transform.position + Vector3.up, Quaternion.identity);
-                Destroy(fx, 3f);
-            }
-
-            // ¬икликаЇмо плавне зб≥льшенн€ назад
-            yield return StartCoroutine(FadeVisualsRoutine(true));
-
-            // --- 5. Ќ≈—≈ ћ'я—ќ ƒќƒќћ” ---
             agent.isStopped = false;
             if (lodgePoint != null) agent.SetDestination(lodgePoint.position);
             yield return StartCoroutine(WaitForDestination());
@@ -140,38 +146,23 @@ public class CampHunterAI : MonoBehaviour
             agent.isStopped = true;
             if (lodgePoint != null) transform.rotation = lodgePoint.rotation;
 
-            yield return new WaitForSeconds(2f);
+            if (carryItemVisual != null) carryItemVisual.SetActive(false);
+            yield return new WaitForSeconds(0.5f);
 
             if (myBuilding != null) myBuilding.ShowNextVisualResource();
+            yield return new WaitForSeconds(1.5f);
         }
     }
 
-    // --- Ќќ¬ј  ќ–”“»Ќј ѕЋј¬Ќќ√ќ «Ќ» Ќ≈ЌЌя/ѕќя¬» ---
-    private IEnumerator FadeVisualsRoutine(bool show)
+    private IEnumerator VFXTransitionRoutine(bool show)
     {
-        if (visualsParent == null) yield break;
-
-        float duration = 0.4f; // “ривал≥сть ан≥мац≥њ зникненн€ (0.4 секунди)
-        float elapsed = 0f;
-
-        Vector3 startScale = show ? Vector3.zero : originalVisualsScale;
-        Vector3 targetScale = show ? originalVisualsScale : Vector3.zero;
-
-        // якщо маЇмо з'€витис€, спочатку вмикаЇмо об'Їкт
-        if (show) visualsParent.SetActive(true);
-
-        while (elapsed < duration)
+        if (leavesVFX != null)
         {
-            elapsed += Time.deltaTime;
-            // ѕлавно зм≥нюЇмо розм≥р
-            visualsParent.transform.localScale = Vector3.Lerp(startScale, targetScale, elapsed / duration);
-            yield return null;
+            GameObject fx = Instantiate(leavesVFX, transform.position + Vector3.up, Quaternion.identity);
+            Destroy(fx, 3f);
         }
-
-        visualsParent.transform.localScale = targetScale;
-
-        // якщо мали зникнути, повн≥стю вимикаЇмо об'Їкт у к≥нц≥
-        if (!show) visualsParent.SetActive(false);
+        yield return new WaitForSeconds(0.3f);
+        if (visualsParent != null) visualsParent.SetActive(show);
     }
 
     private IEnumerator WaitForDestination()
@@ -180,18 +171,10 @@ public class CampHunterAI : MonoBehaviour
         while (timeout < 20f)
         {
             timeout += Time.deltaTime;
-
             if (agent != null && agent.isOnNavMesh && !agent.pathPending)
             {
-                if (agent.pathStatus == NavMeshPathStatus.PathInvalid || agent.pathStatus == NavMeshPathStatus.PathPartial)
-                {
-                    break;
-                }
-
-                if (agent.remainingDistance <= agent.stoppingDistance + 0.1f)
-                {
-                    break;
-                }
+                if (agent.pathStatus == NavMeshPathStatus.PathInvalid || agent.pathStatus == NavMeshPathStatus.PathPartial) break;
+                if (agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
             }
             yield return null;
         }
