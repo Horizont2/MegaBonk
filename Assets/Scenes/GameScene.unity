@@ -1170,12 +1170,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12109c5dae5e2e94292c8d524d58a452, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenerator
-  depth: 70
+  depth: 40
   scale: 4
   octaves: 4
   persistence: 0.5
   lacunarity: 2
-  peakSharpness: 3.5
+  peakSharpness: 2.5
   terraceCount: 24
   edgeMountainMultiplier: 1.5
   grassLayer: {fileID: 8574412962073106934, guid: 88ae7c361a379464e8ea3c1a0140b44d, type: 2}
@@ -1235,7 +1235,7 @@ MonoBehaviour:
   poiPrefabs:
   - {fileID: 8142392612343546995, guid: 41ecda8a1339cd44791b517be79ca6e9, type: 3}
   - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
-  maxPOIs: 100
+  maxPOIs: 70
   maxPOISteepness: 4
   poiClearanceRadius: 4
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
