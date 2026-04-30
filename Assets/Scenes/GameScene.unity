@@ -1175,9 +1175,9 @@ MonoBehaviour:
   octaves: 4
   persistence: 0.5
   lacunarity: 2
-  peakSharpness: 2.5
+  peakSharpness: 3
   terraceCount: 24
-  edgeMountainMultiplier: 1.5
+  edgeMountainMultiplier: 2
   grassLayer: {fileID: 8574412962073106934, guid: 88ae7c361a379464e8ea3c1a0140b44d, type: 2}
   sandLayer: {fileID: 8574412962073106934, guid: 406a82348762e6e4d82558e5677abf98, type: 2}
   snowLayer: {fileID: 8574412962073106934, guid: ebdd4d4dc9ef6eb478f5b1ed57440e35, type: 2}
@@ -1229,9 +1229,8 @@ MonoBehaviour:
   - {fileID: 1612657073637104694, guid: a2ea7d649c236f9458fb76384050faa6, type: 3}
   - {fileID: 8420380102451872740, guid: 8b34c79fdcb7b19478732cb21ad6e224, type: 3}
   logPrefabs:
-  - {fileID: 1977206697040563177, guid: ecf2a1713782dad4797f707c2b00b81f, type: 3}
-  - {fileID: 464237172582211401, guid: 23df266b56203024e9e38c655ca15662, type: 3}
-  - {fileID: 9144803541525760852, guid: fc9fa9989efb92947bed9ccabb3d5dcd, type: 3}
+  - {fileID: 1255758057252634, guid: 0761e9c9debdfd34fa20f5859c6f08ff, type: 3}
+  - {fileID: 1330862079685384, guid: 7c1b7eb3905d5694688d9bb9fe2c0d47, type: 3}
   poiPrefabs:
   - {fileID: 8142392612343546995, guid: 41ecda8a1339cd44791b517be79ca6e9, type: 3}
   - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
