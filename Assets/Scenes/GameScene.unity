@@ -1170,12 +1170,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12109c5dae5e2e94292c8d524d58a452, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenerator
-  depth: 40
+  depth: 70
   scale: 4
   octaves: 4
   persistence: 0.5
   lacunarity: 2
-  peakSharpness: 2.5
+  peakSharpness: 3.5
   terraceCount: 24
   edgeMountainMultiplier: 1.5
   grassLayer: {fileID: 8574412962073106934, guid: 88ae7c361a379464e8ea3c1a0140b44d, type: 2}
@@ -1234,10 +1234,13 @@ MonoBehaviour:
   - {fileID: 9144803541525760852, guid: fc9fa9989efb92947bed9ccabb3d5dcd, type: 3}
   poiPrefabs:
   - {fileID: 8142392612343546995, guid: 41ecda8a1339cd44791b517be79ca6e9, type: 3}
-  maxPOIs: 15
+  - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
+  maxPOIs: 100
   maxPOISteepness: 4
+  poiClearanceRadius: 4
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
-  extractionCartsAmount: 5
+  extractionCartsAmount: 12
+  cartClearanceRadius: 6
 --- !u!154 &240858630
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -1355,7 +1358,6 @@ GameObject:
   m_Component:
   - component: {fileID: 249127116}
   - component: {fileID: 249127115}
-  - component: {fileID: 249127117}
   m_Layer: 0
   m_Name: EnvironmentManager
   m_TagString: Untagged
@@ -1404,23 +1406,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &249127117
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 249127114}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e6256856e98a77489c50b552d37bdc0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::POISpawner
-  locationPrefabs:
-  - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
-  amountToSpawn: 20
-  mapSize: 500
-  maxSlopeAngle: 10
 --- !u!1 &290329618
 GameObject:
   m_ObjectHideFlags: 0
@@ -2060,6 +2045,7 @@ MonoBehaviour:
   mouseSensitivity: 2.7
   minYAngle: -20
   maxYAngle: 80
+  isCinematicMode: 0
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -14088,7 +14074,7 @@ MonoBehaviour:
     spawnAtMinute: 8
   player: {fileID: 907436303}
   baseSpawnInterval: 5
-  spawnRadius: 400
+  spawnRadius: 800
 --- !u!4 &1241868304
 Transform:
   m_ObjectHideFlags: 0

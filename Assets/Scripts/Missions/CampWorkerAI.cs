@@ -10,6 +10,7 @@ public class CampWorkerAI : MonoBehaviour
 
     [Header("Locations")]
     public Transform dropPoint;
+    public Transform spawnPoint; // НОВЕ: Точка на краю лісу, звідки він прийде
     public float searchRadius = 30f;
 
     [Header("Distances")]
@@ -29,8 +30,13 @@ public class CampWorkerAI : MonoBehaviour
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        if (agent != null) agent.enabled = false;
+
         if (anim == null) anim = GetComponentInChildren<Animator>();
         if (carryItemVisual != null) carryItemVisual.SetActive(false);
+
+        // Найнадійніший спосіб сховати NPC: відправляємо його глибоко під карту
+        transform.position = new Vector3(0, -1000f, 0);
 
         StartCoroutine(InitAndStartRoutine());
     }
@@ -45,22 +51,58 @@ public class CampWorkerAI : MonoBehaviour
 
     private IEnumerator InitAndStartRoutine()
     {
-        yield return new WaitForSeconds(0.5f);
-        if (transform.position.y < -2f)
+        // 1. Чекаємо, поки будівлю побудують
+        if (myBuilding != null)
         {
-            if (agent != null) agent.enabled = false;
-            yield return new WaitForSeconds(2.5f);
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
-                transform.position = hit.position;
+            while (myBuilding.currentLevel == 0) yield return null;
         }
+
+        yield return new WaitForSeconds(0.5f);
+
+        // 2. Ставимо лісоруба на точку старту (край лісу)
+        Vector3 startPos = spawnPoint != null ? spawnPoint.position : (dropPoint != null ? dropPoint.position : Vector3.zero);
+
+        if (Terrain.activeTerrain != null)
+        {
+            float terrainHeight = Terrain.activeTerrain.SampleHeight(startPos) + Terrain.activeTerrain.transform.position.y;
+            startPos.y = terrainHeight;
+        }
+
+        transform.position = startPos;
+
+        // 3. Вмикаємо агента
         if (agent != null)
         {
             agent.enabled = true;
-            agent.Warp(transform.position);
-            agent.stoppingDistance = workDistance;
+            yield return null; // Даємо 1 кадр на ініціалізацію NavMesh
+
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(startPos, out hit, 4f, NavMesh.AllAreas))
+            {
+                agent.Warp(hit.position);
+            }
         }
 
+        // 4. ЕПІЧНА ПОЯВА: Йде до своєї нової лісопилки!
+        if (agent != null && dropPoint != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+            agent.stoppingDistance = dropDistance;
+            agent.SetDestination(dropPoint.position);
+
+            // Чекаємо поки він дійде до робочого місця
+            while (agent.pathPending || agent.remainingDistance > agent.stoppingDistance + 0.1f)
+            {
+                yield return null;
+            }
+
+            // Прийшов! Зупиняється і дивиться на лісопилку 1 секунду
+            agent.isStopped = true;
+            transform.rotation = dropPoint.rotation;
+            yield return new WaitForSeconds(1f);
+        }
+
+        // 5. Починає нормальний робочий цикл
         StartCoroutine(WorkerRoutine());
     }
 
@@ -78,7 +120,7 @@ public class CampWorkerAI : MonoBehaviour
         {
             if (CheckIfWorkAvailable()) break;
 
-            if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
+            if (agent != null && agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
             {
                 Vector3 randomDirection = Random.insideUnitSphere * 8f;
                 randomDirection += transform.position;
@@ -94,10 +136,16 @@ public class CampWorkerAI : MonoBehaviour
 
     private IEnumerator WorkerRoutine()
     {
-        yield return new WaitForSeconds(Random.Range(0f, 2f));
+        yield return new WaitForSeconds(Random.Range(0f, 1f));
 
         while (true)
         {
+            if (agent == null || !agent.isOnNavMesh)
+            {
+                yield return new WaitForSeconds(1f);
+                continue;
+            }
+
             if (!CheckIfWorkAvailable())
             {
                 yield return StartCoroutine(WanderAround());
@@ -108,7 +156,6 @@ public class CampWorkerAI : MonoBehaviour
             if (targetTree == null) { yield return new WaitForSeconds(2f); continue; }
 
             if (carryItemVisual != null) carryItemVisual.SetActive(false);
-            if (!agent.isOnNavMesh) yield break;
 
             agent.isStopped = false;
             agent.stoppingDistance = workDistance;
@@ -118,11 +165,11 @@ public class CampWorkerAI : MonoBehaviour
             while (timeout < 15f)
             {
                 timeout += Time.deltaTime;
-                if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
+                if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
                 yield return null;
             }
 
-            agent.isStopped = true;
+            if (agent.isOnNavMesh) agent.isStopped = true;
 
             if (targetTree != null && !targetTree.isChopped)
             {
@@ -133,8 +180,6 @@ public class CampWorkerAI : MonoBehaviour
                     transform.LookAt(lookPos);
 
                     if (anim != null) anim.SetTrigger("Work");
-
-                    // ЗВУК: Робота NPC (рубка дерева)
                     if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.NPC_Work);
 
                     yield return new WaitForSeconds(timeBetweenHits);
@@ -151,20 +196,23 @@ public class CampWorkerAI : MonoBehaviour
             }
 
             if (carryItemVisual != null) carryItemVisual.SetActive(true);
-            agent.isStopped = false;
-            agent.stoppingDistance = dropDistance;
 
-            if (dropPoint != null) agent.SetDestination(dropPoint.position);
+            if (agent.isOnNavMesh)
+            {
+                agent.isStopped = false;
+                agent.stoppingDistance = dropDistance;
+                if (dropPoint != null) agent.SetDestination(dropPoint.position);
+            }
 
             timeout = 0f;
             while (dropPoint != null && timeout < 15f)
             {
                 timeout += Time.deltaTime;
-                if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
+                if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
                 yield return null;
             }
 
-            agent.isStopped = true;
+            if (agent.isOnNavMesh) agent.isStopped = true;
             if (dropPoint != null) transform.rotation = dropPoint.rotation;
 
             yield return new WaitForSeconds(dropDuration);

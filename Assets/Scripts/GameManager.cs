@@ -66,13 +66,23 @@ public class GameManager : MonoBehaviour
         while (timer < fadeDuration)
         {
             timer += Time.deltaTime;
-            gameOverPanel.alpha = Mathf.Clamp01(timer / fadeDuration);
+            // Показуємо екран Game Over
+            if (gameOverPanel != null) gameOverPanel.alpha = Mathf.Clamp01(timer / fadeDuration);
             yield return null;
         }
+
+        // Чекаємо пару секунд, щоб гравець усвідомив поразку
         yield return new WaitForSeconds(waitBeforeRestart);
 
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Menu");
-        else SceneManager.LoadScene("Menu");
+        // ФІКС: Відправляємо в Табір (CampScene) замість Меню!
+        if (GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+        }
+        else
+        {
+            SceneManager.LoadScene("CampScene");
+        }
     }
 
     public void ReturnToMenu()

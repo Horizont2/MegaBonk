@@ -83,7 +83,7 @@ public class CampDirector : MonoBehaviour
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Welcome to your new Camp. This is your safe haven between dangerous journeys.", 2f));
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Up there is the Camp Stash. All the resources you manage to bring back from the forest are stored here safely.", 2.5f));
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: You can use those resources to rebuild this place. Walk up to a plot and hold [E]. Restored buildings will generate resources over time!", 3f));
-        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Check the Notice Board over there. You can take on special missions to earn valuable Diamonds.", 2.5f));
+        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Check the Notice Board over there. You can take on special missions to earn resources and valuable Diamonds.", 2.5f));
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: At the edge of the camp is the mysterious Shop. Use your Diamonds there to buy permanent meta-upgrades for your future runs.", 3.2f));
         yield return StartCoroutine(ShowTutorialHint("[TIP] Try to prioritize upgrading your Storage Vault early on, so you have enough space for all your hard-earned loot!", 3.8f));
 

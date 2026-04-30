@@ -584,29 +584,39 @@ public class PlayerController : MonoBehaviour
 
     private void Die()
     {
+        // Зберігаємо зібране
         SaveManager.AddCrystals(crystalsCollected);
 
-        GameManager gm = FindFirstObjectByType<GameManager>();
-        if (gm != null) gm.TriggerGameOver();
-
+        // Ховаємо зброю
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
-        if (GlobalHUD.Instance != null)
-        {
-            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        // Дізнаємося, де ми знаходимося
+        string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        GameManager gm = FindFirstObjectByType<GameManager>();
 
-            // НОВИЙ ФІКС: Якщо ми не в Таборі і не в Меню - просто перезапускаємо поточну сцену
-            if (currentSceneName != "CampScene" && currentSceneName != "Menu")
+        if (gm != null)
+        {
+            // СЦЕНАРІЙ 1: Звичайний забіг на виживання. 
+            // GameManager є на сцені, він покаже екран "Game Over" і відправить у Табір.
+            gm.TriggerGameOver();
+        }
+        else if (GlobalHUD.Instance != null)
+        {
+            // СЦЕНАРІЙ 2: Ми на сюжетному рівні (наприклад, Lvl_1), де немає GameManager.
+            if (currentSceneName == "Lvl_1")
             {
+                // Перезапускаємо 1-й рівень, щоб гравець не скіпнув туторіал
                 GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
             }
             else
             {
+                // Захист від багів: якщо ми не знаємо де ми, безпечно кидаємо в Табір
                 GlobalHUD.Instance.FadeAndLoadScene("CampScene");
             }
         }
 
+        // Вимикаємо гравця
         gameObject.SetActive(false);
     }
 

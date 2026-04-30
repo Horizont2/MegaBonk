@@ -8,12 +8,13 @@ public class EnemyAI : MonoBehaviour
     public float moveSpeed = 4f;
     public float damage = 10f;
 
+    [Header("Cinematic Settings")]
+    public bool isCinematicFrozen = false; // НОВЕ: Зупиняє інтелект на час катсцен
+
     [Header("Combat Settings")]
     public float attackRange = 1.6f;
     public float attackCooldown = 1.5f;
     public float attackTelegraphTime = 0.5f;
-    private float lastAttackTime;
-    private bool isPreparingAttack = false;
 
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
@@ -24,17 +25,22 @@ public class EnemyAI : MonoBehaviour
 
     [Header("Targeting")]
     public Transform target;
-
-    [Header("Ground Settings")]
     public float verticalOffset = 0.0f;
 
-    [Header("Swarm Settings (MegaBoom)")]
-    public float repulsionRadius = 1.2f;
-    public float repulsionForce = 3f;
+    [Header("Swarm Settings")]
+    public float repulsionRadius = 1.5f;
+    public float repulsionForce = 4f;
 
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
+    // --- НОВЕ: Для AAA Фіналу ---
+    public bool isInvincible = false;
+    private bool isEnraged = false;
+
     private float currentHealth;
+    private float actualMoveSpeed;
+    private float randomOffset;
+
     private MeshRenderer[] meshRenderers;
     private Color[] originalColors;
     private PlayerController playerController;
@@ -43,6 +49,8 @@ public class EnemyAI : MonoBehaviour
 
     private Vector3 knockbackVelocity = Vector3.zero;
     private float stunTimer = 0f;
+    private float lastAttackTime;
+    private bool isPreparingAttack = false;
 
     private void Awake()
     {
@@ -64,11 +72,14 @@ public class EnemyAI : MonoBehaviour
 
         animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.applyRootMotion = false;
+
+        randomOffset = Random.Range(0f, 100f);
     }
 
     private void Start()
     {
         currentHealth = maxHealth;
+        actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
@@ -88,7 +99,14 @@ public class EnemyAI : MonoBehaviour
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f);
         }
 
-        if (stunTimer > 0)
+        // --- ФІКС: Скелети грають анімацію бігу, навіть коли "заморожені" ---
+        if (isCinematicFrozen)
+        {
+            if (animator != null) animator.SetBool("isMoving", true);
+            return;
+        }
+
+        if (stunTimer > 0 && !isEnraged)
         {
             stunTimer -= Time.deltaTime;
             return;
@@ -100,18 +118,25 @@ public class EnemyAI : MonoBehaviour
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
 
         Vector3 repulsion = Vector3.zero;
-        Collider[] neighbors = Physics.OverlapSphere(transform.position, repulsionRadius, 1 << 9);
+        Collider[] neighbors = Physics.OverlapSphere(currentPos, repulsionRadius, 1 << 9);
         foreach (Collider neighbor in neighbors)
         {
             if (neighbor.gameObject != gameObject && !neighbor.isTrigger)
             {
-                Vector3 pushDir = transform.position - neighbor.transform.position;
+                Vector3 pushDir = currentPos - neighbor.transform.position;
                 float distance = pushDir.magnitude;
-                if (distance < repulsionRadius && distance > 0) repulsion += pushDir.normalized * (repulsionRadius - distance);
+                if (distance < repulsionRadius && distance > 0)
+                {
+                    repulsion += pushDir.normalized * (repulsionRadius - distance);
+                }
             }
         }
 
-        Vector3 finalDirection = (directionToPlayer + repulsion * repulsionForce).normalized;
+        float sway = Mathf.PerlinNoise(Time.time * 0.5f, randomOffset) * 2f - 1f;
+        Vector3 rightDir = Vector3.Cross(Vector3.up, directionToPlayer).normalized;
+        Vector3 swayDirection = rightDir * (sway * 0.5f);
+
+        Vector3 finalDirection = (directionToPlayer + repulsion * repulsionForce + swayDirection).normalized;
         finalDirection.y = 0f;
 
         float distanceToPlayer = Vector3.Distance(transform.position, target.position);
@@ -119,22 +144,17 @@ public class EnemyAI : MonoBehaviour
         if (distanceToPlayer <= attackRange)
         {
             if (animator != null) animator.SetBool("isMoving", false);
-
             if (directionToPlayer != Vector3.zero)
             {
                 Vector3 lookDir = directionToPlayer;
                 lookDir.y = 0;
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), 15f * Time.deltaTime);
             }
-
-            if (Time.time >= lastAttackTime + attackCooldown && !isPreparingAttack)
-            {
-                StartCoroutine(AttackRoutine());
-            }
+            if (Time.time >= lastAttackTime + attackCooldown && !isPreparingAttack) StartCoroutine(AttackRoutine());
         }
         else
         {
-            Vector3 nextPos = currentPos + finalDirection * moveSpeed * Time.deltaTime;
+            Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
             if (Terrain.activeTerrain != null)
             {
                 float terrainHeight = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y;
@@ -153,64 +173,69 @@ public class EnemyAI : MonoBehaviour
     private IEnumerator AttackRoutine()
     {
         isPreparingAttack = true;
-
-        // ЗВУК: Попередження про атаку
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
-        SetColor(Color.red);
+        // Зберігаємо колір люті, якщо він є
+        Color tempColor = isEnraged ? Color.black : Color.red;
+        SetColor(tempColor);
+
         yield return new WaitForSeconds(attackTelegraphTime);
         ResetColor();
 
-        if (!isDead && stunTimer <= 0 && Vector3.Distance(transform.position, target.position) <= attackRange + 0.5f)
+        if (!isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 0.5f)
         {
             lastAttackTime = Time.time;
             if (animator != null) animator.SetTrigger("Attack");
         }
-
         isPreparingAttack = false;
     }
 
     public void ExecuteAttackDamage()
     {
         if (isDead || target == null || playerController == null) return;
-        float distanceToPlayer = Vector3.Distance(transform.position, target.position);
-        if (distanceToPlayer <= attackRange + 1f)
-        {
-            playerController.TakeDamage(damage);
-        }
+        if (Vector3.Distance(transform.position, target.position) <= attackRange + 1f) playerController.TakeDamage(damage);
     }
 
     public void ApplyKnockback(Vector3 direction, float force, float stunDuration)
     {
-        if (isDead) return;
-
+        if (isDead || isEnraged) return; // Люті вороги не відштовхуються!
         knockbackVelocity = direction * force;
         stunTimer = stunDuration;
         isPreparingAttack = false;
         ResetColor();
-
         if (animator != null) animator.SetTrigger("Hit");
     }
 
     public void TakeDamage(float damageAmount)
     {
-        if (isDead) return;
+        if (isDead || isInvincible) return; // Безсмертя!
 
         currentHealth -= damageAmount;
-
-        // ЗВУК: Ворогу боляче
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
-
         StartCoroutine(HitFlashRoutine());
 
         if (damagePopupPrefab != null)
         {
             GameObject popup = Instantiate(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
-            DamagePopup popupScript = popup.GetComponent<DamagePopup>();
-            if (popupScript != null) popupScript.Setup(damageAmount);
+            popup.GetComponent<DamagePopup>()?.Setup(damageAmount);
         }
 
         if (currentHealth <= 0) Die();
+    }
+
+    // --- НОВИЙ МЕТОД ДЛЯ ОРДИ ---
+    public void MakeInvincibleAndFurious()
+    {
+        isInvincible = true;
+        isEnraged = true;
+        actualMoveSpeed = moveSpeed * 1.8f; // Біжать майже вдвічі швидше!
+
+        // Змінюємо базовий колір на чорний/темно-червоний для епічності
+        for (int i = 0; i < originalColors.Length; i++)
+        {
+            originalColors[i] = new Color(0.2f, 0f, 0f); // Темно-червоний
+        }
+        ResetColor();
     }
 
     private IEnumerator HitFlashRoutine()
@@ -230,9 +255,7 @@ public class EnemyAI : MonoBehaviour
     {
         if (meshRenderers == null || originalColors == null) return;
         for (int i = 0; i < meshRenderers.Length; i++)
-        {
             if (meshRenderers[i] != null && meshRenderers[i].material != null) meshRenderers[i].material.color = originalColors[i];
-        }
     }
 
     private void Die()
@@ -241,13 +264,9 @@ public class EnemyAI : MonoBehaviour
         isDead = true;
 
         if (animator != null) animator.SetTrigger("Die");
-
-        // ЗВУК: Смерть
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
-        Collider[] cols = GetComponentsInChildren<Collider>();
-        foreach (Collider c in cols) c.enabled = false;
-
+        foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
         if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
