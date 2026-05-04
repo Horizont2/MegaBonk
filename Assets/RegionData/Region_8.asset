@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddccf856154586c4097f9df533ac30a1, type: 3}
+  m_Name: Region_8
+  m_EditorClassIdentifier: Assembly-CSharp::RegionData
+  regionID: 7
+  regionName: Sunken Outpost
+  loreDescription: A flooded military camp. Movement is slightly impaired, and enemies
+    hit harder.
+  regionIcon: {fileID: 0}
+  currentState: 0
+  neighboringRegions:
+  - {fileID: 11400000, guid: be82deb97b96fa54db570672e30cca62, type: 2}
+  recommendedPowerLevel: 980
+  enemyHpMultiplier: 1
+  enemyDamageMultiplier: 1
+  woodReward: 130
+  stoneReward: 200
+  foodReward: 70
+  diamondReward: 4
+  passiveWood: 2
+  passiveStone: 6
+  passiveFood: 0
+  passiveDiamonds: 0

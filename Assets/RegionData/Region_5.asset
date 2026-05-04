@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddccf856154586c4097f9df533ac30a1, type: 3}
+  m_Name: Region_5
+  m_EditorClassIdentifier: Assembly-CSharp::RegionData
+  regionID: 4
+  regionName: Mossy Foothills
+  loreDescription: The forest begins to thin out, revealing rocky terrain. Stone
+    is easier to find here.
+  regionIcon: {fileID: 0}
+  currentState: 0
+  neighboringRegions:
+  - {fileID: 11400000, guid: 1f01d0843a6f2d443a25017a8b5b3dc1, type: 2}
+  recommendedPowerLevel: 750
+  enemyHpMultiplier: 1
+  enemyDamageMultiplier: 1
+  woodReward: 160
+  stoneReward: 100
+  foodReward: 45
+  diamondReward: 3
+  passiveWood: 0
+  passiveStone: 5
+  passiveFood: 2
+  passiveDiamonds: 0

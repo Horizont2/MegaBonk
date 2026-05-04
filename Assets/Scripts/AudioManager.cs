@@ -6,6 +6,7 @@ using System.Collections.Generic;
 public static class AudioID
 {
     public const string UI_Click = "UI_Click";
+    public const string UI_Hover = "UI_Hover";
     public const string UI_QuestAccept = "UI_QuestAccept";
     public const string UI_QuestComplete = "UI_QuestComplete";
     public const string UI_Error = "UI_Error";
@@ -49,6 +50,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("=== UI SOUNDS ===")]
     public SoundGroup uiClick;
+    public SoundGroup uiHover;
     public SoundGroup uiQuestAccept;
     public SoundGroup uiQuestComplete;
     public SoundGroup uiError;
@@ -128,6 +130,7 @@ public class AudioManager : MonoBehaviour
         musicDictionary = new Dictionary<string, SoundGroup>();
 
         uiDictionary.Add(AudioID.UI_Click, uiClick);
+        uiDictionary.Add(AudioID.UI_Hover, uiHover);
         uiDictionary.Add(AudioID.UI_QuestAccept, uiQuestAccept);
         uiDictionary.Add(AudioID.UI_QuestComplete, uiQuestComplete);
         uiDictionary.Add(AudioID.UI_Error, uiError);

@@ -1171,11 +1171,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenerator
   depth: 40
-  scale: 4
+  scale: 2.5
   octaves: 4
-  persistence: 0.5
+  persistence: 0.4
   lacunarity: 2
-  peakSharpness: 3
+  peakSharpness: 2.5
   terraceCount: 24
   edgeMountainMultiplier: 2
   grassLayer: {fileID: 8574412962073106934, guid: 88ae7c361a379464e8ea3c1a0140b44d, type: 2}
@@ -1183,8 +1183,8 @@ MonoBehaviour:
   snowLayer: {fileID: 8574412962073106934, guid: ebdd4d4dc9ef6eb478f5b1ed57440e35, type: 2}
   rockLayer: {fileID: 8574412962073106934, guid: 3ffb748fce1b62b438d7803f36f13b83, type: 2}
   spawnAttempts: 30000
-  clusterScale: 15
-  forestThreshold: 0.55
+  clusterScale: 10
+  forestThreshold: 0.48
   globalBiomeScale: 2
   forestTrees:
   - {fileID: 2082692394303509808, guid: 7edbde541a1aae946af15af19cc66409, type: 3}
@@ -1234,12 +1234,12 @@ MonoBehaviour:
   poiPrefabs:
   - {fileID: 8142392612343546995, guid: 41ecda8a1339cd44791b517be79ca6e9, type: 3}
   - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
-  maxPOIs: 70
-  maxPOISteepness: 4
-  poiClearanceRadius: 4
+  maxPOIs: 80
+  maxPOISteepness: 10
+  poiClearanceRadius: 6
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
   extractionCartsAmount: 12
-  cartClearanceRadius: 6
+  cartClearanceRadius: 8
 --- !u!154 &240858630
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -14572,6 +14572,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 52a83b0a15d3d7040aeaeeb93eb8c6f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  currentRegion: {fileID: 0}
   gameOverPanel: {fileID: 2005627425}
   timerText: {fileID: 1585004761}
   fadeDuration: 2

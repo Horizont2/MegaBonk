@@ -3,13 +3,13 @@ using System.Collections;
 
 public class EnemyAI : MonoBehaviour
 {
-    [Header("Enemy Stats")]
+    [Header("Base Enemy Stats (Level 1)")]
     public float maxHealth = 20f;
     public float moveSpeed = 4f;
     public float damage = 10f;
 
     [Header("Cinematic Settings")]
-    public bool isCinematicFrozen = false; // НОВЕ: Зупиняє інтелект на час катсцен
+    public bool isCinematicFrozen = false;
 
     [Header("Combat Settings")]
     public float attackRange = 1.6f;
@@ -19,21 +19,17 @@ public class EnemyAI : MonoBehaviour
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
     public GameObject diamondPrefab;
-    [Range(0f, 1f)]
-    public float diamondDropChance = 0.1f;
+    [Range(0f, 1f)] public float diamondDropChance = 0.1f;
     public GameObject damagePopupPrefab;
 
-    [Header("Targeting")]
+    [Header("Targeting & Swarm")]
     public Transform target;
     public float verticalOffset = 0.0f;
-
-    [Header("Swarm Settings")]
     public float repulsionRadius = 1.5f;
     public float repulsionForce = 4f;
 
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
-    // --- НОВЕ: Для AAA Фіналу ---
     public bool isInvincible = false;
     private bool isEnraged = false;
 
@@ -78,6 +74,16 @@ public class EnemyAI : MonoBehaviour
 
     private void Start()
     {
+        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
+        {
+            float hpMult = GameManager.Instance.currentRegion.enemyHpMultiplier;
+            float dmgMult = GameManager.Instance.currentRegion.enemyDamageMultiplier;
+
+            maxHealth *= hpMult;
+            damage *= dmgMult;
+            xpRewardMultiplier = hpMult * 0.5f;
+        }
+
         currentHealth = maxHealth;
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
@@ -99,7 +105,6 @@ public class EnemyAI : MonoBehaviour
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f);
         }
 
-        // --- ФІКС: Скелети грають анімацію бігу, навіть коли "заморожені" ---
         if (isCinematicFrozen)
         {
             if (animator != null) animator.SetBool("isMoving", true);
@@ -175,7 +180,6 @@ public class EnemyAI : MonoBehaviour
         isPreparingAttack = true;
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
-        // Зберігаємо колір люті, якщо він є
         Color tempColor = isEnraged ? Color.black : Color.red;
         SetColor(tempColor);
 
@@ -198,7 +202,7 @@ public class EnemyAI : MonoBehaviour
 
     public void ApplyKnockback(Vector3 direction, float force, float stunDuration)
     {
-        if (isDead || isEnraged) return; // Люті вороги не відштовхуються!
+        if (isDead || isEnraged) return;
         knockbackVelocity = direction * force;
         stunTimer = stunDuration;
         isPreparingAttack = false;
@@ -208,7 +212,7 @@ public class EnemyAI : MonoBehaviour
 
     public void TakeDamage(float damageAmount)
     {
-        if (isDead || isInvincible) return; // Безсмертя!
+        if (isDead || isInvincible) return;
 
         currentHealth -= damageAmount;
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
@@ -223,17 +227,15 @@ public class EnemyAI : MonoBehaviour
         if (currentHealth <= 0) Die();
     }
 
-    // --- НОВИЙ МЕТОД ДЛЯ ОРДИ ---
     public void MakeInvincibleAndFurious()
     {
         isInvincible = true;
         isEnraged = true;
-        actualMoveSpeed = moveSpeed * 1.8f; // Біжать майже вдвічі швидше!
+        actualMoveSpeed = moveSpeed * 1.8f;
 
-        // Змінюємо базовий колір на чорний/темно-червоний для епічності
         for (int i = 0; i < originalColors.Length; i++)
         {
-            originalColors[i] = new Color(0.2f, 0f, 0f); // Темно-червоний
+            originalColors[i] = new Color(0.2f, 0f, 0f);
         }
         ResetColor();
     }

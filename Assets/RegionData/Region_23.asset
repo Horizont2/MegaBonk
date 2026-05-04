@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddccf856154586c4097f9df533ac30a1, type: 3}
+  m_Name: Region_23
+  m_EditorClassIdentifier: Assembly-CSharp::RegionData
+  regionID: 22
+  regionName: Gates of Ruin
+  loreDescription: The final barrier. Only the strongest heroes with the sharpest
+    blades stand a chance here.
+  regionIcon: {fileID: 0}
+  currentState: 0
+  neighboringRegions:
+  - {fileID: 11400000, guid: 43e85531f99a7664ea73bb66096a801d, type: 2}
+  recommendedPowerLevel: 2600
+  enemyHpMultiplier: 1
+  enemyDamageMultiplier: 1
+  woodReward: 420
+  stoneReward: 420
+  foodReward: 420
+  diamondReward: 30
+  passiveWood: 15
+  passiveStone: 15
+  passiveFood: 15
+  passiveDiamonds: 0

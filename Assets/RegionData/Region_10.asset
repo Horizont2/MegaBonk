@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddccf856154586c4097f9df533ac30a1, type: 3}
+  m_Name: Region_10
+  m_EditorClassIdentifier: Assembly-CSharp::RegionData
+  regionID: 9
+  regionName: The Ashen Woods
+  loreDescription: A forest burned down by dragon fire centuries ago. Resources are
+    scarce but valuable.
+  regionIcon: {fileID: 0}
+  currentState: 0
+  neighboringRegions:
+  - {fileID: 11400000, guid: 439db7e6ed15b494da6d83fbf9ebc625, type: 2}
+  recommendedPowerLevel: 1120
+  enemyHpMultiplier: 1
+  enemyDamageMultiplier: 1
+  woodReward: 150
+  stoneReward: 250
+  foodReward: 90
+  diamondReward: 5
+  passiveWood: 0
+  passiveStone: 10
+  passiveFood: 0
+  passiveDiamonds: 0

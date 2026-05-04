@@ -5,6 +5,13 @@ using TMPro;
 
 public class GameManager : MonoBehaviour
 {
+    // ДОДАНО: Патерн Singleton для доступу з інших скриптів
+    public static GameManager Instance;
+
+    [Header("Region Data")]
+    // ДОДАНО: Поточний регіон, в якому знаходиться гравець
+    public RegionData currentRegion;
+
     [Header("UI References")]
     public CanvasGroup gameOverPanel;
     public TextMeshProUGUI timerText;
@@ -16,7 +23,14 @@ public class GameManager : MonoBehaviour
     public static float survivalTime = 0f;
     private bool isGameOver = false;
 
-    private float nextSurvivalTick = 1f; // Таймер для зарахування місії
+    private float nextSurvivalTick = 1f;
+
+    private void Awake()
+    {
+        // Налаштування Singleton
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
 
     private void Start()
     {
@@ -31,13 +45,11 @@ public class GameManager : MonoBehaviour
 
         survivalTime += Time.deltaTime;
 
-        // ЩОСЕКУНДИ ДОДАЄМО ПРОГРЕС МІСІЇ
         if (survivalTime >= nextSurvivalTick)
         {
             nextSurvivalTick += 1f;
             if (MissionManager.Instance != null)
             {
-                // Якщо твій тип місії називається інакше, зміни MissionType.Survive на свій
                 MissionManager.Instance.AddProgress(MissionType.Survive, 1);
             }
         }
@@ -66,15 +78,12 @@ public class GameManager : MonoBehaviour
         while (timer < fadeDuration)
         {
             timer += Time.deltaTime;
-            // Показуємо екран Game Over
             if (gameOverPanel != null) gameOverPanel.alpha = Mathf.Clamp01(timer / fadeDuration);
             yield return null;
         }
 
-        // Чекаємо пару секунд, щоб гравець усвідомив поразку
         yield return new WaitForSeconds(waitBeforeRestart);
 
-        // ФІКС: Відправляємо в Табір (CampScene) замість Меню!
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.FadeAndLoadScene("CampScene");

@@ -1740,6 +1740,8 @@ MonoBehaviour:
   promptText: {fileID: 3320825653205544310}
   promptFadeSpeed: 5
   typingSpeed: 0.03
+  objectivePanelGroup: {fileID: 0}
+  objectiveText: {fileID: 0}
   sceneFadeSpeed: 1.5
   loadingPanelGroup: {fileID: 6285835684222799413}
   loadingSlider: {fileID: 1425146232632751653}
@@ -1801,13 +1803,17 @@ MonoBehaviour:
   stashStone: 0
   stashFood: 0
   diamonds: 0
-  runWood: 0
-  runStone: 0
-  runFood: 0
   baseMaxWood: 200
   baseMaxStone: 100
   baseMaxFood: 50
   extraCapacity: 0
+  runWood: 0
+  runStone: 0
+  runFood: 0
+  baseRunMaxWood: 100
+  baseRunMaxStone: 50
+  baseRunMaxFood: 30
+  extraRunCapacity: 0
   inventoryTitleText: {fileID: 8925023504807432014}
   woodText: {fileID: 8897758129311834354}
   stoneText: {fileID: 3307122380879801279}

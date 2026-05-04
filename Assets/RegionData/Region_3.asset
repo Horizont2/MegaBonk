@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddccf856154586c4097f9df533ac30a1, type: 3}
+  m_Name: Region_3
+  m_EditorClassIdentifier: Assembly-CSharp::RegionData
+  regionID: 2
+  regionName: Bandit's Crossing
+  loreDescription: A broken bridge heavily guarded by corrupted scavengers. A great
+    source of basic materials.
+  regionIcon: {fileID: 0}
+  currentState: 0
+  neighboringRegions:
+  - {fileID: 11400000, guid: 3c3fcc1ccecf411499b378991ea4b301, type: 2}
+  recommendedPowerLevel: 620
+  enemyHpMultiplier: 1
+  enemyDamageMultiplier: 1
+  woodReward: 130
+  stoneReward: 70
+  foodReward: 30
+  diamondReward: 2
+  passiveWood: 4
+  passiveStone: 3
+  passiveFood: 0
+  passiveDiamonds: 0
