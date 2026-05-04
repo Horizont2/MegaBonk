@@ -15,6 +15,7 @@ public class RegionData : ScriptableObject
     [Header("Map Logic")]
     public RegionState currentState = RegionState.Locked;
     public List<RegionData> neighboringRegions;
+    [HideInInspector] public bool isNewlyUnlocked = false;
 
     [Header("Difficulty System")]
     public int recommendedPowerLevel = 100;

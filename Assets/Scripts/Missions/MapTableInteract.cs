@@ -3,6 +3,8 @@ using System.Collections;
 
 public class MapTableInteract : MonoBehaviour
 {
+    public static event System.Action OnMapFullyOpened; // Глобальний сигнал
+
     [Header("Camera Flight Target")]
     public Transform mapCameraPosition;
 
@@ -117,6 +119,7 @@ public class MapTableInteract : MonoBehaviour
         mapCanvasGroup.gameObject.SetActive(true);
         yield return StartCoroutine(FadeCanvas(mapCanvasGroup, 1f, uiFadeDuration));
 
+        OnMapFullyOpened?.Invoke();
         isTransitioning = false;
     }
 

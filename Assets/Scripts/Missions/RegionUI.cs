@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Collections;
 
 [RequireComponent(typeof(Image))]
 public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
@@ -11,91 +12,66 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     [Header("UI References")]
     public GameObject lockIcon;
     public Image borderImage;
+    [Tooltip("Новий шар з таким самим спрайтом для ефекту бурі")]
+    public Image stormLayer;
 
     private Image regionImage;
     private MapPanelUI mainMapUI;
 
-    [Header("Colors - Fill States (Туман Війни)")]
-    // Туман війни: легкий холодний синювато-сірий відтінок для незвіданих земель
-    public Color lockedColor = new Color(0.15f, 0.18f, 0.25f, 0.15f);
-    // Доступна для атаки територія: теплий, злегка золотистий відтінок
+    [Header("Colors - Fill States")]
+    public Color lockedColor = new Color(0.1f, 0.12f, 0.18f, 0.8f); // Темне тло під бурею
     public Color availableColor = new Color(1f, 0.9f, 0.6f, 0.15f);
-    // Захоплена: фірмовий лавандовий
     public Color conqueredColor = new Color(0.8f, 0.7f, 1f, 0.25f);
 
-    [Header("Colors - Fill Hover")]
+    [Header("Colors - Hover")]
     public Color hoverAvailableColor = new Color(0.6f, 0.4f, 1f, 0.4f);
     public Color hoverLockedColor = new Color(0.8f, 0.2f, 0.2f, 0.4f);
     public Color hoverConqueredColor = new Color(1f, 0.8f, 0.2f, 0.4f);
 
-    [Header("Colors - Border (Контури)")]
-    public Color borderNormalColor = new Color(0.2f, 0.18f, 0.15f, 0.5f); // Напівпрозорий темно-коричневий (чорнило)
-    public Color borderHoverColor = new Color(1f, 1f, 1f, 1f); // Білий при наведенні
-    public Color borderPulseColor = new Color(1f, 0.8f, 0.2f, 0.8f); // Золотий для пульсації доступного регіону
+    [Header("Storm Visuals")]
+    public Color darkFogColor = new Color(0.08f, 0.1f, 0.15f, 0.95f); // Густий, майже чорний туман
+    public Color lightFogColor = new Color(0.15f, 0.18f, 0.25f, 0.95f); // Трохи світліший сизий відтінок
 
-    [Header("Storm Visuals (Locked Regions)")]
-    public Color lightningFlashColor = new Color(0.8f, 0.9f, 1f, 0.4f); // Колір спалаху блискавки
-    private float nextLightningTime;
+    private float breathSpeed;
+    private float breathOffset;
 
     private Color targetImageColor;
-    private Color targetBorderColor;
     private bool isHovered = false;
-
     void Awake()
     {
         regionImage = GetComponent<Image>();
         regionImage.alphaHitTestMinimumThreshold = 0.1f;
         mainMapUI = FindFirstObjectByType<MapPanelUI>(FindObjectsInactive.Include);
 
-        // Рандомізуємо перший удар блискавки для кожного регіону
-        nextLightningTime = Time.time + Random.Range(2f, 10f);
+        // Генеруємо унікальний ритм "дихання" для кожного регіону
+        breathSpeed = Random.Range(0.4f, 0.8f);
+        breathOffset = Random.Range(0f, 10f);
     }
 
     void OnEnable()
     {
-        // Підписуємося на оновлення мапи
-        MapProgressionManager.OnMapStateChanged += RefreshState;
+        MapTableInteract.OnMapFullyOpened += TriggerRevealAnimation; // Підписка на відкриття мапи
         UpdateRegionVisuals(false);
     }
 
     void OnDisable()
     {
-        // Відписуємося, щоб не було витоку пам'яті
-        MapProgressionManager.OnMapStateChanged -= RefreshState;
-    }
-
-    private void RefreshState()
-    {
-        UpdateRegionVisuals(isHovered);
+        MapTableInteract.OnMapFullyOpened -= TriggerRevealAnimation;
     }
 
     void Update()
     {
-        // МАГІЯ НАВІГАЦІЇ: Плавно пульсуємо кордоном, якщо регіон доступний для атаки і мишка не на ньому
-        if (myRegionData != null && myRegionData.currentState == RegionState.Available && !isHovered)
+        // 1. Анімація землі
+        regionImage.color = Color.Lerp(regionImage.color, targetImageColor, Time.deltaTime * 10f);
+
+        // 2. Органічний Туман Війни
+        if (myRegionData != null && myRegionData.currentState == RegionState.Locked && stormLayer != null)
         {
-            float pulse = Mathf.PingPong(Time.time * 1.5f, 1f); // Швидкість пульсації
-            targetBorderColor = Color.Lerp(borderNormalColor, borderPulseColor, pulse);
-        }
+            // Математика плавної пульсації від 0 до 1
+            float pulse = (Mathf.Sin(Time.time * breathSpeed + breathOffset) + 1f) / 2f;
 
-        // Застосовуємо кольори
-        regionImage.color = Color.Lerp(regionImage.color, targetImageColor, Time.deltaTime * 12f);
-
-        if (borderImage != null)
-        {
-            borderImage.color = Color.Lerp(borderImage.color, targetBorderColor, Time.deltaTime * 12f);
-        }
-
-        if (myRegionData != null && myRegionData.currentState == RegionState.Locked && !isHovered)
-        {
-            if (Time.time >= nextLightningTime)
-            {
-                // Різкий спалах! (Ми напряму змінюємо колір Image, минаючи Lerp)
-                regionImage.color = lightningFlashColor;
-
-                // Наступна блискавка вдарить через 4-15 секунд
-                nextLightningTime = Time.time + Random.Range(4f, 15f);
-            }
+            // Плавно переливаємося між двома темними відтінками
+            stormLayer.color = Color.Lerp(darkFogColor, lightFogColor, pulse);
         }
     }
 
@@ -106,23 +82,64 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 
         if (lockIcon != null) lockIcon.SetActive(state == RegionState.Locked);
 
-        // Встановлюємо базові цілі залежно від стану
         if (state == RegionState.Locked)
         {
             targetImageColor = hover ? hoverLockedColor : lockedColor;
-            targetBorderColor = hover ? borderHoverColor : borderNormalColor;
+            if (stormLayer != null && !myRegionData.isNewlyUnlocked) stormLayer.gameObject.SetActive(true);
         }
         else if (state == RegionState.Available)
         {
             targetImageColor = hover ? hoverAvailableColor : availableColor;
-            // Колір кордону тут встановлюється для стану Hover. Якщо не hover, він керується пульсацією в Update()
-            targetBorderColor = hover ? borderHoverColor : borderNormalColor;
+            // Якщо регіон вже давно доступний (не новий), шторму немає
+            if (stormLayer != null && !myRegionData.isNewlyUnlocked) stormLayer.gameObject.SetActive(false);
         }
         else if (state == RegionState.Conquered)
         {
             targetImageColor = hover ? hoverConqueredColor : conqueredColor;
-            targetBorderColor = hover ? borderHoverColor : borderNormalColor;
+            if (stormLayer != null) stormLayer.gameObject.SetActive(false);
         }
+    }
+
+    // Тригериться, коли мапа повністю з'явилася на екрані
+    private void TriggerRevealAnimation()
+    {
+        if (myRegionData != null && myRegionData.currentState == RegionState.Available && myRegionData.isNewlyUnlocked)
+        {
+            if (stormLayer != null) StartCoroutine(DissolveStormRoutine());
+            myRegionData.isNewlyUnlocked = false; // Скидаємо прапорець
+        }
+    }
+
+    // Анімація розвіювання бурі (AAA Juice)
+    private IEnumerator DissolveStormRoutine()
+    {
+        stormLayer.gameObject.SetActive(true);
+        float duration = 2.5f; // Шторм розсіюється 2.5 секунди
+        float elapsed = 0f;
+
+        Vector3 startScale = stormLayer.transform.localScale;
+        Vector3 targetScale = startScale * 1.4f; // Хмари наближаються (розходяться)
+
+        Color startColor = stormLayer.color;
+        Color targetTransparent = new Color(startColor.r, startColor.g, startColor.b, 0f);
+
+        // Якщо є звук розсіювання вітру:
+        // if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_WindGust);
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float smoothT = 1f - Mathf.Pow(1f - t, 3f); // Ease-Out (швидко на початку, плавно в кінці)
+
+            stormLayer.transform.localScale = Vector3.Lerp(startScale, targetScale, smoothT);
+            stormLayer.color = Color.Lerp(startColor, targetTransparent, smoothT);
+
+            yield return null;
+        }
+
+        stormLayer.gameObject.SetActive(false);
+        stormLayer.transform.localScale = startScale; // Повертаємо масштаб на місце
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -130,20 +147,9 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
         UpdateRegionVisuals(true);
     }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        UpdateRegionVisuals(false);
-    }
-
+    public void OnPointerExit(PointerEventData eventData) { UpdateRegionVisuals(false); }
     public void OnPointerClick(PointerEventData eventData)
     {
-        regionImage.color = new Color(1f, 1f, 1f, 0.8f);
-        if (borderImage != null) borderImage.color = new Color(1f, 0.8f, 0.2f, 1f);
-
-        if (mainMapUI != null && myRegionData != null)
-        {
-            mainMapUI.OpenPanel(myRegionData);
-        }
+        if (mainMapUI != null && myRegionData != null) mainMapUI.OpenPanel(myRegionData);
     }
 }

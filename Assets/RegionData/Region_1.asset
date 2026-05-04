@@ -18,7 +18,9 @@ MonoBehaviour:
     bones remain among the logs.
   regionIcon: {fileID: 0}
   currentState: 1
-  neighboringRegions: []
+  neighboringRegions:
+  - {fileID: 11400000, guid: 3c3fcc1ccecf411499b378991ea4b301, type: 2}
+  isNewlyUnlocked: 0
   recommendedPowerLevel: 500
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1

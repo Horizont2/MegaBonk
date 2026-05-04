@@ -21,24 +21,18 @@ public class MapProgressionManager : MonoBehaviour
     // Цю функцію ви будете викликати, коли гравець успішно повертається з рейду
     public void ConquerRegionAndUnlockNeighbors(RegionData conqueredRegion)
     {
-        if (conqueredRegion.currentState == RegionState.Conquered) return; // Вже захоплено
+        if (conqueredRegion.currentState == RegionState.Conquered) return;
 
-        // 1. Захоплюємо сам регіон
         conqueredRegion.currentState = RegionState.Conquered;
-        Debug.Log($"[Map] Захоплено регіон: {conqueredRegion.regionName}!");
 
-        // 2. Відкриваємо кордони сусідів (знімаємо замки)
         foreach (RegionData neighbor in conqueredRegion.neighboringRegions)
         {
             if (neighbor.currentState == RegionState.Locked)
             {
                 neighbor.currentState = RegionState.Available;
-                Debug.Log($"[Map] Відкрито новий шлях до: {neighbor.regionName}");
+                neighbor.isNewlyUnlocked = true; // ДОДАНО: Кажемо мапі, що це НОВА територія
             }
         }
-
-        // 3. Даємо команду всій мапі оновити візуал
-        OnMapStateChanged?.Invoke();
     }
 
     // ТЕСТОВА КНОПКА (видаліть пізніше): 
