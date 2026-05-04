@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddccf856154586c4097f9df533ac30a1, type: 3}
+  m_Name: Region_7
+  m_EditorClassIdentifier: Assembly-CSharp::RegionData
+  regionID: 6
+  regionName: Stonefall Quarry
+  loreDescription: Deep pits where slaves once mined stone. The undead miners still
+    blindly swing their pickaxes.
+  regionIcon: {fileID: 0}
+  currentState: 0
+  neighboringRegions:
+  - {fileID: 11400000, guid: fb22dd8a7dea72145915de3c56d89980, type: 2}
+  recommendedPowerLevel: 900
+  enemyHpMultiplier: 1
+  enemyDamageMultiplier: 1
+  woodReward: 120
+  stoneReward: 180
+  foodReward: 60
+  diamondReward: 3
+  passiveWood: 0
+  passiveStone: 8
+  passiveFood: 0
+  passiveDiamonds: 0

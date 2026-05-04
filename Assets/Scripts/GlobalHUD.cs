@@ -245,12 +245,22 @@ public class GlobalHUD : MonoBehaviour
     private IEnumerator TypeTextRoutine(string message, TextMeshProUGUI textTarget)
     {
         if (textTarget == null) yield break;
-        textTarget.text = "";
-        foreach (char letter in message.ToCharArray())
+
+        // Одразу завантажуємо весь текст, щоб TextMeshPro розрахував його фінальний розмір та відцентрував
+        textTarget.text = message;
+
+        // Робимо всі символи тексту невидимими
+        textTarget.maxVisibleCharacters = 0;
+
+        // Цикл тепер просто збільшує кількість видимих символів
+        for (int i = 0; i <= message.Length; i++)
         {
-            textTarget.text += letter;
+            textTarget.maxVisibleCharacters = i;
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
+
+        // Наприкінці скидаємо ліміт, щоб уникнути багів при майбутніх змінах тексту
+        textTarget.maxVisibleCharacters = 99999;
     }
 
     public void ShowPrompt(string message)

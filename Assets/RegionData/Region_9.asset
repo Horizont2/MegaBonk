@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddccf856154586c4097f9df533ac30a1, type: 3}
+  m_Name: Region_9
+  m_EditorClassIdentifier: Assembly-CSharp::RegionData
+  regionID: 8
+  regionName: Howling Valley
+  loreDescription: The wind through this canyon sounds like screaming. The cursed
+    souls here are relentless.
+  regionIcon: {fileID: 0}
+  currentState: 0
+  neighboringRegions:
+  - {fileID: 11400000, guid: 515a27a4037f273449fcfe726270c9f5, type: 2}
+  recommendedPowerLevel: 1050
+  enemyHpMultiplier: 1
+  enemyDamageMultiplier: 1
+  woodReward: 180
+  stoneReward: 150
+  foodReward: 80
+  diamondReward: 4
+  passiveWood: 6
+  passiveStone: 0
+  passiveFood: 0
+  passiveDiamonds: 0

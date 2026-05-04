@@ -9,6 +9,7 @@ public class NoticeBoardManager : MonoBehaviour
 {
     [Header("UI References")]
     public GameObject boardCanvas;
+    public GameObject interactionRune;
     public Transform paperLayoutGroup;
     public GameObject missionPaperPrefab;
     public TextMeshProUGUI emptyBoardMessage;
@@ -67,6 +68,8 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = true;
         boardCanvas.SetActive(true);
 
+        if (interactionRune != null) interactionRune.SetActive(false); // <--- ÄÎÄÀÍÎ
+
         // ÇÂÓÊ: Â³äêðèòòÿ äîøêè
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
@@ -83,7 +86,9 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = false;
         boardCanvas.SetActive(false);
 
-        // ÇÂÓÊ: Çàêðèòòÿ äîøêè
+        if (interactionRune != null) interactionRune.SetActive(true); // <--- ÄÎÄÀÍÎ
+
+        // ÇÂÓÊ: Çàêðèòòÿ äîøêè[cite: 1]
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         Cursor.visible = false;

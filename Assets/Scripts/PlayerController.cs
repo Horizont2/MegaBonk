@@ -28,11 +28,9 @@ public class PlayerController : MonoBehaviour
     public float dragAcceleration = 3f;
     private Vector3 currentVelocityMove;
 
-    [Header("Jump Settings")]
+    [Header("Jump & Gravity")]
     public bool canJump = true;
     public float jumpHeight = 2f;
-
-    [Header("Gravity Settings")]
     public float gravity = -25f;
 
     [Header("Player Stats")]
@@ -54,7 +52,7 @@ public class PlayerController : MonoBehaviour
     public float attackCooldown = 0.6f;
     private float lastAttackTime = -100f;
 
-    [Header("Grenade & Trajectory")]
+    [Header("Grenade")]
     public GameObject grenadePrefab;
     public Transform throwPoint;
     public LineRenderer trajectoryLine;
@@ -190,16 +188,14 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // НОВЕ: Шукаємо точку спавну на поточній сцені
             GameObject spawnPoint = GameObject.Find("PlayerSpawnPoint");
             if (spawnPoint != null)
             {
                 transform.position = spawnPoint.transform.position;
-                transform.rotation = spawnPoint.transform.rotation; // Гравець одразу буде дивитися куди треба
+                transform.rotation = spawnPoint.transform.rotation;
             }
             else
             {
-                // Резервна логіка, якщо точки спавну немає
                 float spawnX = 0f;
                 float spawnZ = 0f;
                 float spawnY = 20f;
@@ -232,8 +228,17 @@ public class PlayerController : MonoBehaviour
         pickupRadius += pickupRadius * (magnetLvl * 0.2f);
         int armorLvl = SaveManager.GetUpgradeLevel("MetaArmor");
         damageReduction = armorLvl * 0.05f;
+
         int dmgLvl = SaveManager.GetUpgradeLevel("MetaDamage");
         globalDamageMultiplier = 1f + (dmgLvl * 0.1f);
+
+        int weaponID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
+        float weaponDmgBonus = weaponID * 15f;
+        meleeDamage += weaponDmgBonus;
+
+        int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
+        float forgeDamageBonus = forgeLevel * 0.20f;
+        globalDamageMultiplier += forgeDamageBonus;
     }
 
     private void CheckStack()
@@ -316,6 +321,7 @@ public class PlayerController : MonoBehaviour
 
         if (isDashing) return;
 
+        if (Camera.main == null) return; // Захист від крашу
         Vector3 camForward = Camera.main.transform.forward;
         Vector3 camRight = Camera.main.transform.right;
         camForward.y = 0f; camRight.y = 0f;
@@ -470,7 +476,6 @@ public class PlayerController : MonoBehaviour
     {
         if (meleePoint == null || isCampMode) return;
 
-        // ЗВУК: Замах зброєю 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
 
         Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
@@ -506,14 +511,12 @@ public class PlayerController : MonoBehaviour
 
         if (hitEnemy)
         {
-            // ЗВУК: Влучання по м'ясу
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
             if (cameraFollow != null) cameraFollow.TriggerShake(0.1f, 0.15f);
             StartCoroutine(HitStopRoutine(0.05f));
         }
         else if (hitResource)
         {
-            // ЗВУК: Влучання по ресурсу
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitResource);
             if (cameraFollow != null) cameraFollow.TriggerShake(0.05f, 0.1f);
         }
@@ -530,7 +533,6 @@ public class PlayerController : MonoBehaviour
     {
         if (grenadePrefab != null && throwPoint != null && !isCampMode)
         {
-            // ЗВУК: Кидок гранати
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Throw);
 
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
@@ -546,7 +548,6 @@ public class PlayerController : MonoBehaviour
         float finalDamage = damageAmount * (1f - damageReduction);
         currentHealth -= finalDamage;
 
-        // ЗВУК: Гравцю боляче
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Hurt);
 
         if (cameraFollow != null) cameraFollow.StartShake();
@@ -584,39 +585,30 @@ public class PlayerController : MonoBehaviour
 
     private void Die()
     {
-        // Зберігаємо зібране
         SaveManager.AddCrystals(crystalsCollected);
 
-        // Ховаємо зброю
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
-        // Дізнаємося, де ми знаходимося
         string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
         GameManager gm = FindFirstObjectByType<GameManager>();
 
         if (gm != null)
         {
-            // СЦЕНАРІЙ 1: Звичайний забіг на виживання. 
-            // GameManager є на сцені, він покаже екран "Game Over" і відправить у Табір.
             gm.TriggerGameOver();
         }
         else if (GlobalHUD.Instance != null)
         {
-            // СЦЕНАРІЙ 2: Ми на сюжетному рівні (наприклад, Lvl_1), де немає GameManager.
             if (currentSceneName == "Lvl_1")
             {
-                // Перезапускаємо 1-й рівень, щоб гравець не скіпнув туторіал
                 GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
             }
             else
             {
-                // Захист від багів: якщо ми не знаємо де ми, безпечно кидаємо в Табір
                 GlobalHUD.Instance.FadeAndLoadScene("CampScene");
             }
         }
 
-        // Вимикаємо гравця
         gameObject.SetActive(false);
     }
 
@@ -631,7 +623,6 @@ public class PlayerController : MonoBehaviour
     {
         crystalsCollected += amount;
 
-        // ЗВУК: Збір діаманту
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
 
         UpdateHUD();
@@ -650,7 +641,6 @@ public class PlayerController : MonoBehaviour
 
         visualXP = 0f;
 
-        // ЗВУК: Підвищення рівня
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
 
         LevelUpManager lum = FindFirstObjectByType<LevelUpManager>();
@@ -682,7 +672,6 @@ public class PlayerController : MonoBehaviour
         lastDashTime = Time.time;
         float startTime = Time.time;
 
-        // ЗВУК: Ривок (Dash)
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
 
         float originalFOV = Camera.main.fieldOfView;
