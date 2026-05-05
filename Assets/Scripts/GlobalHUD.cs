@@ -100,12 +100,8 @@ public class GlobalHUD : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            // --- НОВЕ: Перевіряємо, чи відкрита мапа ---
             GameObject mapCanvas = GameObject.Find("MapCanvas");
-            if (mapCanvas != null && mapCanvas.activeInHierarchy)
-            {
-                return; // Ігноруємо Esc, не ставимо паузу. Мапа сама обробить закриття.
-            }
+            if (mapCanvas != null && mapCanvas.activeInHierarchy) return;
 
             string sceneName = SceneManager.GetActiveScene().name;
             if (sceneName == "GameScene" || sceneName == "CampScene") TogglePause();
@@ -142,12 +138,11 @@ public class GlobalHUD : MonoBehaviour
         if (canvas != null)
         {
             canvas.renderMode = defaultRenderMode;
-            canvas.sortingOrder = 0; // Повертаємо нормальний сортінг
+            canvas.sortingOrder = 0;
 
             if (defaultRenderMode == RenderMode.ScreenSpaceCamera)
             {
                 Camera cam = Camera.main;
-                // Якщо немає MainCamera (наприклад, у Магазині), шукаємо будь-яку камеру
                 if (cam == null) cam = FindFirstObjectByType<Camera>();
                 canvas.worldCamera = cam;
             }
@@ -173,7 +168,6 @@ public class GlobalHUD : MonoBehaviour
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null)
         {
-            // --- НОВЕ: Робимо канвас Overlay, щоб він гарантовано перекрив ВСЕ (навіть без камери) ---
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 999;
         }
@@ -196,7 +190,6 @@ public class GlobalHUD : MonoBehaviour
 
         while (!asyncLoad.isDone)
         {
-            // --- НОВЕ: Плавне і рівномірне заповнення до 100% ---
             float targetProgress = asyncLoad.progress / 0.9f;
             visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, Time.unscaledDeltaTime * 2.5f);
 
@@ -208,7 +201,6 @@ public class GlobalHUD : MonoBehaviour
                 if (loadingSlider != null) loadingSlider.value = 1f;
                 if (loadingText != null) loadingText.text = "LOADING... 100%";
 
-                // Даємо гравцю мілісекунду побачити 100% перед ривком активації сцени
                 yield return new WaitForSecondsRealtime(0.15f);
                 asyncLoad.allowSceneActivation = true;
             }
@@ -247,9 +239,10 @@ public class GlobalHUD : MonoBehaviour
 
         textTarget.text = message;
         textTarget.ForceMeshUpdate();
+        int totalChars = textTarget.textInfo.characterCount;
         textTarget.maxVisibleCharacters = 0;
 
-        for (int i = 0; i <= message.Length; i++)
+        for (int i = 0; i <= totalChars; i++)
         {
             textTarget.maxVisibleCharacters = i;
             yield return new WaitForSecondsRealtime(typingSpeed);

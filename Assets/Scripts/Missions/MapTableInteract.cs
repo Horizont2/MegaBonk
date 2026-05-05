@@ -51,6 +51,20 @@ public class MapTableInteract : MonoBehaviour
 
         if (playerInRange && !isMapOpen && Input.GetKeyDown(KeyCode.E))
         {
+            // --- НОВЕ: Перевіряємо рівень Хатини Розвідника ---
+            // Рівень 1: Халупа. Рівень 2: З'являється Стіл.
+            int lodgeLevel = PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 1);
+
+            if (lodgeLevel < 2)
+            {
+                if (GlobalHUD.Instance != null)
+                {
+                    GlobalHUD.Instance.ShowPrompt("<color=#FF4444>Upgrade Elias's Lodge first!</color>");
+                }
+                return;
+            }
+            // ---------------------------------------------------
+
             activeSequence = StartCoroutine(OpenMapSequence());
         }
         else if (isMapOpen && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.E)))

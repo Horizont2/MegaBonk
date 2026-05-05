@@ -45,13 +45,13 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] snowRocks;
     public GameObject[] logPrefabs;
 
-    [Header("Points of Interest (Багаття, Намети, Бочки)")]
+    [Header("Points of Interest")]
     public GameObject[] poiPrefabs;
     public int maxPOIs = 15;
-    public float maxPOISteepness = 12f; // ФІКС: Збільшили допустимий нахил для спавну (як у твоєму старому скрипті)
+    public float maxPOISteepness = 12f;
     public float poiClearanceRadius = 4f;
 
-    [Header("Extraction Settings (Коні з возом)")]
+    [Header("Extraction Settings")]
     public GameObject extractionCartPrefab;
     public int extractionCartsAmount = 3;
     public float cartClearanceRadius = 6f;
@@ -76,12 +76,12 @@ public class WorldGenerator : MonoBehaviour
             PlayerPrefs.Save();
         }
 
+        AdjustSettingsForBiome();
+
         terrain.terrainData = GenerateHeights(terrain.terrainData);
         PaintTerrain(terrain.terrainData);
 
         PopulateBiomes();
-
-        // Оновлюємо фізику, щоб щойно створені дерева отримали свої колайдери
         Physics.SyncTransforms();
 
         SpawnPOIs();
@@ -95,8 +95,45 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
+    private void AdjustSettingsForBiome()
+    {
+        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
+        if (isRegionMission)
+        {
+            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
+
+            if (biomeType == 1)
+            {
+                peakSharpness = 1.8f;
+                edgeMountainMultiplier = 1.5f;
+                terraceCount = 0;
+            }
+            else if (biomeType == 2)
+            {
+                peakSharpness = 3.5f;
+                edgeMountainMultiplier = 3.5f;
+                terraceCount = 15;
+            }
+            else
+            {
+                peakSharpness = 2.5f;
+                edgeMountainMultiplier = 2.5f;
+                terraceCount = 12;
+            }
+        }
+    }
+
     private float GetTemperature(float normX, float normZ)
     {
+        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
+        if (isRegionMission)
+        {
+            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
+            if (biomeType == 1) return 0.8f;
+            if (biomeType == 2) return 0.2f;
+            return 0.5f;
+        }
+
         return Mathf.PerlinNoise(normX * globalBiomeScale + offsetX + 500f, normZ * globalBiomeScale + offsetZ + 500f);
     }
 
@@ -112,29 +149,21 @@ public class WorldGenerator : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                float amplitude = 1f;
-                float frequency = 1f;
-                float noiseHeight = 0f;
-                float maxAmplitude = 0f;
+                float amplitude = 1f; float frequency = 1f; float noiseHeight = 0f; float maxAmplitude = 0f;
 
                 for (int i = 0; i < octaves; i++)
                 {
                     float xCoord = (float)x / width * scale * frequency + offsetX;
                     float yCoord = (float)y / height * scale * frequency + offsetZ;
-
                     float perlinValue = Mathf.PerlinNoise(xCoord, yCoord);
                     perlinValue = 1f - Mathf.Abs(perlinValue * 2f - 1f);
                     perlinValue *= perlinValue;
-
                     noiseHeight += perlinValue * amplitude;
                     maxAmplitude += amplitude;
-
-                    amplitude *= persistence;
-                    frequency *= lacunarity;
+                    amplitude *= persistence; frequency *= lacunarity;
                 }
 
                 float normalizedHeight = noiseHeight / maxAmplitude;
-
                 if (terraceCount > 0) normalizedHeight = Mathf.Round(normalizedHeight * terraceCount) / terraceCount;
 
                 float sharpenedNoise = Mathf.Pow(normalizedHeight, peakSharpness);
@@ -163,22 +192,17 @@ public class WorldGenerator : MonoBehaviour
         {
             for (int x = 0; x < aWidth; x++)
             {
-                float normX = (float)x / aWidth;
-                float normY = (float)y / aHeight;
-
-                float temp = GetTemperature(normX, normY);
-                float steepness = terrainData.GetSteepness(normX, normY);
+                float temp = GetTemperature((float)x / aWidth, (float)y / aHeight);
+                float steepness = terrainData.GetSteepness((float)x / aWidth, (float)y / aHeight);
                 float[] weights = new float[4];
 
-                weights[2] = Mathf.Clamp01(Mathf.InverseLerp(0.45f, 0.35f, temp));
-                weights[1] = Mathf.Clamp01(Mathf.InverseLerp(0.55f, 0.65f, temp));
-                weights[0] = 1f - weights[2] - weights[1];
-                weights[3] = Mathf.Clamp01(Mathf.InverseLerp(35f, 45f, steepness));
+                if (temp >= 0.65f) weights[1] = 1f;
+                else if (temp <= 0.35f) weights[2] = 1f;
+                else weights[0] = 1f;
 
+                weights[3] = Mathf.Clamp01(Mathf.InverseLerp(35f, 45f, steepness));
                 float remain = 1f - weights[3];
-                weights[0] *= remain;
-                weights[1] *= remain;
-                weights[2] *= remain;
+                weights[0] *= remain; weights[1] *= remain; weights[2] *= remain;
 
                 splatmapData[y, x, 0] = weights[0];
                 splatmapData[y, x, 1] = weights[1];
@@ -199,10 +223,8 @@ public class WorldGenerator : MonoBehaviour
         Transform grassContainer = new GameObject("GrassContainer").transform;
         Transform logContainer = new GameObject("LogsContainer").transform;
 
-        treeContainer.SetParent(this.transform);
-        rockContainer.SetParent(this.transform);
-        grassContainer.SetParent(this.transform);
-        logContainer.SetParent(this.transform);
+        treeContainer.SetParent(this.transform); rockContainer.SetParent(this.transform);
+        grassContainer.SetParent(this.transform); logContainer.SetParent(this.transform);
 
         for (int i = 0; i < spawnAttempts; i++)
         {
@@ -221,17 +243,16 @@ public class WorldGenerator : MonoBehaviour
             Vector3 terrainNormal = terrain.terrainData.GetInterpolatedNormal(normalizedX, normalizedZ);
             Quaternion slopeRotation = Quaternion.FromToRotation(Vector3.up, terrainNormal);
 
+            // --- ФІКС ПОРОГІВ: Тепер 0.65 для пустелі і 0.35 для снігу скрізь! ---
             if (steepness > 45f)
             {
                 if (Random.value > 0.98f)
                 {
-                    GameObject rockPrefab = localTemp > 0.6f ? GetRandomPrefab(desertRocks) : (localTemp < 0.4f ? GetRandomPrefab(snowRocks) : GetRandomPrefab(forestRocks));
+                    GameObject rockPrefab = localTemp >= 0.65f ? GetRandomPrefab(desertRocks) : (localTemp <= 0.35f ? GetRandomPrefab(snowRocks) : GetRandomPrefab(forestRocks));
                     if (rockPrefab != null)
                     {
-                        // ФІКС: Зберігаємо оригінальну ротацію префабу
                         Quaternion randomY = Quaternion.Euler(0, Random.Range(0, 360f), 0);
                         Quaternion rockRot = slopeRotation * randomY * rockPrefab.transform.rotation;
-
                         GameObject obj = Instantiate(rockPrefab, new Vector3(worldX, worldY, worldZ), rockRot, rockContainer);
                         obj.transform.localScale *= Random.Range(1.5f, 3f);
                     }
@@ -240,38 +261,41 @@ public class WorldGenerator : MonoBehaviour
             }
 
             float density = Mathf.PerlinNoise(normalizedX * clusterScale + offsetX, normalizedZ * clusterScale + offsetZ);
-            GameObject prefabToSpawn = null;
-            Transform targetContainer = null;
-            bool alignToSlope = true;
+            GameObject prefabToSpawn = null; Transform targetContainer = null; bool alignToSlope = true;
 
             if (density > forestThreshold && steepness <= 25f)
             {
-                targetContainer = treeContainer;
-                alignToSlope = false;
-
-                if (localTemp > 0.6f) prefabToSpawn = GetRandomPrefab(desertTrees);
-                else if (localTemp < 0.4f) prefabToSpawn = GetRandomPrefab(snowTrees);
-                else prefabToSpawn = GetRandomPrefab(forestTrees);
+                float randomSpawn = Random.value;
+                if (randomSpawn > 0.65f)
+                {
+                    targetContainer = treeContainer; alignToSlope = false;
+                    if (localTemp >= 0.65f) prefabToSpawn = GetRandomPrefab(desertTrees);
+                    else if (localTemp <= 0.35f) prefabToSpawn = GetRandomPrefab(snowTrees);
+                    else prefabToSpawn = GetRandomPrefab(forestTrees);
+                }
+                else if (randomSpawn > 0.40f)
+                {
+                    targetContainer = grassContainer;
+                    if (localTemp >= 0.65f) prefabToSpawn = GetRandomPrefab(desertGrass);
+                    else if (localTemp <= 0.35f) prefabToSpawn = GetRandomPrefab(snowGrass);
+                    else prefabToSpawn = GetRandomPrefab(forestGrass);
+                }
             }
             else if (density < 0.3f)
             {
                 if (Random.value > 0.93f)
                 {
                     targetContainer = rockContainer;
-                    GameObject rockBase = localTemp > 0.6f ? GetRandomPrefab(desertRocks) : (localTemp < 0.4f ? GetRandomPrefab(snowRocks) : GetRandomPrefab(forestRocks));
-
+                    GameObject rockBase = localTemp >= 0.65f ? GetRandomPrefab(desertRocks) : (localTemp <= 0.35f ? GetRandomPrefab(snowRocks) : GetRandomPrefab(forestRocks));
                     if (rockBase != null)
                     {
                         int clusterSize = Random.Range(1, 5);
                         for (int c = 0; c < clusterSize; c++)
                         {
-                            float ox = Random.Range(-3f, 3f);
-                            float oz = Random.Range(-3f, 3f);
+                            float ox = Random.Range(-3f, 3f); float oz = Random.Range(-3f, 3f);
                             float cy = terrain.SampleHeight(new Vector3(worldX + ox, 0, worldZ + oz)) + transform.position.y;
-
                             Quaternion randomY = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
                             Quaternion clusterRot = slopeRotation * randomY * rockBase.transform.rotation;
-
                             GameObject obj = Instantiate(rockBase, new Vector3(worldX + ox, cy, worldZ + oz), clusterRot, rockContainer);
                             obj.transform.localScale *= Random.Range(0.5f, 1.5f);
                         }
@@ -282,27 +306,21 @@ public class WorldGenerator : MonoBehaviour
             else
             {
                 float rand = Random.value;
-                if (rand > 0.92f)
-                {
-                    prefabToSpawn = GetRandomPrefab(logPrefabs);
-                    targetContainer = logContainer;
-                }
+                if (rand > 0.92f) { prefabToSpawn = GetRandomPrefab(logPrefabs); targetContainer = logContainer; }
                 else if (rand > 0.75f)
                 {
                     targetContainer = grassContainer;
-                    if (localTemp > 0.6f) prefabToSpawn = GetRandomPrefab(desertGrass);
-                    else if (localTemp < 0.4f) prefabToSpawn = GetRandomPrefab(snowGrass);
+                    if (localTemp >= 0.65f) prefabToSpawn = GetRandomPrefab(desertGrass);
+                    else if (localTemp <= 0.35f) prefabToSpawn = GetRandomPrefab(snowGrass);
                     else prefabToSpawn = GetRandomPrefab(forestGrass);
                 }
             }
 
             if (prefabToSpawn != null)
             {
-                // ФІКС: Безпечне обертання з урахуванням FBX-координат моделі
                 Quaternion randomYRot = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
                 Quaternion baseRot = prefabToSpawn.transform.rotation;
                 Quaternion finalRot = alignToSlope ? (slopeRotation * randomYRot * baseRot) : (randomYRot * baseRot);
-
                 GameObject obj = Instantiate(prefabToSpawn, new Vector3(worldX, worldY, worldZ), finalRot, targetContainer);
                 obj.transform.localScale *= Random.Range(0.8f, 1.2f);
             }
@@ -312,33 +330,19 @@ public class WorldGenerator : MonoBehaviour
     private void SpawnPOIs()
     {
         if (poiPrefabs == null || poiPrefabs.Length == 0) return;
-
         Transform poiContainer = new GameObject("POIContainer").transform;
         poiContainer.SetParent(this.transform);
-
-        float w = terrain.terrainData.size.x;
-        float l = terrain.terrainData.size.z;
-        int spawnedCount = 0;
-
+        float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCount = 0;
         for (int i = 0; i < 3000; i++)
         {
             if (spawnedCount >= maxPOIs) break;
-
-            float px = Random.Range(20f, w - 20f);
-            float pz = Random.Range(20f, l - 20f);
-
-            float worldX = transform.position.x + px;
-            float worldZ = transform.position.z + pz;
-
-            float normalizedX = px / w;
-            float normalizedZ = pz / l;
+            float px = Random.Range(20f, w - 20f); float pz = Random.Range(20f, l - 20f);
+            float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
+            float normalizedX = px / w; float normalizedZ = pz / l;
             float steepness = terrain.terrainData.GetSteepness(normalizedX, normalizedZ);
-
             if (steepness > maxPOISteepness) continue;
-
             float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
             Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
-
             if (IsPositionClear(spawnPos, poiClearanceRadius))
             {
                 GameObject prefabToSpawn = GetRandomPrefab(poiPrefabs);
@@ -346,36 +350,23 @@ public class WorldGenerator : MonoBehaviour
                 spawnedCount++;
             }
         }
-
-        if (spawnedCount < maxPOIs) Debug.LogWarning($"Заспавнили лише {spawnedCount} POI з {maxPOIs}");
     }
 
     private void SpawnExtractionCarts()
     {
         if (extractionCartPrefab == null) return;
-
-        float w = terrain.terrainData.size.x;
-        float l = terrain.terrainData.size.z;
-        int spawnedCarts = 0;
-
+        float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCarts = 0;
         for (int i = 0; i < 5000; i++)
         {
             if (spawnedCarts >= extractionCartsAmount) break;
-
-            float px = Random.Range(30f, w - 30f);
-            float pz = Random.Range(30f, l - 30f);
-            float worldX = transform.position.x + px;
-            float worldZ = transform.position.z + pz;
-
-            float normalizedX = px / w;
-            float normalizedZ = pz / l;
+            float px = Random.Range(30f, w - 30f); float pz = Random.Range(30f, l - 30f);
+            float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
+            float normalizedX = px / w; float normalizedZ = pz / l;
             float steepness = terrain.terrainData.GetSteepness(normalizedX, normalizedZ);
-
-            if (steepness < 8f) // ФІКС: Дозволяємо трохи більший нахил для коней
+            if (steepness < 8f)
             {
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
                 Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
-
                 if (IsPositionClear(spawnPos, cartClearanceRadius))
                 {
                     Instantiate(extractionCartPrefab, spawnPos, Quaternion.Euler(0, Random.Range(0, 360f), 0));
@@ -385,22 +376,14 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    // ФІКС: Повністю перероблений, надійний радар для перешкод
     private bool IsPositionClear(Vector3 position, float radius)
     {
-        // Піднімаємо сферу на 1.5м, щоб вона не терлася об землю!
         Vector3 checkPos = position + Vector3.up * 1.5f;
         Collider[] colliders = Physics.OverlapSphere(checkPos, radius);
-
         foreach (Collider col in colliders)
         {
-            // Ігноруємо сам террейн
             if (col.GetComponent<TerrainCollider>() != null || col.GetComponent<Terrain>() != null) continue;
-
-            // Ігноруємо невидимі тригери
             if (col.isTrigger) continue;
-
-            // Знайшли щось тверде (дерево, камінь, гравця) — місце зайняте!
             return false;
         }
         return true;

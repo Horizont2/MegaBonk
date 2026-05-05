@@ -5,12 +5,11 @@ using TMPro;
 
 public class GameManager : MonoBehaviour
 {
-    // ДОДАНО: Патерн Singleton для доступу з інших скриптів
     public static GameManager Instance;
 
     [Header("Region Data")]
-    // ДОДАНО: Поточний регіон, в якому знаходиться гравець
     public RegionData currentRegion;
+    public bool isRegionMission = false; // Прапорець для розумної генерації біомів
 
     [Header("UI References")]
     public CanvasGroup gameOverPanel;
@@ -27,9 +26,17 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // Налаштування Singleton
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        // --- ФІКС: Робимо GameManager безсмертним між сценами ---
+        if (Instance == null)
+        {
+            Instance = this;
+            transform.parent = null; // Відв'язуємо від батьків, бо DontDestroyOnLoad працює тільки в корені сцени
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     private void Start()

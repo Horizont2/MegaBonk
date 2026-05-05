@@ -17,6 +17,7 @@ MonoBehaviour:
   loreDescription: A massive graveyard of fallen knights. Their rusted armor makes
     them tougher to kill.
   regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
+  regionBiome: 1
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 1f11b70e2a2f4d54084b45332a6f6cdc, type: 2}

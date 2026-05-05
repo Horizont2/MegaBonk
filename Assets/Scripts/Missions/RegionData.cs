@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 public enum RegionState { Locked, Available, Conquered }
+public enum RegionBiome { Forest, Desert, Winter } // ÄÎÄÀÍÎ: Òèïè á³îì³â
 
 [CreateAssetMenu(fileName = "NewRegion", menuName = "Map/Region Data")]
 public class RegionData : ScriptableObject
@@ -12,13 +13,16 @@ public class RegionData : ScriptableObject
     [TextArea(3, 5)] public string loreDescription;
     public Sprite regionIllustration;
 
+    [Header("Generation Settings (NEW)")]
+    public RegionBiome regionBiome = RegionBiome.Forest;
+
     [Header("Map Logic")]
     public RegionState currentState = RegionState.Locked;
     public List<RegionData> neighboringRegions;
     [HideInInspector] public bool isNewlyUnlocked = false;
 
     [Header("Difficulty & Combat System")]
-    public int recommendedPower = 150; // ÒÅÏÅĞ ÖÅ ªÄÈÍÀ ÇÌ²ÍÍÀ ÑÈËÈ ĞÅÃ²ÎÍÓ
+    public int recommendedPower = 150;
     public float enemyHpMultiplier = 1f;
     public float enemyDamageMultiplier = 1f;
 

@@ -39,6 +39,12 @@ public class MissionManager : MonoBehaviour
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
         LoadMissions();
+
+        // --- ФІКС: Якщо ми запустили гру прямо зі сцени табору в едіторі ---
+        if (SceneManager.GetActiveScene().name == "CampScene")
+        {
+            ClearCompletedMissionsUI();
+        }
     }
 
     private void OnDestroy()
@@ -50,7 +56,6 @@ public class MissionManager : MonoBehaviour
     {
         if (scene.name == "CampScene")
         {
-            // Видаємо нагороди і чистимо UI тільки по прибуттю в табір!
             ClearCompletedMissionsUI();
         }
     }
@@ -61,7 +66,6 @@ public class MissionManager : MonoBehaviour
         {
             if (activeMissions[i].isCompleted || activeMissions[i].currentProgress >= activeMissions[i].targetAmount)
             {
-                // НАРАХУВАННЯ НАГОРОДИ В ТАБОРІ
                 if (ResourceManager.Instance != null)
                 {
                     ResourceManager.Instance.AddStashResources(
@@ -80,12 +84,11 @@ public class MissionManager : MonoBehaviour
                 activeMissions.RemoveAt(i);
             }
         }
-        SaveMissions(); // Зберігаємо чистий список після видачі нагород
+        SaveMissions();
     }
 
     public void SaveMissions()
     {
-        // Тепер ми зберігаємо ВСІ місії, але додаємо прапорець MissionCompleted
         PlayerPrefs.SetInt("ActiveMissionCount", activeMissions.Count);
 
         for (int i = 0; i < activeMissions.Count; i++)
@@ -100,8 +103,6 @@ public class MissionManager : MonoBehaviour
             PlayerPrefs.SetInt("MissionDiamond_" + i, m.data.diamondReward);
             PlayerPrefs.SetInt("MissionTarget_" + i, m.targetAmount);
             PlayerPrefs.SetInt("MissionProgress_" + i, m.currentProgress);
-
-            // НОВЕ: Зберігаємо статус виконання
             PlayerPrefs.SetInt("MissionCompleted_" + i, m.isCompleted ? 1 : 0);
         }
         PlayerPrefs.Save();
@@ -164,10 +165,8 @@ public class MissionManager : MonoBehaviour
 
         GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
         mission.uiElement = uiObj.GetComponent<MissionUIElement>();
-
         mission.uiElement.Setup(mission.data.missionName, mission.data.missionDescription, mission.currentProgress, mission.targetAmount);
 
-        // Якщо місія вже була виконана (при завантаженні), миттєво ставимо візуал DONE
         if (mission.isCompleted)
         {
             mission.uiElement.SetCompletedStateInstant();
@@ -182,17 +181,11 @@ public class MissionManager : MonoBehaviour
             if (!mission.isCompleted && mission.data.missionType == type)
             {
                 mission.currentProgress += amount;
+                if (mission.currentProgress > mission.targetAmount) mission.currentProgress = mission.targetAmount;
 
-                if (mission.currentProgress > mission.targetAmount)
-                    mission.currentProgress = mission.targetAmount;
+                if (mission.uiElement != null) mission.uiElement.UpdateProgress(mission.currentProgress, mission.targetAmount);
 
-                if (mission.uiElement != null)
-                    mission.uiElement.UpdateProgress(mission.currentProgress, mission.targetAmount);
-
-                if (mission.currentProgress >= mission.targetAmount)
-                {
-                    CompleteMission(mission);
-                }
+                if (mission.currentProgress >= mission.targetAmount) CompleteMission(mission);
                 wasUpdated = true;
             }
         }
@@ -214,11 +207,7 @@ public class MissionManager : MonoBehaviour
     {
         mission.isCompleted = true;
         if (mission.uiElement != null) mission.uiElement.CompleteMission();
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
-
-        // Звідси ми забрали видачу нагороди, бо вона тепер у ClearCompletedMissionsUI
-
         SaveMissions();
     }
 }

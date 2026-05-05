@@ -341,32 +341,32 @@ public class CampBuilding : MonoBehaviour
         }
 
         string infoText = "";
+
+        // --- ФІКС: Змінюємо слово Production на Feature для будинку Еліаса ---
+        string prodLabel = (buildingID == "ScoutsLodge") ? "Feature" : "Production";
+
         if (currentLevel == 0)
         {
-            infoText += $"Production: <b><color=#FFFFFF>{nextLevelData.productionDescription}</color></b>\n";
+            infoText += $"{prodLabel}: <b><color=#FFFFFF>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Build Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
             if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO BUILD";
         }
         else
         {
             BuildingLevel currentData = levels[currentLevel - 1];
-            infoText += $"Production: <b><color=#AAAAAA>{currentData.productionDescription}</color></b> -> <b><color=#00FF00>{nextLevelData.productionDescription}</color></b>\n";
+            infoText += $"{prodLabel}: <b><color=#AAAAAA>{currentData.productionDescription}</color></b> -> <b><color=#00FF00>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Upgrade Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
             if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO UPGRADE";
         }
 
-        // --- МАГІЧНИЙ БЛОК ДЛЯ КУЗНІ (ПРОГНОЗ СИЛИ) ---
+        // Блок для Кузні
         if (buildingName.ToUpper().Contains("FORGE"))
         {
             float currentMult = GetForgeMultiplier(currentLevel);
             float nextMult = GetForgeMultiplier(currentLevel + 1);
-
             int currentPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
-
-            // Відкочуємо поточну силу до базової (до множника), щоб рівно порахувати наступну
             int basePower = Mathf.RoundToInt(currentPower / currentMult);
             int nextPower = Mathf.RoundToInt(basePower * nextMult);
-
             infoText += $"\n\nTotal Power: <b><color=#AAAAAA>{currentPower}</color></b> -> <b><color=#D4AF37>{nextPower} <size=70%>({nextMult * 100 - 100}%)</size></color></b>";
         }
 

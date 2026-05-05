@@ -13,6 +13,15 @@ public class CampDirector : MonoBehaviour
     public TextMeshProUGUI subtitleText;
     public float typingSpeed = 0.04f;
 
+    private void Awake()
+    {
+        if (PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 0) == 0)
+        {
+            PlayerPrefs.SetInt("SaveBld_ScoutsLodge", 1);
+            PlayerPrefs.Save();
+        }
+    }
+
     private void Start()
     {
         bool tutorialPlayed = PlayerPrefs.GetInt("CampTutorialPlayed", 0) == 1;
@@ -43,7 +52,6 @@ public class CampDirector : MonoBehaviour
 
     private void StopCutsceneImmediately()
     {
-        // --- ФІКС: Вимикаємо мозок Cinemachine ПЕРЕД зупинкою таймлайну ---
         var brain = Camera.main.GetComponent<CinemachineBrain>();
         if (brain != null) brain.enabled = false;
 
@@ -79,12 +87,12 @@ public class CampDirector : MonoBehaviour
     private void EndTutorial()
     {
         PlayerPrefs.SetInt("CampTutorialPlayed", 1);
+        PlayerPrefs.SetInt("SaveBld_ScoutsLodge", 1);
         PlayerPrefs.Save();
 
         if (player != null) player.enabled = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
-        // --- ФІКС: Вимикаємо мозок Cinemachine ПЕРЕД синхронізацією ігрової камери ---
         var brain = Camera.main.GetComponent<CinemachineBrain>();
         if (brain != null) brain.enabled = false;
 
@@ -101,28 +109,40 @@ public class CampDirector : MonoBehaviour
     private IEnumerator ShowSubtitleTypewriter(string text, float stayDuration)
     {
         if (subtitleText == null) yield break;
-        subtitleText.text = "";
-        foreach (char c in text)
+
+        subtitleText.text = text;
+        subtitleText.ForceMeshUpdate();
+        int totalChars = subtitleText.textInfo.characterCount;
+        subtitleText.maxVisibleCharacters = 0;
+
+        for (int i = 0; i <= totalChars; i++)
         {
-            subtitleText.text += c;
+            subtitleText.maxVisibleCharacters = i;
             yield return new WaitForSeconds(typingSpeed);
         }
+
         yield return new WaitForSeconds(stayDuration);
+        subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
     }
 
     private IEnumerator ShowTutorialHint(string text, float duration)
     {
         if (subtitleText == null) yield break;
-        subtitleText.text = "";
-        string visibleText = "";
-        foreach (char c in text)
+
+        subtitleText.text = $"<color=#88CCFF>{text}</color>";
+        subtitleText.ForceMeshUpdate();
+        int totalChars = subtitleText.textInfo.characterCount;
+        subtitleText.maxVisibleCharacters = 0;
+
+        for (int i = 0; i <= totalChars; i++)
         {
-            visibleText += c;
-            subtitleText.text = $"<color=#88CCFF>{visibleText}</color>";
+            subtitleText.maxVisibleCharacters = i;
             yield return new WaitForSeconds(typingSpeed);
         }
+
         yield return new WaitForSeconds(duration);
+        subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
     }
 }

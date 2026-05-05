@@ -17,6 +17,7 @@ MonoBehaviour:
   loreDescription: A dangerous mountain road. You'll need decent armor and a sharp
     blade to survive the swarm.
   regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
+  regionBiome: 1
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 5a4f554972f65a74980010099fb176d8, type: 2}

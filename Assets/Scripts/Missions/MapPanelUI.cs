@@ -109,10 +109,7 @@ public class MapPanelUI : MonoBehaviour
                 illustrationImage.sprite = currentRegion.regionIllustration;
                 illustrationImage.gameObject.SetActive(true);
             }
-            else
-            {
-                illustrationImage.gameObject.SetActive(false);
-            }
+            else illustrationImage.gameObject.SetActive(false);
         }
 
         switch (currentRegion.currentState)
@@ -131,24 +128,17 @@ public class MapPanelUI : MonoBehaviour
                 break;
         }
 
-        // --- МАГІЯ СИЛИ (ТЕПЕР ЧИТАЄ РЕАЛЬНІ ДАНІ) ---
-        // Беремо підраховану силу з пам'яті. Якщо гри ще не було, дефолт 50.
         int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
         string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? "#4CAF50" : "#F44336";
 
-        if (recommendedPowerText != null)
-            recommendedPowerText.text = $"<size=50%><color=#D4AF37>RECOMMENDED</color></size>\n{currentRegion.recommendedPower}";
+        if (recommendedPowerText != null) recommendedPowerText.text = $"<size=50%><color=#D4AF37>RECOMMENDED</color></size>\n{currentRegion.recommendedPower}";
+        if (playerPowerText != null) playerPowerText.text = $"<size=50%><color=#D4AF37>YOUR POWER</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
 
-        if (playerPowerText != null)
-            playerPowerText.text = $"<size=50%><color=#D4AF37>YOUR POWER</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
-
-        // Одноразові нагороди
         if (conquerWoodText != null) conquerWoodText.text = $"+{currentRegion.woodReward}";
         if (conquerStoneText != null) conquerStoneText.text = $"+{currentRegion.stoneReward}";
         if (conquerFoodText != null) conquerFoodText.text = $"+{currentRegion.foodReward}";
         if (conquerDiamondText != null) conquerDiamondText.text = $"+{currentRegion.diamondReward}";
 
-        // Пасивні
         if (passiveWoodText != null) passiveWoodText.text = $"+{currentRegion.passiveWood}/hr";
         if (passiveStoneText != null) passiveStoneText.text = $"+{currentRegion.passiveStone}/hr";
         if (passiveFoodText != null) passiveFoodText.text = $"+{currentRegion.passiveFood}/hr";
@@ -157,19 +147,28 @@ public class MapPanelUI : MonoBehaviour
 
     private void OnActionButtonClicked()
     {
-        if (currentRegion.currentState == RegionState.Available)
+        if (currentRegion.currentState == RegionState.Available || currentRegion.currentState == RegionState.Conquered)
         {
-            Debug.Log($"[Mission Launcher] Запуск рейду в {currentRegion.regionName}!");
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+            if (GameManager.Instance != null) GameManager.Instance.currentRegion = currentRegion;
+
+            // --- ФІКС: Залізобетонно зберігаємо тип місії та біом ---
+            PlayerPrefs.SetInt("IsRegionMission", 1);
+            PlayerPrefs.SetInt("RegionBiomeType", (int)currentRegion.regionBiome);
+
+            PlayerPrefs.SetInt("IsRunActive", 1);
+            PlayerPrefs.SetInt("IsContinuing", 0);
+            PlayerPrefs.Save();
+
+            ClosePanel();
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("GameScene");
         }
     }
 
     private IEnumerator AnimatePanel(Vector2 targetPos, float targetAlpha, bool state)
     {
-        if (state)
-        {
-            canvasGroup.interactable = true;
-            canvasGroup.blocksRaycasts = true;
-        }
+        if (state) { canvasGroup.interactable = true; canvasGroup.blocksRaycasts = true; }
 
         float elapsed = 0f;
         Vector2 startPos = panelRect.anchoredPosition;
@@ -179,7 +178,6 @@ public class MapPanelUI : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float smoothT = 1f - Mathf.Pow(1f - (elapsed / animationDuration), 3f);
-
             panelRect.anchoredPosition = Vector2.Lerp(startPos, targetPos, smoothT);
             canvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, smoothT);
             yield return null;
@@ -187,11 +185,6 @@ public class MapPanelUI : MonoBehaviour
 
         panelRect.anchoredPosition = targetPos;
         canvasGroup.alpha = targetAlpha;
-
-        if (!state)
-        {
-            canvasGroup.interactable = false;
-            canvasGroup.blocksRaycasts = false;
-        }
+        if (!state) { canvasGroup.interactable = false; canvasGroup.blocksRaycasts = false; }
     }
 }

@@ -68,7 +68,7 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = true;
         boardCanvas.SetActive(true);
 
-        if (interactionRune != null) interactionRune.SetActive(false); // <--- ДОДАНО
+        if (interactionRune != null) interactionRune.SetActive(false);
 
         // ЗВУК: Відкриття дошки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
@@ -86,9 +86,9 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = false;
         boardCanvas.SetActive(false);
 
-        if (interactionRune != null) interactionRune.SetActive(true); // <--- ДОДАНО
+        if (interactionRune != null) interactionRune.SetActive(true);
 
-        // ЗВУК: Закриття дошки[cite: 1]
+        // ЗВУК: Закриття дошки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         Cursor.visible = false;
@@ -226,6 +226,19 @@ public class NoticeBoardManager : MonoBehaviour
     {
         // ЗВУК: Натискання кнопки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+        // --- НОВЕ: Зкидаємо прапорці місії регіону, щоб генератор створив мікс біомів ---
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.currentRegion = null;
+            GameManager.Instance.isRegionMission = false;
+        }
+
+        PlayerPrefs.SetInt("IsRegionMission", 0);
+        PlayerPrefs.SetInt("IsRunActive", 1); // Позначаємо, що забіг почався
+        PlayerPrefs.SetInt("IsContinuing", 0); // Обнуляємо сід, щоб згенерувати нову мапу
+        PlayerPrefs.Save();
+        // --------------------------------------------------------------------------------
 
         CloseBoard();
 

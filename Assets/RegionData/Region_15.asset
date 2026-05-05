@@ -17,6 +17,7 @@ MonoBehaviour:
   loreDescription: The crystals here glow with dark energy. The enemies are highly
     mutated and resilient.
   regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
+  regionBiome: 1
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 4df1dd192384add48a6aa532a0d2d2df, type: 2}

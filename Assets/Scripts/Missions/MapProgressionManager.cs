@@ -25,6 +25,12 @@ public class MapProgressionManager : MonoBehaviour
 
         conqueredRegion.currentState = RegionState.Conquered;
 
+        // --- Ќќ¬≈: «б≥льшуЇмо л≥чильник завойованих рег≥он≥в дл€ д≥алог≥в ≈л≥аса ---
+        int currentConquered = PlayerPrefs.GetInt("TotalConqueredRegions", 0);
+        PlayerPrefs.SetInt("TotalConqueredRegions", currentConquered + 1);
+        PlayerPrefs.Save();
+        // -------------------------------------------------------------------------
+
         foreach (RegionData neighbor in conqueredRegion.neighboringRegions)
         {
             if (neighbor.currentState == RegionState.Locked)
@@ -36,15 +42,5 @@ public class MapProgressionManager : MonoBehaviour
 
         // ¬»ѕ–ј¬Ћ≈ЌЌя: ¬икликаЇмо ≥вент, щоб попередити вс≥ UI елементи про зм≥ну стану на мап≥
         OnMapStateChanged?.Invoke();
-    }
-
-    // “≈—“ќ¬ј  Ќќѕ ј (видал≥ть п≥зн≥ше): 
-    // Ќатисн≥ть проб≥л в гр≥, щоб з≥м≥тувати перемогу в рег≥он≥ 1
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            ConquerRegionAndUnlockNeighbors(allRegionsInGame[0]);
-        }
     }
 }

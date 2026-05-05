@@ -17,11 +17,12 @@ MonoBehaviour:
   loreDescription: The trees here absorb the moonlight, making it dangerously dark.
     Beware of ambushes.
   regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
-  currentState: 1
+  regionBiome: 0
+  currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 2f2837b413442634e97ea3f264438260, type: 2}
   - {fileID: 11400000, guid: 58483a790fad88749b3b12122e0668dc, type: 2}
-  isNewlyUnlocked: 1
+  isNewlyUnlocked: 0
   recommendedPower: 85
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1

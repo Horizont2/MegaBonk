@@ -17,6 +17,7 @@ MonoBehaviour:
   loreDescription: The wind through this canyon sounds like screaming. The cursed
     souls here are relentless.
   regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
+  regionBiome: 1
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 515a27a4037f273449fcfe726270c9f5, type: 2}
