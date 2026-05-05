@@ -16,11 +16,12 @@ MonoBehaviour:
   regionName: The Throne Room
   loreDescription: The heart of the curse. Survival is a miracle. The rewards, however,
     are legendary.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: bae9a5a11c486674db6414bef83be796, type: 2}
-  recommendedPowerLevel: 2800
+  isNewlyUnlocked: 0
+  recommendedPower: 1350
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 1000

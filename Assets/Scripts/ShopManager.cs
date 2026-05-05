@@ -36,14 +36,14 @@ public class ShopManager : MonoBehaviour
     public GameObject inspectButton;
     private bool isInspectingWeapon = false;
 
-    [Space(10)]
-    public TextMeshProUGUI stat1Label, stat2Label, stat3Label;
-    public Image stat1Icon, stat2Icon, stat3Icon;
-    public Sprite heroStat1Sprite, heroStat2Sprite, heroStat3Sprite;
-    public Sprite wepStat1Sprite, wepStat2Sprite, wepStat3Sprite;
+    [Header("UI Labels & Icons")]
+    public TextMeshProUGUI stat1Label; public TextMeshProUGUI stat2Label; public TextMeshProUGUI stat3Label;
+    public Image stat1Icon; public Image stat2Icon; public Image stat3Icon;
+    public Sprite heroStat1Sprite; public Sprite heroStat2Sprite; public Sprite heroStat3Sprite;
+    public Sprite wepStat1Sprite; public Sprite wepStat2Sprite; public Sprite wepStat3Sprite;
 
-    [Space(10)]
-    public Image stat1Fill, stat2Fill, stat3Fill;
+    [Header("UI Fills")]
+    public Image stat1Fill; public Image stat2Fill; public Image stat3Fill;
     public Color heroStat1Color = new Color(1f, 0.2f, 0.2f);
     public Color heroStat2Color = new Color(0.2f, 0.6f, 1f);
     public Color heroStat3Color = new Color(0.6f, 0.2f, 1f);
@@ -51,10 +51,17 @@ public class ShopManager : MonoBehaviour
     public Color wepStat2Color = new Color(1f, 0.9f, 0.1f);
     public Color wepStat3Color = new Color(0.1f, 1f, 0.8f);
 
+    [Header("UI Power Stat (NEW 4th Stat)")]
+    public TextMeshProUGUI powerLabel;
+    public Slider powerSlider;
+    public TextMeshProUGUI powerValueText;
+    public TextMeshProUGUI powerPercentText;
+    public Image powerFill;
+    public Color powerColor = new Color(1f, 0.8f, 0.2f); // Золотий
+
     [Header("Animation Settings")]
     public float swipeSpeed = 4f;
     public float rotationSpeed = 500f;
-
     public float modeSwitchCooldown = 1.5f;
     private float nextModeSwitchTime = 0f;
 
@@ -73,12 +80,17 @@ public class ShopManager : MonoBehaviour
     public Button leftArrow;
     public Button rightArrow;
 
-    [Header("UI Sliders & Stats")]
-    public Slider stat1Slider, stat2Slider, stat3Slider;
-    public TextMeshProUGUI stat1ValueText, stat2ValueText, stat3ValueText;
-    public TextMeshProUGUI stat1PercentText, stat2PercentText, stat3PercentText;
+    [Header("UI Upgrade Button")]
+    public Button upgradeButton;
+    public TextMeshProUGUI upgradePriceText;
+    public GameObject upgradeDiamondIcon;
 
-    [Header("Events (For Cameras)")]
+    [Header("UI Sliders & Stats (First 3)")]
+    public Slider stat1Slider; public Slider stat2Slider; public Slider stat3Slider;
+    public TextMeshProUGUI stat1ValueText; public TextMeshProUGUI stat2ValueText; public TextMeshProUGUI stat3ValueText;
+    public TextMeshProUGUI stat1PercentText; public TextMeshProUGUI stat2PercentText; public TextMeshProUGUI stat3PercentText;
+
+    [Header("Events")]
     public UnityEvent OnSwitchToHeroes;
     public UnityEvent OnSwitchToWeapons;
 
@@ -122,6 +134,7 @@ public class ShopManager : MonoBehaviour
         if (leftArrow != null) leftArrow.onClick.AddListener(PreviousItem);
         if (rightArrow != null) rightArrow.onClick.AddListener(NextItem);
         if (buyButton != null) buyButton.onClick.AddListener(OnBuyOrSelectPressed);
+        if (upgradeButton != null) upgradeButton.onClick.AddListener(OnUpgradePressed);
         if (backButton != null) backButton.onClick.AddListener(GoToCampScene);
     }
 
@@ -138,19 +151,11 @@ public class ShopManager : MonoBehaviour
             if (mainCamera != null)
             {
                 Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-                RaycastHit hit;
-
-                if (Physics.Raycast(ray, out hit))
+                if (Physics.Raycast(ray, out RaycastHit hit))
                 {
-                    if (hit.collider.GetComponentInParent<WeaponDisplayObject>() == null)
-                    {
-                        StopInspect();
-                    }
+                    if (hit.collider.GetComponentInParent<WeaponDisplayObject>() == null) StopInspect();
                 }
-                else
-                {
-                    StopInspect();
-                }
+                else StopInspect();
             }
         }
     }
@@ -170,11 +175,9 @@ public class ShopManager : MonoBehaviour
     public void StartInspect()
     {
         if (currentMode != ShopMode.Weapons || isSwapping || isTransitioningUI) return;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isInspectingWeapon = true;
-
         if (camManager != null) camManager.GoToInspect();
         if (currentModel != null)
         {
@@ -184,18 +187,15 @@ public class ShopManager : MonoBehaviour
 
         if (uiMoveCoroutine != null) StopCoroutine(uiMoveCoroutine);
         uiMoveCoroutine = StartCoroutine(MoveUIPanel(panelHidePositionX));
-
         if (inspectButton != null) inspectButton.SetActive(false);
     }
 
     public void StopInspect()
     {
         if (!isInspectingWeapon) return;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isInspectingWeapon = false;
-
         if (camManager != null) camManager.GoToArsenal();
         if (currentModel != null)
         {
@@ -205,7 +205,6 @@ public class ShopManager : MonoBehaviour
 
         if (uiMoveCoroutine != null) StopCoroutine(uiMoveCoroutine);
         uiMoveCoroutine = StartCoroutine(MoveUIPanel(panelStartX));
-
         if (inspectButton != null) inspectButton.SetActive(true);
     }
 
@@ -227,11 +226,9 @@ public class ShopManager : MonoBehaviour
     public void ToggleShopMode()
     {
         if (isTransitioningUI || Time.time < nextModeSwitchTime) return;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         nextModeSwitchTime = Time.time + modeSwitchCooldown;
-
         ShopMode targetMode = (currentMode == ShopMode.Heroes) ? ShopMode.Weapons : ShopMode.Heroes;
         if (isInspectingWeapon) StopInspect();
         StartCoroutine(TransitionShopMode(targetMode));
@@ -240,8 +237,8 @@ public class ShopManager : MonoBehaviour
     private IEnumerator TransitionShopMode(ShopMode newMode)
     {
         isTransitioningUI = true;
-
         currentMode = newMode;
+
         if (currentMode == ShopMode.Heroes) OnSwitchToHeroes.Invoke();
         else OnSwitchToWeapons.Invoke();
 
@@ -254,16 +251,17 @@ public class ShopManager : MonoBehaviour
         else SpawnModel(currentWeaponIndex, weaponTablePos.position);
 
         UpdateUI(false);
-
         if (inspectButton != null) inspectButton.SetActive(currentMode == ShopMode.Weapons);
 
         yield return StartCoroutine(MoveUIPanel(panelStartX));
-
         isTransitioningUI = false;
     }
 
     private void ApplyUITheme()
     {
+        if (powerLabel != null) powerLabel.text = "POWER";
+        if (powerFill != null) powerFill.color = powerColor;
+
         if (currentMode == ShopMode.Heroes)
         {
             if (stat1Label != null) stat1Label.text = "HP";
@@ -309,28 +307,18 @@ public class ShopManager : MonoBehaviour
     public void NextItem()
     {
         if (isSwapping || isTransitioningUI) return;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        if (isInspectingWeapon)
-        {
-            StartCoroutine(StopInspectAndSwap(true));
-            return;
-        }
+        if (isInspectingWeapon) { StartCoroutine(StopInspectAndSwap(true)); return; }
         ExecuteSwapNext();
     }
 
     public void PreviousItem()
     {
         if (isSwapping || isTransitioningUI) return;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        if (isInspectingWeapon)
-        {
-            StartCoroutine(StopInspectAndSwap(false));
-            return;
-        }
+        if (isInspectingWeapon) { StartCoroutine(StopInspectAndSwap(false)); return; }
         ExecuteSwapPrev();
     }
 
@@ -395,49 +383,66 @@ public class ShopManager : MonoBehaviour
     {
         if (isSwapping || isTransitioningUI) return;
 
-        int price = 0; int id = 0; string unlockKey = ""; string selectKey = "";
+        int id = 0; string unlockKey = ""; string selectKey = ""; int price = 0;
 
         if (currentMode == ShopMode.Heroes)
         {
-            price = heroes[currentHeroIndex].price; id = heroes[currentHeroIndex].heroID;
+            id = heroes[currentHeroIndex].heroID; price = heroes[currentHeroIndex].price;
             unlockKey = "HeroUnlocked_" + id; selectKey = SELECTED_HERO_KEY;
         }
         else
         {
-            price = weapons[currentWeaponIndex].price; id = weapons[currentWeaponIndex].weaponID;
+            id = weapons[currentWeaponIndex].weaponID; price = weapons[currentWeaponIndex].price;
             unlockKey = "WeaponUnlocked_" + id; selectKey = SELECTED_WEP_KEY;
         }
 
         bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
+        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
 
         if (!isBought)
         {
-            int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY);
             if (myDiamonds >= price)
             {
-                // ЗВУК: Успішна покупка
                 if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
                 PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 PlayerPrefs.SetInt(selectKey, id);
                 PlayerPrefs.Save();
                 UpdateUI(true);
             }
-            else
-            {
-                // ЗВУК: Помилка (недостатньо кристалів)
-                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
-            }
+            else if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
         }
         else
         {
-            // ЗВУК: Вибір героя/зброї
             if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
             PlayerPrefs.SetInt(selectKey, id);
             PlayerPrefs.Save();
             UpdateUI(true);
+        }
+    }
+
+    public void OnUpgradePressed()
+    {
+        if (isSwapping || isTransitioningUI || currentMode != ShopMode.Weapons) return;
+
+        int id = weapons[currentWeaponIndex].weaponID;
+        int level = PlayerPrefs.GetInt("WeaponLevel_" + id, 0);
+        WeaponData w = weapons[currentWeaponIndex];
+
+        if (level < w.maxUpgradeLevel)
+        {
+            int upgCost = w.GetUpgradeCost(level);
+            int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+
+            if (myDiamonds >= upgCost)
+            {
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
+                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - upgCost);
+                PlayerPrefs.SetInt("WeaponLevel_" + id, level + 1);
+                PlayerPrefs.Save();
+                UpdateUI(true);
+            }
+            else if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
         }
     }
 
@@ -447,8 +452,9 @@ public class ShopManager : MonoBehaviour
         if (diamondBalanceText != null) diamondBalanceText.text = myDiamonds.ToString("N0");
 
         int price = 0; int id = 0; string unlockKey = ""; string selectKey = ""; string itemName = "";
-        float stat1FillVal = 0, stat2FillVal = 0, stat3FillVal = 0;
-        string stat1Str = "", stat2Str = "", stat3Str = "";
+
+        float stat1FillVal = 0, stat2FillVal = 0, stat3FillVal = 0, powerFillVal = 0;
+        string stat1Str = "", stat2Str = "", stat3Str = "", powerStr = "";
 
         if (currentMode == ShopMode.Heroes)
         {
@@ -456,70 +462,172 @@ public class ShopManager : MonoBehaviour
             HeroData h = heroes[currentHeroIndex];
             price = h.price; id = h.heroID; unlockKey = "HeroUnlocked_" + id; selectKey = SELECTED_HERO_KEY; itemName = h.heroName;
 
-            stat1FillVal = h.hpBarFill; stat2FillVal = h.speedBarFill; stat3FillVal = h.radiusBarFill;
-            stat1Str = (h.actualMaxHealth * stat1FillVal).ToString("F0") + "/" + h.actualMaxHealth.ToString("F0");
+            float maxGameHP = 600f; float maxGameSpeed = 10f; float maxGameRadius = 12f; float maxGamePower = 300f;
+
+            stat1FillVal = Mathf.Clamp01(h.actualMaxHealth / maxGameHP);
+            stat2FillVal = Mathf.Clamp01(h.actualMoveSpeed / maxGameSpeed);
+            stat3FillVal = Mathf.Clamp01(h.actualBombRadius / maxGameRadius);
+            powerFillVal = Mathf.Clamp01(h.basePower / maxGamePower);
+
+            stat1Str = h.actualMaxHealth.ToString("F0");
             stat2Str = h.actualMoveSpeed.ToString("F1") + " m/s";
             stat3Str = h.actualBombRadius.ToString("F0") + "m";
+            powerStr = h.basePower.ToString();
         }
         else
         {
             if (weapons.Length == 0) return;
             WeaponData w = weapons[currentWeaponIndex];
-            price = w.price; id = w.weaponID; unlockKey = "WeaponUnlocked_" + id; selectKey = SELECTED_WEP_KEY; itemName = w.weaponName;
+            id = w.weaponID; price = w.price; unlockKey = "WeaponUnlocked_" + id; selectKey = SELECTED_WEP_KEY;
 
-            stat1FillVal = Mathf.Clamp01(w.damageBonus / 50f);
-            stat2FillVal = Mathf.Clamp01(w.attackSpeed / 3f);
-            stat3FillVal = Mathf.Clamp01(w.critChance);
+            int level = PlayerPrefs.GetInt("WeaponLevel_" + id, 0);
+            itemName = w.weaponName + (level > 0 ? $" <size=70%><color=#AAAAAA>(Lv. {level}/{w.maxUpgradeLevel})</color></size>" : "");
 
-            stat1Str = "+" + w.damageBonus.ToString("F0");
-            stat2Str = w.attackSpeed.ToString("F2");
-            stat3Str = Mathf.RoundToInt(w.critChance * 100) + "%";
+            float currDmg = w.damageBonus + (level * w.damagePerLevel);
+            float currSpd = w.attackSpeed + (level * w.attackSpeedPerLevel);
+            float currCrit = w.critChance + (level * w.critChancePerLevel);
+            int currPower = w.basePower + (level * w.powerPerLevel);
+
+            float maxGameDmg = 400f; float maxGameAtkSpd = 3.0f; float maxGameCrit = 1.0f; float maxGamePower = 1000f;
+
+            stat1FillVal = Mathf.Clamp01(currDmg / maxGameDmg);
+            stat2FillVal = Mathf.Clamp01(currSpd / maxGameAtkSpd);
+            stat3FillVal = Mathf.Clamp01(currCrit / maxGameCrit);
+            powerFillVal = Mathf.Clamp01(currPower / maxGamePower);
+
+            stat1Str = currDmg.ToString("F0");
+            stat2Str = currSpd.ToString("F2");
+            stat3Str = Mathf.RoundToInt(currCrit * 100) + "%";
+            powerStr = currPower.ToString();
         }
 
         bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
         bool isSelected = PlayerPrefs.GetInt(selectKey, 0) == id;
 
-        if (isSelected)
+        // 1. ЛОГІКА ГОЛОВНОЇ КНОПКИ
+        if (!isBought)
         {
-            priceText.text = "EQUIPPED"; priceText.alignment = TextAlignmentOptions.Center; priceText.margin = new Vector4(0, 0, 0, 0);
-            priceText.color = Color.white;
-            if (diamondIconOnButton != null) diamondIconOnButton.SetActive(false);
-            buyButton.interactable = false;
+            priceText.text = "BUY FOR\n" + price.ToString("N0");
+            priceText.alignment = TextAlignmentOptions.Left; priceText.margin = new Vector4(10, 0, 0, 0);
+            if (diamondIconOnButton != null) diamondIconOnButton.SetActive(true);
+
+            buyButton.interactable = (myDiamonds >= price);
+            priceText.color = (myDiamonds >= price) ? Color.white : new Color(1f, 0.2f, 0.2f);
         }
-        else if (isBought)
+        else if (!isSelected)
         {
-            priceText.text = "SELECT"; priceText.alignment = TextAlignmentOptions.Center; priceText.margin = new Vector4(0, 0, 0, 0);
-            priceText.color = new Color(0.6f, 1f, 0.2f);
+            priceText.text = "EQUIP";
+            priceText.alignment = TextAlignmentOptions.Center; priceText.margin = new Vector4(0, 0, 0, 0);
             if (diamondIconOnButton != null) diamondIconOnButton.SetActive(false);
+
             buyButton.interactable = true;
+            priceText.color = new Color(0.6f, 1f, 0.2f);
         }
         else
         {
-            priceText.text = "BUY FOR\n" + price.ToString("N0"); priceText.alignment = TextAlignmentOptions.Left; priceText.margin = new Vector4(10, 0, 0, 0);
-            if (diamondIconOnButton != null) diamondIconOnButton.SetActive(true);
+            priceText.text = "EQUIPPED";
+            priceText.alignment = TextAlignmentOptions.Center; priceText.margin = new Vector4(0, 0, 0, 0);
+            if (diamondIconOnButton != null) diamondIconOnButton.SetActive(false);
 
-            if (myDiamonds >= price) { buyButton.interactable = true; priceText.color = Color.white; }
-            else { buyButton.interactable = false; priceText.color = new Color(1f, 0.2f, 0.2f); }
+            buyButton.interactable = false;
+            priceText.color = Color.white;
+        }
+
+        // 2. ЛОГІКА ДРУГОЇ КНОПКИ (ПРОКАЧКА)
+        if (currentMode == ShopMode.Weapons && isBought)
+        {
+            if (upgradeButton != null) upgradeButton.gameObject.SetActive(true);
+
+            int level = PlayerPrefs.GetInt("WeaponLevel_" + id, 0);
+            if (level < weapons[currentWeaponIndex].maxUpgradeLevel)
+            {
+                int upgCost = weapons[currentWeaponIndex].GetUpgradeCost(level);
+                if (upgradePriceText != null)
+                {
+                    upgradePriceText.text = "UPGRADE\n" + upgCost.ToString("N0");
+                    upgradePriceText.alignment = TextAlignmentOptions.Left; upgradePriceText.margin = new Vector4(10, 0, 0, 0);
+                    upgradePriceText.color = (myDiamonds >= upgCost) ? Color.white : new Color(1f, 0.2f, 0.2f);
+                }
+                if (upgradeDiamondIcon != null) upgradeDiamondIcon.SetActive(true);
+                if (upgradeButton != null) upgradeButton.interactable = (myDiamonds >= upgCost);
+            }
+            else
+            {
+                if (upgradePriceText != null)
+                {
+                    upgradePriceText.text = "MAX LEVEL";
+                    upgradePriceText.alignment = TextAlignmentOptions.Center; upgradePriceText.margin = new Vector4(0, 0, 0, 0);
+                    upgradePriceText.color = new Color(1f, 0.8f, 0.2f);
+                }
+                if (upgradeDiamondIcon != null) upgradeDiamondIcon.SetActive(false);
+                if (upgradeButton != null) upgradeButton.interactable = false;
+            }
+        }
+        else
+        {
+            if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
         }
 
         if (itemNameText != null) itemNameText.text = itemName;
+
+        // Оновлення базових 3 статів
         if (stat1ValueText != null) stat1ValueText.text = stat1Str;
         if (stat2ValueText != null) stat2ValueText.text = stat2Str;
         if (stat3ValueText != null) stat3ValueText.text = stat3Str;
-
         if (stat1PercentText != null) stat1PercentText.text = Mathf.RoundToInt(stat1FillVal * 100) + "%";
         if (stat2PercentText != null) stat2PercentText.text = Mathf.RoundToInt(stat2FillVal * 100) + "%";
         if (stat3PercentText != null) stat3PercentText.text = Mathf.RoundToInt(stat3FillVal * 100) + "%";
-
         if (stat1Slider != null) stat1Slider.value = stat1FillVal;
         if (stat2Slider != null) stat2Slider.value = stat2FillVal;
         if (stat3Slider != null) stat3Slider.value = stat3FillVal;
+
+        // Оновлення нового 4-го стата (Power)
+        if (powerValueText != null) powerValueText.text = powerStr;
+        if (powerPercentText != null) powerPercentText.text = Mathf.RoundToInt(powerFillVal * 100) + "%";
+        if (powerSlider != null) powerSlider.value = powerFillVal;
 
         if (animateText)
         {
             StartCoroutine(PopText(itemNameText)); StartCoroutine(PopText(priceText));
             StartCoroutine(PopText(stat1ValueText)); StartCoroutine(PopText(stat2ValueText)); StartCoroutine(PopText(stat3ValueText));
+            if (powerValueText != null) StartCoroutine(PopText(powerValueText));
+            if (upgradeButton != null && upgradeButton.gameObject.activeSelf) StartCoroutine(PopText(upgradePriceText));
         }
+
+        CalculateAndSaveTotalPower();
+    }
+
+    private void CalculateAndSaveTotalPower()
+    {
+        int baseTotal = 0;
+        int selHeroID = PlayerPrefs.GetInt(SELECTED_HERO_KEY, 0);
+        int selWepID = PlayerPrefs.GetInt(SELECTED_WEP_KEY, 0);
+
+        if (heroes != null) foreach (var h in heroes) if (h.heroID == selHeroID) baseTotal += h.basePower;
+        if (weapons != null) foreach (var w in weapons)
+            {
+                if (w.weaponID == selWepID)
+                {
+                    int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
+                    baseTotal += w.basePower + (lvl * w.powerPerLevel);
+                    PlayerPrefs.SetFloat("EquippedWeaponDamage", w.damageBonus + (lvl * w.damagePerLevel));
+                }
+            }
+
+        // Застосовуємо множник кузні до загальної сили
+        int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
+        float forgeMultiplier = 1.00f;
+        switch (forgeLevel)
+        {
+            case 1: forgeMultiplier = 1.02f; break;
+            case 2: forgeMultiplier = 1.05f; break;
+            case 3: forgeMultiplier = 1.08f; break;
+            case 4: forgeMultiplier = 1.11f; break;
+            case 5: forgeMultiplier = 1.15f; break;
+        }
+
+        int finalTotalPower = Mathf.RoundToInt((baseTotal == 0 ? 50 : baseTotal) * forgeMultiplier);
+        PlayerPrefs.SetInt("PlayerTotalPower", finalTotalPower);
     }
 
     private IEnumerator PopText(TextMeshProUGUI textComponent)
@@ -537,12 +645,9 @@ public class ShopManager : MonoBehaviour
     public void GoToCampScene()
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
         PlayerPrefs.SetInt("ReturningFromShop", 1);
         PlayerPrefs.Save();
-
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false; Cursor.lockState = CursorLockMode.Locked;
 
         if (mainUIPanel != null) mainUIPanel.gameObject.SetActive(false);
         if (inspectButton != null) inspectButton.SetActive(false);

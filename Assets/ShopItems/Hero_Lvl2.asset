@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: Hero_Lvl2
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
   heroName: Norrington
-  price: 300
+  price: 250
   heroID: 1
+  basePower: 80
   shopModelPrefab: {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
-  hpBarFill: 0.25
+  hpBarFill: 0.41
   speedBarFill: 0.4
-  radiusBarFill: 0.3
+  radiusBarFill: 0.33
   actualMaxHealth: 250
-  actualMoveSpeed: 5.5
-  actualBombRadius: 4.5
+  actualMoveSpeed: 4
+  actualBombRadius: 4

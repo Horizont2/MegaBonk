@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Shattered Bridge
   loreDescription: The only way to the Dark Citadel. The defense here is brutal.
     Don't go without upgrading your forge.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 186630be09f865a43bd4a2c98fe7f5ff, type: 2}
-  recommendedPowerLevel: 1850
+  - {fileID: 11400000, guid: 74f9ffa62d1ac6a4281954a1d2e17d95, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 700
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 270

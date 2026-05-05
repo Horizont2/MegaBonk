@@ -11,7 +11,6 @@ public class GlobalHUD : MonoBehaviour
     public static GlobalHUD Instance;
 
     [Header("Visibility Control")]
-    [Tooltip("Закинь сюди батьківські об'єкти місій та рюкзака, щоб вони ховалися в Меню")]
     public GameObject[] gameplayPanels;
 
     [Header("Interaction Prompt")]
@@ -69,6 +68,8 @@ public class GlobalHUD : MonoBehaviour
     private Coroutine hintTypingCoroutine;
     private Coroutine hintCycleCoroutine;
 
+    private RenderMode defaultRenderMode;
+
     private void Awake()
     {
         if (Instance == null)
@@ -82,6 +83,9 @@ public class GlobalHUD : MonoBehaviour
             return;
         }
 
+        Canvas canvas = GetComponent<Canvas>();
+        if (canvas != null) defaultRenderMode = canvas.renderMode;
+
         if (loadingPanelGroup != null)
         {
             loadingPanelGroup.gameObject.SetActive(false);
@@ -89,25 +93,22 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
+    private void OnEnable() { SceneManager.sceneLoaded += OnSceneLoaded; }
+    private void OnDisable() { SceneManager.sceneLoaded -= OnSceneLoaded; }
 
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            string sceneName = SceneManager.GetActiveScene().name;
-            if (sceneName == "GameScene" || sceneName == "CampScene")
+            // --- НОВЕ: Перевіряємо, чи відкрита мапа ---
+            GameObject mapCanvas = GameObject.Find("MapCanvas");
+            if (mapCanvas != null && mapCanvas.activeInHierarchy)
             {
-                TogglePause();
+                return; // Ігноруємо Esc, не ставимо паузу. Мапа сама обробить закриття.
             }
+
+            string sceneName = SceneManager.GetActiveScene().name;
+            if (sceneName == "GameScene" || sceneName == "CampScene") TogglePause();
         }
     }
 
@@ -115,7 +116,6 @@ public class GlobalHUD : MonoBehaviour
     {
         StartCoroutine(SyncCameraAndVolumeRoutine());
 
-        // --- НОВЕ: ВМИКАЄМО/ВИМИКАЄМО ІГРОВИЙ ІНТЕРФЕЙС ---
         bool showGameplayUI = (scene.name != "Menu");
         if (gameplayPanels != null)
         {
@@ -132,52 +132,51 @@ public class GlobalHUD : MonoBehaviour
         }
 
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
-
         if (isPaused) TogglePause();
     }
 
     private IEnumerator SyncCameraAndVolumeRoutine()
     {
         yield return null;
-
         Canvas canvas = GetComponent<Canvas>();
-        if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceCamera)
+        if (canvas != null)
         {
-            canvas.worldCamera = Camera.main;
+            canvas.renderMode = defaultRenderMode;
+            canvas.sortingOrder = 0; // Повертаємо нормальний сортінг
+
+            if (defaultRenderMode == RenderMode.ScreenSpaceCamera)
+            {
+                Camera cam = Camera.main;
+                // Якщо немає MainCamera (наприклад, у Магазині), шукаємо будь-яку камеру
+                if (cam == null) cam = FindFirstObjectByType<Camera>();
+                canvas.worldCamera = cam;
+            }
         }
 
         Volume volume = FindFirstObjectByType<Volume>();
         if (volume != null && volume.profile != null)
         {
-            if (volume.profile.TryGet(out dofEffect))
-            {
-                dofEffect.active = false;
-            }
+            if (volume.profile.TryGet(out dofEffect)) dofEffect.active = false;
         }
-        else
-        {
-            dofEffect = null;
-        }
+        else dofEffect = null;
     }
 
     public void FadeAndLoadScene(string sceneName)
     {
         if (isPaused) TogglePause();
-
-        if (loadingPanelGroup != null)
-        {
-            StartCoroutine(LoadSceneAsyncRoutine(sceneName));
-        }
-        else
-        {
-            SceneManager.LoadScene(sceneName);
-        }
+        if (loadingPanelGroup != null) StartCoroutine(LoadSceneAsyncRoutine(sceneName));
+        else SceneManager.LoadScene(sceneName);
     }
 
     private IEnumerator LoadSceneAsyncRoutine(string sceneToLoad)
     {
         Canvas canvas = GetComponent<Canvas>();
-        if (canvas != null) canvas.sortingOrder = 999;
+        if (canvas != null)
+        {
+            // --- НОВЕ: Робимо канвас Overlay, щоб він гарантовано перекрив ВСЕ (навіть без камери) ---
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 999;
+        }
 
         loadingPanelGroup.gameObject.SetActive(true);
         loadingPanelGroup.transform.SetAsLastSibling();
@@ -193,23 +192,26 @@ public class GlobalHUD : MonoBehaviour
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneToLoad);
         asyncLoad.allowSceneActivation = false;
-
         float visualProgress = 0f;
 
         while (!asyncLoad.isDone)
         {
-            float targetProgress = Mathf.Clamp01(asyncLoad.progress / 0.9f);
-            visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, Time.unscaledDeltaTime * 1.5f);
+            // --- НОВЕ: Плавне і рівномірне заповнення до 100% ---
+            float targetProgress = asyncLoad.progress / 0.9f;
+            visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, Time.unscaledDeltaTime * 2.5f);
 
             if (loadingSlider != null) loadingSlider.value = visualProgress;
-            if (loadingText != null) loadingText.text = $"LOADING... {(int)(visualProgress * 100)}%";
+            if (loadingText != null) loadingText.text = $"LOADING... {Mathf.FloorToInt(visualProgress * 100)}%";
 
             if (asyncLoad.progress >= 0.9f && visualProgress >= 0.99f)
             {
-                yield return new WaitForSecondsRealtime(0.5f);
+                if (loadingSlider != null) loadingSlider.value = 1f;
+                if (loadingText != null) loadingText.text = "LOADING... 100%";
+
+                // Даємо гравцю мілісекунду побачити 100% перед ривком активації сцени
+                yield return new WaitForSecondsRealtime(0.15f);
                 asyncLoad.allowSceneActivation = true;
             }
-
             yield return null;
         }
     }
@@ -223,9 +225,6 @@ public class GlobalHUD : MonoBehaviour
             yield return null;
         }
         loadingPanelGroup.gameObject.SetActive(false);
-
-        Canvas canvas = GetComponent<Canvas>();
-        if (canvas != null) canvas.sortingOrder = 0;
     }
 
     private IEnumerator CycleHintsRoutine()
@@ -246,20 +245,15 @@ public class GlobalHUD : MonoBehaviour
     {
         if (textTarget == null) yield break;
 
-        // Одразу завантажуємо весь текст, щоб TextMeshPro розрахував його фінальний розмір та відцентрував
         textTarget.text = message;
-
-        // Робимо всі символи тексту невидимими
+        textTarget.ForceMeshUpdate();
         textTarget.maxVisibleCharacters = 0;
 
-        // Цикл тепер просто збільшує кількість видимих символів
         for (int i = 0; i <= message.Length; i++)
         {
             textTarget.maxVisibleCharacters = i;
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
-
-        // Наприкінці скидаємо ліміт, щоб уникнути багів при майбутніх змінах тексту
         textTarget.maxVisibleCharacters = 99999;
     }
 
@@ -290,6 +284,7 @@ public class GlobalHUD : MonoBehaviour
         }
         promptCanvasGroup.alpha = targetAlpha;
     }
+
     public void SetGameplayPanelsActive(bool active)
     {
         if (gameplayPanels != null)
@@ -309,7 +304,6 @@ public class GlobalHUD : MonoBehaviour
         Time.timeScale = isPaused ? 0f : 1f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
         if (dofEffect != null) dofEffect.active = isPaused;
 
         if (isPaused)
@@ -317,10 +311,7 @@ public class GlobalHUD : MonoBehaviour
             ResetGiveUpState();
             StartCoroutine(ShowMenuRoutine());
         }
-        else
-        {
-            StartCoroutine(HideMenuRoutine());
-        }
+        else StartCoroutine(HideMenuRoutine());
 
         Cursor.visible = isPaused;
         Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked;
@@ -335,10 +326,7 @@ public class GlobalHUD : MonoBehaviour
         bool inGame = SceneManager.GetActiveScene().name == "GameScene";
         if (giveUpButtonGroup != null) giveUpButtonGroup.gameObject.SetActive(inGame);
 
-        foreach (var btn in pauseButtons)
-        {
-            if (btn != null) btn.GetComponent<RectTransform>().localScale = Vector3.zero;
-        }
+        foreach (var btn in pauseButtons) if (btn != null) btn.GetComponent<RectTransform>().localScale = Vector3.zero;
 
         float t = 0;
         while (t < 1)

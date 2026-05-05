@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: Hero_Lvl5
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
   heroName: Sparkie
-  price: 3500
+  price: 2500
   heroID: 4
+  basePower: 260
   shopModelPrefab: {fileID: 7863355636086098685, guid: dd7e9550bab61d549b88e994c7926c69, type: 3}
-  hpBarFill: 1
-  speedBarFill: 1
+  hpBarFill: 0.2
+  speedBarFill: 0.6
   radiusBarFill: 1
-  actualMaxHealth: 1000
-  actualMoveSpeed: 7.6
+  actualMaxHealth: 120
+  actualMoveSpeed: 6
   actualBombRadius: 9

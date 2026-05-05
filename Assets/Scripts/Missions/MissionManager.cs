@@ -50,6 +50,7 @@ public class MissionManager : MonoBehaviour
     {
         if (scene.name == "CampScene")
         {
+            // Видаємо нагороди і чистимо UI тільки по прибуттю в табір!
             ClearCompletedMissionsUI();
         }
     }
@@ -58,8 +59,20 @@ public class MissionManager : MonoBehaviour
     {
         for (int i = activeMissions.Count - 1; i >= 0; i--)
         {
-            if (activeMissions[i].isCompleted)
+            if (activeMissions[i].isCompleted || activeMissions[i].currentProgress >= activeMissions[i].targetAmount)
             {
+                // НАРАХУВАННЯ НАГОРОДИ В ТАБОРІ
+                if (ResourceManager.Instance != null)
+                {
+                    ResourceManager.Instance.AddStashResources(
+                        activeMissions[i].data.woodReward,
+                        activeMissions[i].data.stoneReward,
+                        activeMissions[i].data.foodReward
+                    );
+                    ResourceManager.Instance.diamonds += activeMissions[i].data.diamondReward;
+                    ResourceManager.Instance.UpdateUI();
+                }
+
                 if (activeMissions[i].uiElement != null)
                 {
                     Destroy(activeMissions[i].uiElement.gameObject);
@@ -67,11 +80,12 @@ public class MissionManager : MonoBehaviour
                 activeMissions.RemoveAt(i);
             }
         }
-        SaveMissions();
+        SaveMissions(); // Зберігаємо чистий список після видачі нагород
     }
 
     public void SaveMissions()
     {
+        // Тепер ми зберігаємо ВСІ місії, але додаємо прапорець MissionCompleted
         PlayerPrefs.SetInt("ActiveMissionCount", activeMissions.Count);
 
         for (int i = 0; i < activeMissions.Count; i++)
@@ -86,6 +100,9 @@ public class MissionManager : MonoBehaviour
             PlayerPrefs.SetInt("MissionDiamond_" + i, m.data.diamondReward);
             PlayerPrefs.SetInt("MissionTarget_" + i, m.targetAmount);
             PlayerPrefs.SetInt("MissionProgress_" + i, m.currentProgress);
+
+            // НОВЕ: Зберігаємо статус виконання
+            PlayerPrefs.SetInt("MissionCompleted_" + i, m.isCompleted ? 1 : 0);
         }
         PlayerPrefs.Save();
     }
@@ -111,13 +128,14 @@ public class MissionManager : MonoBehaviour
 
             int target = PlayerPrefs.GetInt("MissionTarget_" + i);
             int progress = PlayerPrefs.GetInt("MissionProgress_" + i);
+            bool isDone = PlayerPrefs.GetInt("MissionCompleted_" + i, 0) == 1;
 
             ActiveMission newMission = new ActiveMission
             {
                 data = loadedData,
                 currentProgress = progress,
                 targetAmount = target,
-                isCompleted = false
+                isCompleted = isDone || progress >= target
             };
 
             activeMissions.Add(newMission);
@@ -147,8 +165,13 @@ public class MissionManager : MonoBehaviour
         GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
         mission.uiElement = uiObj.GetComponent<MissionUIElement>();
 
-        // ПЕРЕДАЄМО ДАНІ РОЗДІЛЬНО!
         mission.uiElement.Setup(mission.data.missionName, mission.data.missionDescription, mission.currentProgress, mission.targetAmount);
+
+        // Якщо місія вже була виконана (при завантаженні), миттєво ставимо візуал DONE
+        if (mission.isCompleted)
+        {
+            mission.uiElement.SetCompletedStateInstant();
+        }
     }
 
     public void AddProgress(MissionType type, int amount = 1)
@@ -182,10 +205,7 @@ public class MissionManager : MonoBehaviour
         int count = 0;
         foreach (var mission in activeMissions)
         {
-            if (!mission.isCompleted)
-            {
-                count++;
-            }
+            if (!mission.isCompleted) count++;
         }
         return count;
     }
@@ -195,15 +215,9 @@ public class MissionManager : MonoBehaviour
         mission.isCompleted = true;
         if (mission.uiElement != null) mission.uiElement.CompleteMission();
 
-        // ЗВУК: Тріумфальне виконання місії
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
 
-        if (ResourceManager.Instance != null)
-        {
-            ResourceManager.Instance.AddStashResources(mission.data.woodReward, mission.data.stoneReward, mission.data.foodReward);
-            ResourceManager.Instance.diamonds += mission.data.diamondReward;
-            ResourceManager.Instance.UpdateUI();
-        }
+        // Звідси ми забрали видачу нагороди, бо вона тепер у ClearCompletedMissionsUI
 
         SaveMissions();
     }

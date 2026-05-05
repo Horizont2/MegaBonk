@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: Hero_Lvl3
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
   heroName: Casper
-  price: 800
+  price: 600
   heroID: 2
+  basePower: 130
   shopModelPrefab: {fileID: 1700948328246899227, guid: 622bd3c05e1b9c84d82ca8d443e9175d, type: 3}
-  hpBarFill: 0.5
-  speedBarFill: 0.6
-  radiusBarFill: 0.5
-  actualMaxHealth: 500
-  actualMoveSpeed: 6
-  actualBombRadius: 6
+  hpBarFill: 0.25
+  speedBarFill: 0.75
+  radiusBarFill: 0.29
+  actualMaxHealth: 150
+  actualMoveSpeed: 7.6
+  actualBombRadius: 3.5

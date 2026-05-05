@@ -17,6 +17,14 @@ MonoBehaviour:
   price: 800
   shopPrefab: {fileID: 4292794119454397175, guid: 0e62603268aa13a468fb711d3737de96, type: 3}
   inGamePrefab: {fileID: 7009237522966617082, guid: 2ef440fda02775e4aafd89e90690bb2d, type: 3}
+  basePower: 100
+  powerPerLevel: 20
+  maxUpgradeLevel: 10
+  baseUpgradeCost: 150
+  upgradeCostMultiplier: 1.35
   damageBonus: 25
-  attackSpeed: 1.6
-  critChance: 0.18
+  attackSpeed: 1.8
+  critChance: 0.2
+  damagePerLevel: 8
+  attackSpeedPerLevel: 0.1
+  critChancePerLevel: 0.03

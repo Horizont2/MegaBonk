@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Stonefall Quarry
   loreDescription: Deep pits where slaves once mined stone. The undead miners still
     blindly swing their pickaxes.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: fb22dd8a7dea72145915de3c56d89980, type: 2}
-  recommendedPowerLevel: 900
+  - {fileID: 11400000, guid: 515a27a4037f273449fcfe726270c9f5, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 210
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 120

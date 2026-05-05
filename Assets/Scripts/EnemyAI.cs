@@ -74,18 +74,51 @@ public class EnemyAI : MonoBehaviour
 
     private void Start()
     {
+        actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
+
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
         {
-            float hpMult = GameManager.Instance.currentRegion.enemyHpMultiplier;
-            float dmgMult = GameManager.Instance.currentRegion.enemyDamageMultiplier;
+            RegionData region = GameManager.Instance.currentRegion;
 
-            maxHealth *= hpMult;
-            damage *= dmgMult;
-            xpRewardMultiplier = hpMult * 0.5f;
+            // --- СИСТЕМА ДИНАМІЧНОЇ СКЛАДНОСТІ (SHADOW FIGHT STYLE) ---
+            int playerPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
+            int powerDelta = playerPower - region.recommendedPower;
+
+            float dynamicMultiplier = 1f;
+
+            if (powerDelta < 0)
+            {
+                // Гравець слабший. Кожні 10 очок різниці дають +15% до статів ворогів.
+                dynamicMultiplier = 1f + (Mathf.Abs(powerDelta) * 0.015f);
+
+                // Ставимо ліміт (максимум 4x), щоб гра не крашнулась від гігантських цифр, 
+                // якщо гравець з 70 сили зайде в регіон на 1350
+                dynamicMultiplier = Mathf.Clamp(dynamicMultiplier, 1f, 4.0f);
+            }
+            else if (powerDelta > 0)
+            {
+                // Гравець сильніший. Трохи послаблюємо ворогів (але не менше ніж до 0.7x)
+                dynamicMultiplier = 1f - (powerDelta * 0.005f);
+                dynamicMultiplier = Mathf.Clamp(dynamicMultiplier, 0.7f, 1f);
+            }
+
+            // Комбінуємо базовий множник регіону з нашим новим скіловим множником
+            float finalHpMult = region.enemyHpMultiplier * dynamicMultiplier;
+            float finalDmgMult = region.enemyDamageMultiplier * dynamicMultiplier;
+
+            maxHealth *= finalHpMult;
+            damage *= finalDmgMult;
+
+            // Якщо вороги значно сильніші (різниця > 30), робимо їх агресивнішими (швидшими)
+            if (dynamicMultiplier > 1.4f)
+            {
+                actualMoveSpeed *= 1.2f;
+            }
+
+            xpRewardMultiplier = finalHpMult * 0.5f;
         }
 
         currentHealth = maxHealth;
-        actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
@@ -114,6 +147,8 @@ public class EnemyAI : MonoBehaviour
         if (stunTimer > 0 && !isEnraged)
         {
             stunTimer -= Time.deltaTime;
+            // Переконуємось, що анімація бігу вимкнена під час стану оглушення
+            if (animator != null) animator.SetBool("isMoving", false);
             return;
         }
 
@@ -178,6 +213,8 @@ public class EnemyAI : MonoBehaviour
     private IEnumerator AttackRoutine()
     {
         isPreparingAttack = true;
+        if (animator != null) animator.SetBool("isMoving", false);
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
         Color tempColor = isEnraged ? Color.black : Color.red;
@@ -210,7 +247,8 @@ public class EnemyAI : MonoBehaviour
         if (animator != null) animator.SetTrigger("Hit");
     }
 
-    public void TakeDamage(float damageAmount)
+    // Додано параметр bool isCrit
+    public void TakeDamage(float damageAmount, bool isCrit = false)
     {
         if (isDead || isInvincible) return;
 
@@ -221,7 +259,8 @@ public class EnemyAI : MonoBehaviour
         if (damagePopupPrefab != null)
         {
             GameObject popup = Instantiate(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
-            popup.GetComponent<DamagePopup>()?.Setup(damageAmount);
+            // Передаємо isCrit у попап
+            popup.GetComponent<DamagePopup>()?.Setup(damageAmount, isCrit);
         }
 
         if (currentHealth <= 0) Die();

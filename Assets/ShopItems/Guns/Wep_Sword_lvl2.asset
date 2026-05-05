@@ -14,9 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponID: 1
   weaponName: Barbarian Axe
-  price: 250
+  price: 300
   shopPrefab: {fileID: 7292583777197831632, guid: 264c445fd8372214891a5e34393d63be, type: 3}
   inGamePrefab: {fileID: 4722655034226915781, guid: 8528f67867808024094886c081baccc0, type: 3}
-  damageBonus: 15
-  attackSpeed: 1.3
+  basePower: 50
+  powerPerLevel: 15
+  maxUpgradeLevel: 5
+  baseUpgradeCost: 100
+  upgradeCostMultiplier: 1.4
+  damageBonus: 40
+  attackSpeed: 0.8
   critChance: 0.1
+  damagePerLevel: 10
+  attackSpeedPerLevel: 0.02
+  critChancePerLevel: 0.02

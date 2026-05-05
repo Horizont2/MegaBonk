@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Citadel Outskirts
   loreDescription: The inner walls of the fortress. Elite guards patrol these ruins
     relentlessly.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 66633a1bbf4c1b2459505132b850e974, type: 2}
-  recommendedPowerLevel: 2400
+  - {fileID: 11400000, guid: bae9a5a11c486674db6414bef83be796, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 1020
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 380

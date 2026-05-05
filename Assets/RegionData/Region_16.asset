@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Desolate Tundra
   loreDescription: A frozen wasteland where stamina drains fast. Perfect for gathering
     rare frozen supplies.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 3ea91be0424c7fa4281cccd7d2baca68, type: 2}
-  recommendedPowerLevel: 1650
+  - {fileID: 11400000, guid: 186630be09f865a43bd4a2c98fe7f5ff, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 590
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 230

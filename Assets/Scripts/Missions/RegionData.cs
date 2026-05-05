@@ -10,15 +10,15 @@ public class RegionData : ScriptableObject
     public int regionID;
     public string regionName = "New Territory";
     [TextArea(3, 5)] public string loreDescription;
-    public Sprite regionIcon;
+    public Sprite regionIllustration;
 
     [Header("Map Logic")]
     public RegionState currentState = RegionState.Locked;
     public List<RegionData> neighboringRegions;
     [HideInInspector] public bool isNewlyUnlocked = false;
 
-    [Header("Difficulty System")]
-    public int recommendedPowerLevel = 100;
+    [Header("Difficulty & Combat System")]
+    public int recommendedPower = 150; // ÒÅÏÅĞ ÖÅ ªÄÈÍÀ ÇÌ²ÍÍÀ ÑÈËÈ ĞÅÃ²ÎÍÓ
     public float enemyHpMultiplier = 1f;
     public float enemyDamageMultiplier = 1f;
 
@@ -26,11 +26,11 @@ public class RegionData : ScriptableObject
     public int woodReward = 100;
     public int stoneReward = 50;
     public int foodReward = 20;
-    public int diamondReward = 5; // ÄÎÄÀÍÎ: Ä³àìàíòè çà çàâîşâàííÿ
+    public int diamondReward = 5;
 
     [Header("Passive Income Yield (Çà õâèëèíó)")]
-    public int passiveWood = 0;    // ÄÎÄÀÍÎ: Äåğåâî
-    public int passiveStone = 0;   // ÄÎÄÀÍÎ: Êàì³íü
-    public int passiveFood = 0;    // ÄÎÄÀÍÎ: ¯æà
-    public int passiveDiamonds = 0; // ÄÎÄÀÍÎ: Ä³àìàíòè (Äóæå ğ³äêî)
+    public int passiveWood = 0;
+    public int passiveStone = 0;
+    public int passiveFood = 0;
+    public int passiveDiamonds = 0;
 }

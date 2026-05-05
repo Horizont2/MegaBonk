@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Deadman's Gorge
   loreDescription: A massive graveyard of fallen knights. Their rusted armor makes
     them tougher to kill.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 1f11b70e2a2f4d54084b45332a6f6cdc, type: 2}
-  recommendedPowerLevel: 1280
+  - {fileID: 11400000, guid: 130b1d00c1591fd408e35275cdaac601, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 390
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 190

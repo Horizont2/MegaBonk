@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 using TMPro;
 using System.Collections;
-using Unity.Cinemachine; // Для Unity 6
+using Unity.Cinemachine;
 
 public class CampDirector : MonoBehaviour
 {
@@ -15,19 +15,10 @@ public class CampDirector : MonoBehaviour
 
     private void Start()
     {
-        // Перевіряємо, чи був туторіал пройдений раніше
         bool tutorialPlayed = PlayerPrefs.GetInt("CampTutorialPlayed", 0) == 1;
 
-        if (!tutorialPlayed)
-        {
-            StartCampTutorial();
-        }
-        else
-        {
-            // ЯКЩО ТУТОРІАЛ ВЖЕ БУВ:
-            // Нам треба негайно вимкнути все кінематографічне, щоб камера не "липла"
-            StopCutsceneImmediately();
-        }
+        if (!tutorialPlayed) StartCampTutorial();
+        else StopCutsceneImmediately();
     }
 
     private void StartCampTutorial()
@@ -39,11 +30,8 @@ public class CampDirector : MonoBehaviour
         }
 
         if (player != null) player.enabled = false;
-
-        // Ховаємо інтерфейс GlobalHUD
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
-        // Вимикаємо скрипти колізій і вмикаємо Cinemachine Brain
         SetCinematicMode(true);
 
         var brain = Camera.main.GetComponent<CinemachineBrain>();
@@ -55,16 +43,14 @@ public class CampDirector : MonoBehaviour
 
     private void StopCutsceneImmediately()
     {
-        if (timelineDirector != null) timelineDirector.Stop();
-
-        // Переконуємось, що інтерфейс видимий
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
-
-        // Повертаємо керування гравцю та вимикаємо Cinemachine
-        SetCinematicMode(false);
-
+        // --- ФІКС: Вимикаємо мозок Cinemachine ПЕРЕД зупинкою таймлайну ---
         var brain = Camera.main.GetComponent<CinemachineBrain>();
         if (brain != null) brain.enabled = false;
+
+        if (timelineDirector != null) timelineDirector.Stop();
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
+
+        SetCinematicMode(false);
     }
 
     private void SetCinematicMode(bool isCinematic)
@@ -98,6 +84,10 @@ public class CampDirector : MonoBehaviour
         if (player != null) player.enabled = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
+        // --- ФІКС: Вимикаємо мозок Cinemachine ПЕРЕД синхронізацією ігрової камери ---
+        var brain = Camera.main.GetComponent<CinemachineBrain>();
+        if (brain != null) brain.enabled = false;
+
         CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
         if (cf != null)
         {
@@ -106,9 +96,6 @@ public class CampDirector : MonoBehaviour
         }
 
         SetCinematicMode(false);
-
-        var brain = Camera.main.GetComponent<CinemachineBrain>();
-        if (brain != null) brain.enabled = false;
     }
 
     private IEnumerator ShowSubtitleTypewriter(string text, float stayDuration)

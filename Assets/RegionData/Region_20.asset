@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: The Poisoned Vein
   loreDescription: The water supply for the citadel. It is completely corrupted.
     A grim and difficult battleground.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 74f9ffa62d1ac6a4281954a1d2e17d95, type: 2}
-  recommendedPowerLevel: 2100
+  - {fileID: 11400000, guid: 66633a1bbf4c1b2459505132b850e974, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 830
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 325

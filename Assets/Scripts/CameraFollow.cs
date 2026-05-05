@@ -9,8 +9,8 @@ public class CameraFollow : MonoBehaviour
     public float minDistance = 1.0f;
 
     [Header("Collision Settings")]
-    public LayerMask collisionLayers; // Шари перешкод
-    public float smoothSpeed = 10f;   // Швидкість повернення камери
+    public LayerMask collisionLayers;
+    public float smoothSpeed = 10f;
 
     [Header("Mouse Control")]
     public float mouseSensitivity = 3f;
@@ -18,11 +18,15 @@ public class CameraFollow : MonoBehaviour
     public float maxYAngle = 80f;
 
     [Header("Cinematic Bridge")]
-    public bool isCinematicMode = false; // Нове: вмикається Директором
+    public bool isCinematicMode = false;
 
     [Header("Shake Settings")]
     private float shakeTimer;
     private float currentShakeIntensity;
+
+    // НОВЕ: Направлена тряска
+    private Vector3 shakeDirection;
+    private float directionalShakeForce;
 
     private float currentX = 0f;
     private float currentY = 45f;
@@ -37,23 +41,18 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
-        // Якщо працює катсцена або пауза — скрипт не перехоплює камеру[cite: 7]
         if (isCinematicMode || Time.timeScale == 0f) return;
-
         if (target == null) return;
 
-        // 1. Керування мишею[cite: 7]
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
         currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
 
-        // 2. Розрахунок позиції[cite: 7]
         Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
         Vector3 lookAtPos = target.position + targetOffset;
         Vector3 direction = -(rotation * Vector3.forward);
         Vector3 desiredPosition = lookAtPos + direction * maxDistance;
 
-        // 3. ПЕРЕВІРКА КОЛІЗІЙ (Твоя оригінальна логіка)[cite: 7]
         if (Physics.Linecast(lookAtPos, desiredPosition, out RaycastHit hit, collisionLayers))
         {
             currentDistance = Mathf.Clamp(hit.distance * 0.85f, minDistance, maxDistance);
@@ -65,14 +64,27 @@ public class CameraFollow : MonoBehaviour
 
         Vector3 finalPosition = lookAtPos + direction * currentDistance;
 
-        // 4. ДИНАМІЧНА ТРЯСКА (Твоя оригінальна логіка)[cite: 7]
+        // --- ДИНАМІЧНА ТА НАПРАВЛЕНА ТРЯСКА ---
         if (shakeTimer > 0)
         {
+            // Хаотична тряска
             finalPosition += Random.insideUnitSphere * currentShakeIntensity;
+
+            // Направлений поштовх (віддача)
+            if (directionalShakeForce > 0)
+            {
+                // Поштовх згасає разом з таймером
+                float pushForce = directionalShakeForce * (shakeTimer / 0.2f);
+                finalPosition += shakeDirection * pushForce;
+            }
+
             shakeTimer -= Time.unscaledDeltaTime;
         }
+        else
+        {
+            directionalShakeForce = 0f;
+        }
 
-        // 5. Застосування позиції та ANTI-CLIPPING[cite: 7]
         transform.position = finalPosition;
         transform.LookAt(lookAtPos);
 
@@ -90,11 +102,20 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
-    // Твої оригінальні методи для тряски[cite: 7]
     public void TriggerShake(float duration, float intensity)
     {
         shakeTimer = duration;
         currentShakeIntensity = intensity;
+        directionalShakeForce = 0f; // Скидаємо направлену тряску
+    }
+
+    // НОВИЙ МЕТОД: Направлена тряска для віддачі та отримання шкоди
+    public void TriggerDirectionalShake(Vector3 direction, float force, float duration, float randomIntensity)
+    {
+        shakeTimer = duration;
+        shakeDirection = direction.normalized;
+        directionalShakeForce = force;
+        currentShakeIntensity = randomIntensity;
     }
 
     public void StartShake()
@@ -102,7 +123,6 @@ public class CameraFollow : MonoBehaviour
         TriggerShake(0.2f, 0.3f);
     }
 
-    // Метод для безшовного повернення з катсцени
     public void SyncRotation(float x, float y)
     {
         currentX = x;

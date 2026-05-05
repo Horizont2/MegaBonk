@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Ruined Tollkeep
   loreDescription: The border between the forest and the old kingdom. Heavily defended
     by skeleton guards.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 3dcce9dcd123c2449aedc09e449e1e90, type: 2}
-  recommendedPowerLevel: 820
+  - {fileID: 11400000, guid: be82deb97b96fa54db570672e30cca62, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 180
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 180

@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Ironpeak Pass
   loreDescription: A dangerous mountain road. You'll need decent armor and a sharp
     blade to survive the swarm.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 5a4f554972f65a74980010099fb176d8, type: 2}
-  recommendedPowerLevel: 1200
+  - {fileID: 11400000, guid: c1268116787df8441b3627f607f9f7f8, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 350
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 170

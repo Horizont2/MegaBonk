@@ -30,9 +30,12 @@ public class MapProgressionManager : MonoBehaviour
             if (neighbor.currentState == RegionState.Locked)
             {
                 neighbor.currentState = RegionState.Available;
-                neighbor.isNewlyUnlocked = true; // ДОДАНО: Кажемо мапі, що це НОВА територія
+                neighbor.isNewlyUnlocked = true; // Кажемо мапі, що це НОВА територія
             }
         }
+
+        // ВИПРАВЛЕННЯ: Викликаємо івент, щоб попередити всі UI елементи про зміну стану на мапі
+        OnMapStateChanged?.Invoke();
     }
 
     // ТЕСТОВА КНОПКА (видаліть пізніше): 

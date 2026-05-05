@@ -14,9 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponID: 4
   weaponName: Sir Duncan's Sword
-  price: 5000
+  price: 3500
   shopPrefab: {fileID: 3030662099941857429, guid: a8847a5e05a707a4ebc10a507999f4a8, type: 3}
   inGamePrefab: {fileID: 7705683734966450536, guid: 4f6e37ac6643cd14e84eb94f9516c131, type: 3}
-  damageBonus: 50
-  attackSpeed: 2.5
-  critChance: 0.4
+  basePower: 350
+  powerPerLevel: 40
+  maxUpgradeLevel: 15
+  baseUpgradeCost: 400
+  upgradeCostMultiplier: 1.3
+  damageBonus: 100
+  attackSpeed: 1.2
+  critChance: 0.25
+  damagePerLevel: 20
+  attackSpeedPerLevel: 0.05
+  critChancePerLevel: 0.04

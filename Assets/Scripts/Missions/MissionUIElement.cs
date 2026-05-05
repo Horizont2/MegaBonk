@@ -7,9 +7,9 @@ using System.Collections;
 public class MissionUIElement : MonoBehaviour
 {
     [Header("UI References")]
-    public TextMeshProUGUI titleText;       // Головний заголовок (твоє поле MissionText)
-    public TextMeshProUGUI descriptionText; // Опис місії (твоє поле DescText)
-    public TextMeshProUGUI progressText;    // Цифри (твоє поле ProgressText)
+    public TextMeshProUGUI titleText;
+    public TextMeshProUGUI descriptionText;
+    public TextMeshProUGUI progressText;
 
     public Image checkboxEmpty;
     public Image checkboxDone;
@@ -30,10 +30,8 @@ public class MissionUIElement : MonoBehaviour
         if (checkboxDone != null) checkboxDone.gameObject.SetActive(false);
     }
 
-    // НОВЕ: Тепер ми приймаємо і Title, і Description окремо
     public void Setup(string title, string description, int current, int target)
     {
-        // Скидаємо стан "виконано" для повторного використання віджета
         isCompleted = false;
         StopAllCoroutines();
         if (canvasGroup != null) canvasGroup.alpha = 1f;
@@ -50,7 +48,6 @@ public class MissionUIElement : MonoBehaviour
 
         if (progressSlider != null)
         {
-            // Ховаємо слайдер, якщо це просте завдання на 1 дію
             progressSlider.gameObject.SetActive(target > 1);
             progressSlider.maxValue = target;
             progressSlider.value = current;
@@ -69,7 +66,6 @@ public class MissionUIElement : MonoBehaviour
         currentVisualProgress = current;
         targetVisualProgress = target;
 
-        // Цифри окремо: "4 / 10"
         if (progressText != null)
             progressText.text = $"<color=#FFD700>{current}</color> / {target}";
     }
@@ -82,18 +78,36 @@ public class MissionUIElement : MonoBehaviour
         }
     }
 
+    // Звичайна анімація при виконанні під час гри
     public void CompleteMission()
     {
         if (isCompleted) return;
         isCompleted = true;
 
-        // Закреслюємо заголовок і пишемо DONE замість цифр
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
         if (progressText != null) progressText.text = "<color=#00FF00>DONE</color>";
 
         if (progressSlider != null) progressSlider.value = progressSlider.maxValue;
 
         StartCoroutine(CompleteAnimationRoutine());
+    }
+
+    // НОВЕ: Миттєве завантаження готової місії при старті гри
+    public void SetCompletedStateInstant()
+    {
+        isCompleted = true;
+        if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
+        if (progressText != null) progressText.text = "<color=#00FF00>DONE</color>";
+        if (progressSlider != null) progressSlider.value = progressSlider.maxValue;
+
+        if (checkboxEmpty != null) checkboxEmpty.gameObject.SetActive(false);
+        if (checkboxDone != null)
+        {
+            checkboxDone.gameObject.SetActive(true);
+            checkboxDone.transform.localScale = Vector3.one;
+        }
+
+        if (canvasGroup != null) canvasGroup.alpha = 0.6f;
     }
 
     private IEnumerator CompleteAnimationRoutine()

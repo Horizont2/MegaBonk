@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Smuggler's Cove
   loreDescription: Hidden caches of stolen goods remain here, guarded by the ghosts
     of greedy mercenaries.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 5d54bb2fa91c6e643bbfbb498a89462d, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: c1268116787df8441b3627f607f9f7f8, type: 2}
-  recommendedPowerLevel: 1380
+  - {fileID: 11400000, guid: 4df1dd192384add48a6aa532a0d2d2df, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 440
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 200

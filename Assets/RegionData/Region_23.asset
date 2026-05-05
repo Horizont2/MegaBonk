@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Gates of Ruin
   loreDescription: The final barrier. Only the strongest heroes with the sharpest
     blades stand a chance here.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 43e85531f99a7664ea73bb66096a801d, type: 2}
-  recommendedPowerLevel: 2600
+  - {fileID: 11400000, guid: b25f7aed7923d9042b2a0aa1cdf27300, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 1150
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 420

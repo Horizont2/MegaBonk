@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Forgotten Shrine
   loreDescription: An overgrown statue of a nameless god. The enemies here are slightly
     more aggressive.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 58483a790fad88749b3b12122e0668dc, type: 2}
-  recommendedPowerLevel: 680
+  - {fileID: 11400000, guid: 3dcce9dcd123c2449aedc09e449e1e90, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 130
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 145

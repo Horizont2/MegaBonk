@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Bandit's Crossing
   loreDescription: A broken bridge heavily guarded by corrupted scavengers. A great
     source of basic materials.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 3c3fcc1ccecf411499b378991ea4b301, type: 2}
-  recommendedPowerLevel: 620
+  - {fileID: 11400000, guid: 1f01d0843a6f2d443a25017a8b5b3dc1, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 105
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 130

@@ -73,7 +73,6 @@ public class CampBuilding : MonoBehaviour
 
     [Header("Cinematic Effects")]
     public ParticleSystem buildDustVFX;
-    // public AudioSource buildAudio; // Більше не потрібен, використовуємо AudioManager
     public float spawnDepth = 12f;
     public float upgradeBounceAmount = 1.15f;
 
@@ -273,7 +272,6 @@ public class CampBuilding : MonoBehaviour
     {
         isPanelOpen = true;
 
-        // ЗВУК: Відкриття панелі (можна використати UI_Click або додати свій)
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         UpdateUIData();
@@ -314,6 +312,20 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
+    // --- ДОПОМІЖНА ФУНКЦІЯ ДЛЯ МНОЖНИКА КУЗНІ ---
+    private float GetForgeMultiplier(int level)
+    {
+        switch (level)
+        {
+            case 1: return 1.02f;
+            case 2: return 1.05f;
+            case 3: return 1.08f;
+            case 4: return 1.11f;
+            case 5: return 1.15f;
+            default: return 1.00f;
+        }
+    }
+
     private void UpdateUIData()
     {
         if (levels == null || levels.Length == 0 || currentLevel >= levels.Length) return;
@@ -342,6 +354,22 @@ public class CampBuilding : MonoBehaviour
             infoText += $"Upgrade Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
             if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO UPGRADE";
         }
+
+        // --- МАГІЧНИЙ БЛОК ДЛЯ КУЗНІ (ПРОГНОЗ СИЛИ) ---
+        if (buildingName.ToUpper().Contains("FORGE"))
+        {
+            float currentMult = GetForgeMultiplier(currentLevel);
+            float nextMult = GetForgeMultiplier(currentLevel + 1);
+
+            int currentPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
+
+            // Відкочуємо поточну силу до базової (до множника), щоб рівно порахувати наступну
+            int basePower = Mathf.RoundToInt(currentPower / currentMult);
+            int nextPower = Mathf.RoundToInt(basePower * nextMult);
+
+            infoText += $"\n\nTotal Power: <b><color=#AAAAAA>{currentPower}</color></b> -> <b><color=#D4AF37>{nextPower} <size=70%>({nextMult * 100 - 100}%)</size></color></b>";
+        }
+
         if (infoTMP) infoTMP.text = infoText;
 
         if (ResourceManager.Instance != null)
@@ -370,7 +398,6 @@ public class CampBuilding : MonoBehaviour
 
         StartDustEffect();
 
-        // ЗВУК: Початок будівництва
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildStart);
 
         float timer = totalTime - remainingTime;
@@ -426,7 +453,6 @@ public class CampBuilding : MonoBehaviour
 
         StopDustEffect();
 
-        // ЗВУК: Завершення будівництва
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
 
         currentLevel = targetLevel;
@@ -463,6 +489,7 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
+    // --- ВІДНОВЛЕНИЙ МЕТОД ---
     public bool IsVisualsFull()
     {
         if (resourceVisuals == null || resourceVisuals.Length == 0) return false;
@@ -515,7 +542,6 @@ public class CampBuilding : MonoBehaviour
                 else if (productionType == ResourceType.Food) ResourceManager.Instance.AddStashResources(0, 0, amountPerMinute);
                 else if (productionType == ResourceType.Stone) ResourceManager.Instance.AddStashResources(0, amountPerMinute, 0);
 
-                // ЗВУК: Автоматичний збір ресурсів, якщо немає сховища
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
 
                 HideAllVisualResources();

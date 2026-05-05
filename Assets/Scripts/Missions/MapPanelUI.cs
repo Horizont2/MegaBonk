@@ -6,159 +6,189 @@ using System.Collections;
 [RequireComponent(typeof(CanvasGroup))]
 public class MapPanelUI : MonoBehaviour
 {
-    [Header("UI Components")]
-    public CanvasGroup canvasGroup;
+    [Header("UI Elements - Text")]
     public TextMeshProUGUI regionNameText;
-    public TextMeshProUGUI loreText;
-    public TextMeshProUGUI powerLevelText;
-    public Image regionIconImage;
+    public TextMeshProUGUI statusText;
+    public TextMeshProUGUI descriptionText;
+    public TextMeshProUGUI recommendedPowerText;
+    public TextMeshProUGUI playerPowerText;
 
-    [Header("One-Time Rewards UI")]
-    public TextMeshProUGUI woodRewardText;
-    public TextMeshProUGUI stoneRewardText;
-    public TextMeshProUGUI foodRewardText;
-    public TextMeshProUGUI diamondRewardText;
+    [Header("UI Elements - One-Time Rewards")]
+    public TextMeshProUGUI conquerWoodText;
+    public TextMeshProUGUI conquerStoneText;
+    public TextMeshProUGUI conquerFoodText;
+    public TextMeshProUGUI conquerDiamondText;
 
-    [Header("Passive Income UI")]
-    [Tooltip("Одне текстове поле, куди скрипт сам гарно впише всі ресурси")]
-    public TextMeshProUGUI passiveIncomeText;
+    [Header("UI Elements - Passive Rewards")]
+    public TextMeshProUGUI passiveWoodText;
+    public TextMeshProUGUI passiveStoneText;
+    public TextMeshProUGUI passiveFoodText;
+    public TextMeshProUGUI passiveDiamondText;
 
-    [Header("Action Button")]
+    [Header("UI Elements - Graphics & Buttons")]
+    public Image illustrationImage;
     public Button actionButton;
     public TextMeshProUGUI actionButtonText;
+    public Button closeButton;
+
+    [Header("Animation Settings")]
+    public RectTransform panelRect;
+    public float animationDuration = 0.3f;
+    private CanvasGroup canvasGroup;
 
     private RegionData currentRegion;
-    private Coroutine fadeCoroutine;
+    private Coroutine animationCoroutine;
 
-    private void Awake()
+    void Awake()
     {
-        if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
-        ClosePanel(true); // Ховаємо панель миттєво при старті сцени
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (panelRect == null) panelRect = GetComponent<RectTransform>();
+
+        canvasGroup.alpha = 0f;
+        canvasGroup.interactable = false;
+        canvasGroup.blocksRaycasts = false;
+
+        if (actionButton != null) actionButton.onClick.AddListener(OnActionButtonClicked);
+        if (closeButton != null) closeButton.onClick.AddListener(ClosePanel);
     }
 
-    public void OpenPanel(RegionData region)
+    public void OpenPanel(RegionData region, Vector3 regionWorldPosition)
     {
         currentRegion = region;
+        PopulateData();
 
-        // 1. Заповнюємо базову інформацію
-        if (regionNameText != null) regionNameText.text = region.regionName;
-        if (loreText != null) loreText.text = region.loreDescription;
-        if (powerLevelText != null) powerLevelText.text = "Rec. Power: " + region.recommendedPowerLevel.ToString();
+        Vector3 viewportPos = Camera.main.WorldToViewportPoint(regionWorldPosition);
+        bool putPanelOnRight = viewportPos.x < 0.5f;
 
-        if (regionIconImage != null)
+        Vector2 hiddenPos, visiblePos;
+        float paddingX = 40f;
+
+        if (putPanelOnRight)
         {
-            if (region.regionIcon != null)
-            {
-                regionIconImage.sprite = region.regionIcon;
-                regionIconImage.gameObject.SetActive(true);
-            }
-            else
-            {
-                regionIconImage.gameObject.SetActive(false); // Ховаємо іконку, якщо її немає
-            }
-        }
-
-        // 2. Заповнюємо одноразові нагороди
-        if (woodRewardText != null) woodRewardText.text = region.woodReward.ToString();
-        if (stoneRewardText != null) stoneRewardText.text = region.stoneReward.ToString();
-        if (foodRewardText != null) foodRewardText.text = region.foodReward.ToString();
-        if (diamondRewardText != null) diamondRewardText.text = region.diamondReward.ToString();
-
-        // 3. Генеруємо красивий текст пасивного доходу
-        if (passiveIncomeText != null)
-        {
-            string passiveText = "";
-
-            if (region.passiveWood > 0) passiveText += $"+{region.passiveWood} Wood/min\n";
-            if (region.passiveStone > 0) passiveText += $"+{region.passiveStone} Stone/min\n";
-            if (region.passiveFood > 0) passiveText += $"+{region.passiveFood} Food/min\n";
-            if (region.passiveDiamonds > 0) passiveText += $"+{region.passiveDiamonds} Diamonds/min\n";
-
-            if (string.IsNullOrEmpty(passiveText)) passiveText = "None";
-
-            // Видаляємо останній перенос рядка (TrimEnd), щоб текст стояв рівно
-            passiveIncomeText.text = passiveText.TrimEnd('\n');
-        }
-
-        // 4. Логіка кнопки "В бій" (Змінюється залежно від стану регіону)
-        if (actionButton != null && actionButtonText != null)
-        {
-            actionButton.onClick.RemoveAllListeners(); // Очищаємо попередні дії
-
-            switch (region.currentState)
-            {
-                case RegionState.Locked:
-                    actionButton.interactable = false;
-                    actionButtonText.text = "Locked";
-                    break;
-                case RegionState.Available:
-                    actionButton.interactable = true;
-                    actionButtonText.text = "Start Journey";
-                    actionButton.onClick.AddListener(StartJourney);
-                    break;
-                case RegionState.Conquered:
-                    actionButton.interactable = false;
-                    actionButtonText.text = "Conquered";
-                    break;
-            }
-        }
-
-        // 5. Анімація прояву
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
-        if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
-        fadeCoroutine = StartCoroutine(FadeCanvas(1f, 0.3f));
-    }
-
-    public void ClosePanel(bool instant = false)
-    {
-        if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
-
-        if (instant)
-        {
-            canvasGroup.alpha = 0f;
-            canvasGroup.interactable = false;
-            canvasGroup.blocksRaycasts = false;
+            panelRect.anchorMin = new Vector2(1, 0.5f);
+            panelRect.anchorMax = new Vector2(1, 0.5f);
+            panelRect.pivot = new Vector2(1, 0.5f);
+            visiblePos = new Vector2(-paddingX, 0);
+            hiddenPos = new Vector2(panelRect.rect.width + 50f, 0);
         }
         else
         {
-            fadeCoroutine = StartCoroutine(FadeCanvas(0f, 0.25f));
+            panelRect.anchorMin = new Vector2(0, 0.5f);
+            panelRect.anchorMax = new Vector2(0, 0.5f);
+            panelRect.pivot = new Vector2(0, 0.5f);
+            visiblePos = new Vector2(paddingX, 0);
+            hiddenPos = new Vector2(-panelRect.rect.width - 50f, 0);
+        }
+
+        panelRect.anchoredPosition = hiddenPos;
+
+        if (animationCoroutine != null) StopCoroutine(animationCoroutine);
+        animationCoroutine = StartCoroutine(AnimatePanel(visiblePos, 1f, true));
+    }
+
+    public void ClosePanel()
+    {
+        if (currentRegion == null) return;
+        Vector2 hiddenPos = panelRect.pivot.x > 0.5f
+            ? new Vector2(panelRect.rect.width + 50f, 0)
+            : new Vector2(-panelRect.rect.width - 50f, 0);
+
+        if (animationCoroutine != null) StopCoroutine(animationCoroutine);
+        animationCoroutine = StartCoroutine(AnimatePanel(hiddenPos, 0f, false));
+    }
+
+    private void PopulateData()
+    {
+        if (regionNameText != null) regionNameText.text = currentRegion.regionName.ToUpper();
+        if (descriptionText != null) descriptionText.text = currentRegion.loreDescription;
+
+        if (illustrationImage != null)
+        {
+            if (currentRegion.regionIllustration != null)
+            {
+                illustrationImage.sprite = currentRegion.regionIllustration;
+                illustrationImage.gameObject.SetActive(true);
+            }
+            else
+            {
+                illustrationImage.gameObject.SetActive(false);
+            }
+        }
+
+        switch (currentRegion.currentState)
+        {
+            case RegionState.Locked:
+                if (actionButtonText != null) actionButtonText.text = "AREA LOCKED";
+                if (actionButton != null) actionButton.interactable = false;
+                break;
+            case RegionState.Available:
+                if (actionButtonText != null) actionButtonText.text = "START JOURNEY";
+                if (actionButton != null) actionButton.interactable = true;
+                break;
+            case RegionState.Conquered:
+                if (actionButtonText != null) actionButtonText.text = "TRAVEL (SAFE)";
+                if (actionButton != null) actionButton.interactable = true;
+                break;
+        }
+
+        // --- МАГІЯ СИЛИ (ТЕПЕР ЧИТАЄ РЕАЛЬНІ ДАНІ) ---
+        // Беремо підраховану силу з пам'яті. Якщо гри ще не було, дефолт 50.
+        int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
+        string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? "#4CAF50" : "#F44336";
+
+        if (recommendedPowerText != null)
+            recommendedPowerText.text = $"<size=50%><color=#D4AF37>RECOMMENDED</color></size>\n{currentRegion.recommendedPower}";
+
+        if (playerPowerText != null)
+            playerPowerText.text = $"<size=50%><color=#D4AF37>YOUR POWER</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
+
+        // Одноразові нагороди
+        if (conquerWoodText != null) conquerWoodText.text = $"+{currentRegion.woodReward}";
+        if (conquerStoneText != null) conquerStoneText.text = $"+{currentRegion.stoneReward}";
+        if (conquerFoodText != null) conquerFoodText.text = $"+{currentRegion.foodReward}";
+        if (conquerDiamondText != null) conquerDiamondText.text = $"+{currentRegion.diamondReward}";
+
+        // Пасивні
+        if (passiveWoodText != null) passiveWoodText.text = $"+{currentRegion.passiveWood}/hr";
+        if (passiveStoneText != null) passiveStoneText.text = $"+{currentRegion.passiveStone}/hr";
+        if (passiveFoodText != null) passiveFoodText.text = $"+{currentRegion.passiveFood}/hr";
+        if (passiveDiamondText != null) passiveDiamondText.text = $"+{currentRegion.passiveDiamonds}/hr";
+    }
+
+    private void OnActionButtonClicked()
+    {
+        if (currentRegion.currentState == RegionState.Available)
+        {
+            Debug.Log($"[Mission Launcher] Запуск рейду в {currentRegion.regionName}!");
         }
     }
 
-    private void StartJourney()
+    private IEnumerator AnimatePanel(Vector2 targetPos, float targetAlpha, bool state)
     {
-        if (currentRegion == null) return;
-
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
-        Debug.Log($"Starting journey to: {currentRegion.regionName}");
-
-        // Тут буде ваш код для переходу на рівень. Наприклад:
-        // GlobalHUD.Instance.FadeAndLoadScene("ProceduralLevelScene");
-    }
-
-    private IEnumerator FadeCanvas(float targetAlpha, float duration)
-    {
-        if (targetAlpha > 0.5f)
+        if (state)
         {
             canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
         }
 
+        float elapsed = 0f;
+        Vector2 startPos = panelRect.anchoredPosition;
         float startAlpha = canvasGroup.alpha;
-        float time = 0;
 
-        while (time < duration)
+        while (elapsed < animationDuration)
         {
-            time += Time.unscaledDeltaTime; // unscaledDeltaTime дозволяє малювати UI навіть на паузі
-            canvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, time / duration);
+            elapsed += Time.deltaTime;
+            float smoothT = 1f - Mathf.Pow(1f - (elapsed / animationDuration), 3f);
+
+            panelRect.anchoredPosition = Vector2.Lerp(startPos, targetPos, smoothT);
+            canvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, smoothT);
             yield return null;
         }
 
+        panelRect.anchoredPosition = targetPos;
         canvasGroup.alpha = targetAlpha;
 
-        if (targetAlpha < 0.5f)
+        if (!state)
         {
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;

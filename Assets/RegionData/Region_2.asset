@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Whispering Thicket
   loreDescription: The trees here absorb the moonlight, making it dangerously dark.
     Beware of ambushes.
-  regionIcon: {fileID: 0}
-  currentState: 0
+  regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
+  currentState: 1
   neighboringRegions:
   - {fileID: 11400000, guid: 2f2837b413442634e97ea3f264438260, type: 2}
-  recommendedPowerLevel: 550
+  - {fileID: 11400000, guid: 58483a790fad88749b3b12122e0668dc, type: 2}
+  isNewlyUnlocked: 1
+  recommendedPower: 85
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 115

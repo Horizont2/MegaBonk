@@ -150,6 +150,10 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     public void OnPointerExit(PointerEventData eventData) { UpdateRegionVisuals(false); }
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (mainMapUI != null && myRegionData != null) mainMapUI.OpenPanel(myRegionData);
+        if (mainMapUI != null && myRegionData != null)
+        {
+            // реоеп оепедю╙лн дбю оюпюлерпх
+            mainMapUI.OpenPanel(myRegionData, transform.position);
+        }
     }
 }

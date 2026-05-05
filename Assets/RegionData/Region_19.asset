@@ -16,11 +16,13 @@ MonoBehaviour:
   regionName: Obsidian Crags
   loreDescription: Sharp volcanic rocks tear at your boots. The undead here are infused
     with molten magic.
-  regionIcon: {fileID: 0}
+  regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 777dc966fd3ea3144baeb6e190b5bc60, type: 2}
-  recommendedPowerLevel: 1980
+  - {fileID: 11400000, guid: 02a9051dd575a0e40811c399e2386b7c, type: 2}
+  isNewlyUnlocked: 0
+  recommendedPower: 760
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 300

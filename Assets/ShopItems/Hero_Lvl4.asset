@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: Hero_Lvl4
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
   heroName: Lyra
-  price: 1800
+  price: 1200
   heroID: 3
+  basePower: 190
   shopModelPrefab: {fileID: 6711135348820887869, guid: 4e14ee18fa4ad0140a4995cd40fa3fa1, type: 3}
-  hpBarFill: 0.75
-  speedBarFill: 0.8
-  radiusBarFill: 0.75
-  actualMaxHealth: 750
-  actualMoveSpeed: 6.8
-  actualBombRadius: 7.5
+  hpBarFill: 0.58
+  speedBarFill: 0.45
+  radiusBarFill: 0.58
+  actualMaxHealth: 350
+  actualMoveSpeed: 4.5
+  actualBombRadius: 7
