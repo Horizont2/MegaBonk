@@ -100,9 +100,27 @@ public class GlobalHUD : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            GameObject mapCanvas = GameObject.Find("MapCanvas");
-            if (mapCanvas != null && mapCanvas.activeInHierarchy) return;
+            // --- 1. ПРІОРИТЕТ: НАЛАШТУВАННЯ ---
+            // Якщо відкрита панель налаштувань, Esc закриває ТІЛЬКИ її і не чіпає паузу!
+            if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
+            {
+                SettingsUI.Instance.CloseSettings();
+                return;
+            }
 
+            // --- 2. ПРІОРИТЕТ: МАПА ---
+            // Замість перевірки activeInHierarchy, ми перевіряємо, чи мапа клікабельна (interactable)
+            GameObject mapCanvas = GameObject.Find("MapCanvas");
+            if (mapCanvas != null)
+            {
+                CanvasGroup mapCG = mapCanvas.GetComponent<CanvasGroup>();
+                if (mapCG != null && mapCG.interactable) return; // Мапа відкрита, ігноруємо паузу (вона закриється сама)
+            }
+
+            MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
+            if (mapPanel != null && mapPanel.IsPanelOpen()) return;
+
+            // --- 3. ПРІОРИТЕТ: ПАУЗА ---
             string sceneName = SceneManager.GetActiveScene().name;
             if (sceneName == "GameScene" || sceneName == "CampScene") TogglePause();
         }
@@ -128,7 +146,18 @@ public class GlobalHUD : MonoBehaviour
         }
 
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
-        if (isPaused) TogglePause();
+
+        // Скидаємо паузу при завантаженні нової сцени
+        if (isPaused)
+        {
+            isPaused = false;
+            Time.timeScale = 1f;
+            if (pausePanelGroup != null)
+            {
+                pausePanelGroup.alpha = 0f;
+                pausePanelGroup.gameObject.SetActive(false);
+            }
+        }
     }
 
     private IEnumerator SyncCameraAndVolumeRoutine()
@@ -138,7 +167,7 @@ public class GlobalHUD : MonoBehaviour
         if (canvas != null)
         {
             canvas.renderMode = defaultRenderMode;
-            canvas.sortingOrder = 0;
+            canvas.sortingOrder = 50; // Завжди поверх іншого UI
 
             if (defaultRenderMode == RenderMode.ScreenSpaceCamera)
             {

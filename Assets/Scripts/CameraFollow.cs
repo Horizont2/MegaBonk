@@ -24,7 +24,6 @@ public class CameraFollow : MonoBehaviour
     private float shakeTimer;
     private float currentShakeIntensity;
 
-    // НОВЕ: Направлена тряска
     private Vector3 shakeDirection;
     private float directionalShakeForce;
 
@@ -64,16 +63,12 @@ public class CameraFollow : MonoBehaviour
 
         Vector3 finalPosition = lookAtPos + direction * currentDistance;
 
-        // --- ДИНАМІЧНА ТА НАПРАВЛЕНА ТРЯСКА ---
         if (shakeTimer > 0)
         {
-            // Хаотична тряска
             finalPosition += Random.insideUnitSphere * currentShakeIntensity;
 
-            // Направлений поштовх (віддача)
             if (directionalShakeForce > 0)
             {
-                // Поштовх згасає разом з таймером
                 float pushForce = directionalShakeForce * (shakeTimer / 0.2f);
                 finalPosition += shakeDirection * pushForce;
             }
@@ -104,14 +99,19 @@ public class CameraFollow : MonoBehaviour
 
     public void TriggerShake(float duration, float intensity)
     {
+        // НОВЕ: Перевірка налаштувань гравця перед тряскою
+        if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) == 0) return;
+
         shakeTimer = duration;
         currentShakeIntensity = intensity;
-        directionalShakeForce = 0f; // Скидаємо направлену тряску
+        directionalShakeForce = 0f;
     }
 
-    // НОВИЙ МЕТОД: Направлена тряска для віддачі та отримання шкоди
     public void TriggerDirectionalShake(Vector3 direction, float force, float duration, float randomIntensity)
     {
+        // НОВЕ: Перевірка налаштувань гравця перед тряскою
+        if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) == 0) return;
+
         shakeTimer = duration;
         shakeDirection = direction.normalized;
         directionalShakeForce = force;

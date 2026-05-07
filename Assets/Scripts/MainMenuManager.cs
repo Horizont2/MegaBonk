@@ -192,7 +192,14 @@ public class MainMenuManager : MonoBehaviour
     public void OpenOptions()
     {
         PlayClickSound();
-        Debug.Log("Options clicked! (Show options panel)");
+        if (SettingsUI.Instance != null)
+        {
+            SettingsUI.Instance.OpenSettings();
+        }
+        else
+        {
+            Debug.LogWarning("SettingsUI не знайдено! Переконайся, що HUD_Canvas існує в сцені.");
+        }
     }
 
     public void OpenAchievements()
