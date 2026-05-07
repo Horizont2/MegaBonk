@@ -17,6 +17,7 @@ MonoBehaviour:
   loreDescription: An overgrown statue of a nameless god. The enemies here are slightly
     more aggressive.
   regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
+  regionBiome: 0
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 58483a790fad88749b3b12122e0668dc, type: 2}
@@ -29,7 +30,39 @@ MonoBehaviour:
   stoneReward: 85
   foodReward: 35
   diamondReward: 2
-  passiveWood: 2
-  passiveStone: 2
-  passiveFood: 2
-  passiveDiamonds: 0
+  upgradeLevels:
+  - costWood: 0
+    costStone: 0
+    costFood: 0
+    passiveWood: 5
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 0
+  - costWood: 50
+    costStone: 10
+    costFood: 0
+    passiveWood: 10
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 0
+  - costWood: 120
+    costStone: 30
+    costFood: 0
+    passiveWood: 15
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 1
+  - costWood: 250
+    costStone: 80
+    costFood: 0
+    passiveWood: 20
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 2
+  - costWood: 500
+    costStone: 150
+    costFood: 0
+    passiveWood: 30
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 3

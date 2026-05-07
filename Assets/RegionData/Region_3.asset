@@ -17,6 +17,7 @@ MonoBehaviour:
   loreDescription: A broken bridge heavily guarded by corrupted scavengers. A great
     source of basic materials.
   regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
+  regionBiome: 0
   currentState: 0
   neighboringRegions:
   - {fileID: 11400000, guid: 3c3fcc1ccecf411499b378991ea4b301, type: 2}
@@ -29,7 +30,39 @@ MonoBehaviour:
   stoneReward: 70
   foodReward: 30
   diamondReward: 2
-  passiveWood: 4
-  passiveStone: 3
-  passiveFood: 0
-  passiveDiamonds: 0
+  upgradeLevels:
+  - costWood: 0
+    costStone: 0
+    costFood: 0
+    passiveWood: 5
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 0
+  - costWood: 50
+    costStone: 10
+    costFood: 0
+    passiveWood: 10
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 0
+  - costWood: 120
+    costStone: 30
+    costFood: 0
+    passiveWood: 15
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 1
+  - costWood: 250
+    costStone: 80
+    costFood: 0
+    passiveWood: 20
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 2
+  - costWood: 500
+    costStone: 150
+    costFood: 0
+    passiveWood: 30
+    passiveStone: 0
+    passiveFood: 0
+    passiveDiamonds: 3

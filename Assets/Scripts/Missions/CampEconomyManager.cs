@@ -32,10 +32,19 @@ public class CampEconomyManager : MonoBehaviour
         {
             if (region.currentState == RegionState.Conquered)
             {
-                totalWood += region.passiveWood;
-                totalStone += region.passiveStone;
-                totalFood += region.passiveFood;
-                totalDiamonds += region.passiveDiamonds;
+                // --- ФІКС: Зчитуємо рівень регіону і беремо дані з масиву upgradeLevels ---
+                int currentLevel = PlayerPrefs.GetInt("RegionLevel_" + region.regionID, 1);
+
+                // Захист від помилок (якщо масив в інспекторі раптом не заповнено)
+                if (region.upgradeLevels != null && region.upgradeLevels.Length >= currentLevel)
+                {
+                    RegionLevelData levelData = region.upgradeLevels[currentLevel - 1];
+
+                    totalWood += levelData.passiveWood;
+                    totalStone += levelData.passiveStone;
+                    totalFood += levelData.passiveFood;
+                    totalDiamonds += levelData.passiveDiamonds;
+                }
             }
         }
 

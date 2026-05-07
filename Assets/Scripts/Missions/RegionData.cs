@@ -2,7 +2,22 @@ using UnityEngine;
 using System.Collections.Generic;
 
 public enum RegionState { Locked, Available, Conquered }
-public enum RegionBiome { Forest, Desert, Winter } // ДОДАНО: Типи біомів
+public enum RegionBiome { Forest, Desert, Winter }
+
+[System.Serializable]
+public class RegionLevelData
+{
+    [Header("Upgrade Cost")]
+    public int costWood;
+    public int costStone;
+    public int costFood;
+
+    [Header("Passive Income (Per Hour)")]
+    public int passiveWood;
+    public int passiveStone;
+    public int passiveFood;
+    public int passiveDiamonds;
+}
 
 [CreateAssetMenu(fileName = "NewRegion", menuName = "Map/Region Data")]
 public class RegionData : ScriptableObject
@@ -13,7 +28,7 @@ public class RegionData : ScriptableObject
     [TextArea(3, 5)] public string loreDescription;
     public Sprite regionIllustration;
 
-    [Header("Generation Settings (NEW)")]
+    [Header("Generation Settings")]
     public RegionBiome regionBiome = RegionBiome.Forest;
 
     [Header("Map Logic")]
@@ -32,9 +47,7 @@ public class RegionData : ScriptableObject
     public int foodReward = 20;
     public int diamondReward = 5;
 
-    [Header("Passive Income Yield (За хвилину)")]
-    public int passiveWood = 0;
-    public int passiveStone = 0;
-    public int passiveFood = 0;
-    public int passiveDiamonds = 0;
+    [Header("Upgrade System (5 Levels)")]
+    [Tooltip("Заповніть 5 елементів. Element 0 = Level 1 (Безкоштовно)")]
+    public RegionLevelData[] upgradeLevels = new RegionLevelData[5];
 }

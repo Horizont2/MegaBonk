@@ -35,6 +35,7 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         // Плавне перетягування
         mapRect.anchoredPosition = Vector2.Lerp(mapRect.anchoredPosition, targetPosition, Time.deltaTime * smoothDragSpeed);
 
+        // Викликаємо щокадру для жорсткого обмеження
         ClampPosition();
     }
 
@@ -42,7 +43,6 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
     {
         float scrollDelta = eventData.scrollDelta.y;
         targetZoom += scrollDelta * zoomSpeed;
-        targetZoom = Mathf.Clamp(targetZoom, minZoom, maxZoom);
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -56,16 +56,34 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
 
     private void ClampPosition()
     {
-        // Обмеження, щоб мапа не втікала за екран
-        float mapWidth = mapRect.rect.width * mapRect.localScale.x;
-        float mapHeight = mapRect.rect.height * mapRect.localScale.y;
         float viewWidth = parentViewport.rect.width;
         float viewHeight = parentViewport.rect.height;
+
+        // 1. ДИНАМІЧНИЙ МІНІМАЛЬНИЙ ЗУМ
+        // Ніколи не даємо гравцю віддалити мапу так, щоб вона стала меншою за Viewport
+        float minZoomX = viewWidth / mapRect.rect.width;
+        float minZoomY = viewHeight / mapRect.rect.height;
+        float dynamicMinZoom = Mathf.Max(minZoom, Mathf.Max(minZoomX, minZoomY));
+
+        targetZoom = Mathf.Clamp(targetZoom, dynamicMinZoom, maxZoom);
+
+        // 2. ВИТРИМКА МЕЖ (Обмеження)
+        float currentScale = mapRect.localScale.x;
+        float mapWidth = mapRect.rect.width * currentScale;
+        float mapHeight = mapRect.rect.height * currentScale;
 
         float maxX = Mathf.Max(0, (mapWidth - viewWidth) / 2f);
         float maxY = Mathf.Max(0, (mapHeight - viewHeight) / 2f);
 
+        // Обмежуємо цільову позицію (щоб гравець не міг тягнути мапу далі)
         targetPosition.x = Mathf.Clamp(targetPosition.x, -maxX, maxX);
         targetPosition.y = Mathf.Clamp(targetPosition.y, -maxY, maxY);
+
+        // 3. ЖОРСТКЕ ОБМЕЖЕННЯ ПОТОЧНОЇ ПОЗИЦІЇ
+        // Це блокує "вилітання" за краї екрана під час швидкого свайпу або зуму
+        Vector2 clampedPos = mapRect.anchoredPosition;
+        clampedPos.x = Mathf.Clamp(clampedPos.x, -maxX, maxX);
+        clampedPos.y = Mathf.Clamp(clampedPos.y, -maxY, maxY);
+        mapRect.anchoredPosition = clampedPos;
     }
 }

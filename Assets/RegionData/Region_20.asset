@@ -30,7 +30,39 @@ MonoBehaviour:
   stoneReward: 325
   foodReward: 325
   diamondReward: 15
-  passiveWood: 0
-  passiveStone: 0
-  passiveFood: 15
-  passiveDiamonds: 0
+  upgradeLevels:
+  - costWood: 0
+    costStone: 0
+    costFood: 0
+    passiveWood: 10
+    passiveStone: 10
+    passiveFood: 5
+    passiveDiamonds: 0
+  - costWood: 250
+    costStone: 250
+    costFood: 100
+    passiveWood: 20
+    passiveStone: 20
+    passiveFood: 10
+    passiveDiamonds: 0
+  - costWood: 500
+    costStone: 500
+    costFood: 250
+    passiveWood: 30
+    passiveStone: 30
+    passiveFood: 15
+    passiveDiamonds: 2
+  - costWood: 1000
+    costStone: 1000
+    costFood: 500
+    passiveWood: 40
+    passiveStone: 40
+    passiveFood: 20
+    passiveDiamonds: 4
+  - costWood: 2000
+    costStone: 2000
+    costFood: 1000
+    passiveWood: 60
+    passiveStone: 60
+    passiveFood: 30
+    passiveDiamonds: 6
