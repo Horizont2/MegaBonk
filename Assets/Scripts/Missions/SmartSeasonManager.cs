@@ -17,13 +17,12 @@ public class SmartSeasonManager : MonoBehaviour
 
     [Header("Day & Night Cycle (NEW)")]
     public bool enableDayNight = true;
-    public float dayDurationMinutes = 15f; // 15 хвилин на одну добу
-    [Range(0f, 1f)] public float timeOfDay = 0.4f; // 0 = Схід, 0.5 = Південь, 1 = Наступний схід
+    public float dayDurationMinutes = 15f;
+    [Range(0f, 1f)] public float timeOfDay = 0.4f;
     public Color nightAmbientColor = new Color(0.05f, 0.05f, 0.15f);
     public Color nightFogColor = new Color(0.02f, 0.02f, 0.08f);
     private float defaultSunIntensity;
 
-    // Збереження кольорів поточного сезону для блендінгу з ніччю
     private Color currentSeasonSunColor;
     private Color currentSeasonFogColor;
 
@@ -69,11 +68,11 @@ public class SmartSeasonManager : MonoBehaviour
     public GameObject autumnProps;
 
     private Coroutine activePropsCoroutine;
+    private bool isMissionMode = false; // НОВЕ: Флаг для місій
 
     private void Start()
     {
         totalSecondsPerSeason = minutesPerSeason * 60f;
-
         if (directionalLight != null) defaultSunIntensity = directionalLight.intensity;
 
         LoadProgress();
@@ -83,47 +82,35 @@ public class SmartSeasonManager : MonoBehaviour
 
     private void Update()
     {
-        // 1. Таймер Сезонів
+        if (isMissionMode) return; // У бойовій сцені час не йде!
+
         currentSeasonTimer += Time.deltaTime;
         if (currentSeasonTimer >= totalSecondsPerSeason)
         {
             AdvanceToNextSeason();
         }
 
-        // 2. Таймер Дня і Ночі
         if (enableDayNight)
         {
             timeOfDay += Time.deltaTime / (dayDurationMinutes * 60f);
-            if (timeOfDay >= 1f) timeOfDay -= 1f; // Скидаємо добу на новий день
+            if (timeOfDay >= 1f) timeOfDay -= 1f;
             UpdateDayNightVisuals();
         }
-
-        // Ручне керування
-        if (Input.GetKeyDown(KeyCode.Alpha1)) ForceSeason(Season.Summer);
-        if (Input.GetKeyDown(KeyCode.Alpha2)) ForceSeason(Season.EarlyAutumn);
-        if (Input.GetKeyDown(KeyCode.Alpha3)) ForceSeason(Season.Autumn);
-        if (Input.GetKeyDown(KeyCode.Alpha4)) ForceSeason(Season.LateAutumn);
-        if (Input.GetKeyDown(KeyCode.Alpha5)) ForceSeason(Season.Winter);
-        if (Input.GetKeyDown(KeyCode.Alpha6)) ForceSeason(Season.Spring);
     }
 
     private void UpdateDayNightVisuals()
     {
         if (directionalLight == null) return;
 
-        // Обертання Сонця (360 градусів за добу)
-        float sunAngle = (timeOfDay * 360f) - 90f; // -90 щоб 0.0 був сходом сонця
+        float sunAngle = (timeOfDay * 360f) - 90f;
         directionalLight.transform.localRotation = Quaternion.Euler(sunAngle, 170f, 0f);
 
-        // Інтенсивність Сонця (Вночі воно "вимикається")
         float intensityMultiplier = Mathf.Clamp01(Mathf.Sin(timeOfDay * Mathf.PI));
         directionalLight.intensity = defaultSunIntensity * intensityMultiplier;
 
-        // Плавне змішування кольорів між поточним сезоном і ніччю
         directionalLight.color = Color.Lerp(nightAmbientColor, currentSeasonSunColor, intensityMultiplier);
         RenderSettings.fogColor = Color.Lerp(nightFogColor, currentSeasonFogColor, intensityMultiplier);
 
-        // Вмикаємо світлячків вночі (якщо це літо і немає дощу)
         if (currentSeason == Season.Summer && !isRaining && firefliesParticles)
         {
             firefliesParticles.SetActive(intensityMultiplier < 0.2f);
@@ -144,11 +131,12 @@ public class SmartSeasonManager : MonoBehaviour
         currentSeason = newSeason;
         currentSeasonTimer = 0f;
         ApplySeason(currentSeason);
-        SaveProgress();
+        if (!isMissionMode) SaveProgress();
     }
 
     private void UpdateDynamicWeather()
     {
+        if (isMissionMode) return;
         isRaining = false;
         if (currentSeason == Season.Autumn || currentSeason == Season.LateAutumn || currentSeason == Season.Spring)
         {
@@ -206,8 +194,7 @@ public class SmartSeasonManager : MonoBehaviour
             currentSeasonSunColor = Color.Lerp(currentSeasonSunColor, Color.gray, 0.5f);
         }
 
-        // Оновлюємо день/ніч одразу після зміни сезону
-        if (enableDayNight) UpdateDayNightVisuals();
+        if (enableDayNight && !isMissionMode) UpdateDayNightVisuals();
     }
 
     private IEnumerator ShowPropsDelayed(GameObject propsObject, float delayTime)
@@ -218,11 +205,10 @@ public class SmartSeasonManager : MonoBehaviour
 
     private void SetEnvironment(Color sunColor, Color fogColor, Texture2D tex)
     {
-        // Зберігаємо кольори сезону, щоб змішувати їх з ніччю
         currentSeasonSunColor = sunColor;
         currentSeasonFogColor = fogColor;
 
-        if (!enableDayNight)
+        if (!enableDayNight || isMissionMode)
         {
             if (directionalLight) directionalLight.color = sunColor;
             RenderSettings.fogColor = fogColor;
@@ -253,5 +239,26 @@ public class SmartSeasonManager : MonoBehaviour
     {
         SaveProgress();
         if (globalMaterial != null && summerTexture != null) globalMaterial.SetTexture("_BaseMap", summerTexture);
+    }
+
+    // --- НОВИЙ МЕТОД ДЛЯ ІНТЕГРАЦІЇ З БОЙОВОЮ СЦЕНОЮ ---
+    public void LockSeasonForMission(int biomeIndex)
+    {
+        isMissionMode = true;
+        enableDayNight = false; // Вимикаємо зміну дня і ночі під час бою
+        timeOfDay = 0.5f; // Ставимо сонце в зеніт (день)
+        isRaining = false;
+
+        // 0 = Forest (Summer), 1 = Desert (Autumn gives warm light), 2 = Winter (Winter)
+        if (biomeIndex == 0) ForceSeason(Season.Summer);
+        else if (biomeIndex == 1) ForceSeason(Season.EarlyAutumn);
+        else if (biomeIndex == 2) ForceSeason(Season.Winter);
+
+        // Фіксуємо освітлення жорстко
+        if (directionalLight != null)
+        {
+            directionalLight.intensity = defaultSunIntensity;
+            directionalLight.transform.localRotation = Quaternion.Euler(50f, 170f, 0f);
+        }
     }
 }
