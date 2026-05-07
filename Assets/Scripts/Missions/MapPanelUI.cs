@@ -51,13 +51,21 @@ public class MapPanelUI : MonoBehaviour
     public RectTransform panelRect;
     public float animationDuration = 0.3f;
     public float startOffset = 200f;
-    [Tooltip("Відстань зупинки панелі від краю екрана")]
     public float edgePadding = 15f;
-    private CanvasGroup canvasGroup;
 
+    [Header("Zoom Transition Effects")]
+    public Image fullScreenCloudOverlay;
+    public MapInteractiveViewer mapViewer;
+
+    private CanvasGroup canvasGroup;
     private RegionData currentRegion;
     private Coroutine animationCoroutine;
     private bool isConfirmingUpgrade = false;
+    private Vector3 currentRegionPos;
+
+    // Кольори для UI
+    private string colorGreen = "#4CAF50";
+    private string colorRed = "#F44336";
 
     public RegionData GetCurrentRegion() { return currentRegion; }
     public bool IsPanelOpen() { return canvasGroup.interactable; }
@@ -79,15 +87,15 @@ public class MapPanelUI : MonoBehaviour
     public void OpenPanel(RegionData region, Vector3 regionWorldPosition)
     {
         isConfirmingUpgrade = false;
+        ToggleUpgradeFocus(false);
         currentRegion = region;
+        currentRegionPos = regionWorldPosition;
         PopulateData();
 
         Vector3 viewportPos = Camera.main.WorldToViewportPoint(regionWorldPosition);
         bool putPanelOnRight = viewportPos.x < 0.5f;
 
         Vector2 hiddenPos, visiblePos;
-
-        // Зберігаємо оригінальний розмір панелі, щоб уникнути спотворень Layout'у
         Vector2 cachedSize = panelRect.rect.size;
 
         if (putPanelOnRight)
@@ -96,7 +104,6 @@ public class MapPanelUI : MonoBehaviour
             panelRect.anchorMax = new Vector2(1, 0.5f);
             panelRect.pivot = new Vector2(1, 0.5f);
             visiblePos = new Vector2(-edgePadding, 0);
-            // Замість 50f використовуємо startOffset
             hiddenPos = new Vector2(cachedSize.x + startOffset, 0);
         }
         else
@@ -105,11 +112,9 @@ public class MapPanelUI : MonoBehaviour
             panelRect.anchorMax = new Vector2(0, 0.5f);
             panelRect.pivot = new Vector2(0, 0.5f);
             visiblePos = new Vector2(edgePadding, 0);
-            // Замість 50f використовуємо startOffset
             hiddenPos = new Vector2(-cachedSize.x - startOffset, 0);
         }
 
-        // Відновлюємо розмір перед появою
         panelRect.sizeDelta = cachedSize;
         panelRect.anchoredPosition = hiddenPos;
 
@@ -120,9 +125,9 @@ public class MapPanelUI : MonoBehaviour
     public void ClosePanel()
     {
         if (currentRegion == null) return;
+        ToggleUpgradeFocus(false);
 
         float width = panelRect.rect.width;
-        // Додаємо startOffset замість 50f
         Vector2 hiddenPos = panelRect.pivot.x > 0.5f
             ? new Vector2(width + startOffset, 0)
             : new Vector2(-width - startOffset, 0);
@@ -152,10 +157,13 @@ public class MapPanelUI : MonoBehaviour
 
         RegionLevelData levelData = currentRegion.upgradeLevels[currentLevel - 1];
 
-        if (passiveWoodText != null) passiveWoodText.text = $"+{levelData.passiveWood}/hr";
-        if (passiveStoneText != null) passiveStoneText.text = $"+{levelData.passiveStone}/hr";
-        if (passiveFoodText != null) passiveFoodText.text = $"+{levelData.passiveFood}/hr";
-        if (passiveDiamondText != null) passiveDiamondText.text = $"+{levelData.passiveDiamonds}/hr";
+        if (!isConfirmingUpgrade)
+        {
+            if (passiveWoodText != null) passiveWoodText.text = $"+{levelData.passiveWood}/hr";
+            if (passiveStoneText != null) passiveStoneText.text = $"+{levelData.passiveStone}/hr";
+            if (passiveFoodText != null) passiveFoodText.text = $"+{levelData.passiveFood}/hr";
+            if (passiveDiamondText != null) passiveDiamondText.text = $"+{levelData.passiveDiamonds}/hr";
+        }
 
         switch (currentRegion.currentState)
         {
@@ -178,7 +186,7 @@ public class MapPanelUI : MonoBehaviour
                 if (conquerContainerObj) conquerContainerObj.SetActive(false);
 
                 if (actionButtonText != null) actionButtonText.text = "TRAVEL";
-                if (actionButton != null) actionButton.interactable = true;
+                if (actionButton != null) actionButton.interactable = !isConfirmingUpgrade;
                 if (upgradeButton) upgradeButton.gameObject.SetActive(true);
 
                 UpdateUpgradeUI(currentLevel);
@@ -191,7 +199,7 @@ public class MapPanelUI : MonoBehaviour
         if (conquerDiamondText != null) conquerDiamondText.text = $"+{currentRegion.diamondReward}";
 
         int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
-        string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? "#4CAF50" : "#F44336";
+        string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? colorGreen : colorRed;
         if (recommendedPowerText != null) recommendedPowerText.text = $"<size=50%><color=#D4AF37>RECOMMENDED</color></size>\n{currentRegion.recommendedPower}";
         if (playerPowerText != null) playerPowerText.text = $"<size=50%><color=#D4AF37>YOUR POWER</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
     }
@@ -206,18 +214,18 @@ public class MapPanelUI : MonoBehaviour
 
             RegionLevelData nextLevelData = currentRegion.upgradeLevels[currentLevel];
 
-            if (upgWoodCostText) upgWoodCostText.text = nextLevelData.costWood.ToString();
-            if (upgStoneCostText) upgStoneCostText.text = nextLevelData.costStone.ToString();
-            if (upgFoodCostText) upgFoodCostText.text = nextLevelData.costFood.ToString();
-
             bool canAfford = ResourceManager.Instance != null && ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             if (upgradeButton) upgradeButton.interactable = canAfford;
 
             if (ResourceManager.Instance != null)
             {
-                if (upgWoodCostText) upgWoodCostText.color = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? Color.white : Color.red;
-                if (upgStoneCostText) upgStoneCostText.color = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? Color.white : Color.red;
-                if (upgFoodCostText) upgFoodCostText.color = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? Color.white : Color.red;
+                string wCol = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? colorGreen : colorRed;
+                string sCol = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? colorGreen : colorRed;
+                string fCol = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? colorGreen : colorRed;
+
+                if (upgWoodCostText) upgWoodCostText.text = $"<color={wCol}>{nextLevelData.costWood}</color>";
+                if (upgStoneCostText) upgStoneCostText.text = $"<color={sCol}>{nextLevelData.costStone}</color>";
+                if (upgFoodCostText) upgFoodCostText.text = $"<color={fCol}>{nextLevelData.costFood}</color>";
             }
         }
         else
@@ -246,9 +254,13 @@ public class MapPanelUI : MonoBehaviour
                 if (!isConfirmingUpgrade)
                 {
                     isConfirmingUpgrade = true;
+                    ToggleUpgradeFocus(true);
+
                     if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
                     if (upgradeButtonText != null) upgradeButtonText.text = "<color=#FFD700>CONFIRM</color>";
+                    if (actionButton != null) actionButton.interactable = false;
+
                     ShowUpgradePreview(currentLevel);
                 }
                 else
@@ -262,6 +274,7 @@ public class MapPanelUI : MonoBehaviour
                     PlayerPrefs.Save();
 
                     isConfirmingUpgrade = false;
+                    ToggleUpgradeFocus(false);
                     PopulateData();
 
                     if (MapProgressionManager.Instance != null) MapProgressionManager.Instance.RefreshMapState();
@@ -274,15 +287,26 @@ public class MapPanelUI : MonoBehaviour
         }
     }
 
+    private void ToggleUpgradeFocus(bool isFocused)
+    {
+        float targetAlpha = isFocused ? 0.3f : 1f;
+        Color dimColor = new Color(1f, 1f, 1f, targetAlpha);
+
+        if (illustrationImage != null) illustrationImage.color = dimColor;
+        if (descriptionText != null) descriptionText.color = dimColor;
+        if (recommendedPowerText != null) recommendedPowerText.alpha = targetAlpha;
+        if (playerPowerText != null) playerPowerText.alpha = targetAlpha;
+    }
+
     private void ShowUpgradePreview(int currentLevel)
     {
         RegionLevelData currentData = currentRegion.upgradeLevels[currentLevel - 1];
         RegionLevelData nextData = currentRegion.upgradeLevels[currentLevel];
 
-        if (passiveWoodText) passiveWoodText.text = $"+{currentData.passiveWood} <color=#00FF00>→ {nextData.passiveWood}</color>/hr";
-        if (passiveStoneText) passiveStoneText.text = $"+{currentData.passiveStone} <color=#00FF00>→ {nextData.passiveStone}</color>/hr";
-        if (passiveFoodText) passiveFoodText.text = $"+{currentData.passiveFood} <color=#00FF00>→ {nextData.passiveFood}</color>/hr";
-        if (passiveDiamondText) passiveDiamondText.text = $"+{currentData.passiveDiamonds} <color=#00FF00>→ {nextData.passiveDiamonds}</color>/hr";
+        if (passiveWoodText) passiveWoodText.text = $"{currentData.passiveWood} <color={colorGreen}>→ {nextData.passiveWood}</color>/hr";
+        if (passiveStoneText) passiveStoneText.text = $"{currentData.passiveStone} <color={colorGreen}>→ {nextData.passiveStone}</color>/hr";
+        if (passiveFoodText) passiveFoodText.text = $"{currentData.passiveFood} <color={colorGreen}>→ {nextData.passiveFood}</color>/hr";
+        if (passiveDiamondText) passiveDiamondText.text = $"{currentData.passiveDiamonds} <color={colorGreen}>→ {nextData.passiveDiamonds}</color>/hr";
     }
 
     private IEnumerator ShakePanel()
@@ -314,8 +338,49 @@ public class MapPanelUI : MonoBehaviour
             PlayerPrefs.Save();
 
             ClosePanel();
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("GameScene");
+            StartCoroutine(ZoomAndTravelTransition());
         }
+    }
+
+    private IEnumerator ZoomAndTravelTransition()
+    {
+        if (mapViewer != null)
+        {
+            mapViewer.enabled = false;
+            RectTransform mapRect = mapViewer.GetComponent<RectTransform>();
+
+            float duration = 1.2f;
+            float elapsed = 0f;
+            Vector3 startScale = mapRect.localScale;
+            Vector3 targetScale = Vector3.one * 8f;
+
+            Vector2 startPos = mapRect.anchoredPosition;
+            Vector2 targetPos = -mapRect.InverseTransformPoint(currentRegionPos) * 8f;
+
+            if (fullScreenCloudOverlay != null)
+            {
+                fullScreenCloudOverlay.gameObject.SetActive(true);
+            }
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                float easeInCubic = t * t * t;
+
+                mapRect.localScale = Vector3.Lerp(startScale, targetScale, easeInCubic);
+                mapRect.anchoredPosition = Vector2.Lerp(startPos, targetPos, easeInCubic);
+
+                if (fullScreenCloudOverlay != null)
+                {
+                    fullScreenCloudOverlay.color = new Color(1, 1, 1, Mathf.Lerp(0f, 1f, easeInCubic));
+                }
+
+                yield return null;
+            }
+        }
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("GameScene");
     }
 
     private IEnumerator AnimatePanel(Vector2 targetPos, float targetAlpha, bool state)

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using TMPro; // НОВЕ: Для роботи з текстом
+using TMPro;
 using System.Collections;
 
 [RequireComponent(typeof(Image))]
@@ -17,7 +17,7 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     public Image stormLayer;
 
     [Header("Map Label (Ink on Paper)")]
-    public TextMeshProUGUI mapLabelText; // Посилання на текст назви регіону на мапі
+    public TextMeshProUGUI mapLabelText;
 
     [Header("Level Indicator")]
     public Image levelIconImage;
@@ -108,29 +108,25 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         }
     }
 
-    // Єдиний метод для оновлення іконок і тексту (викликається при завантаженні та оновленні мапи)
     private void RefreshUIState()
     {
         RefreshLevelIcon();
         UpdateMapLabel();
     }
 
-    // НОВИЙ МЕТОД: Оновлення чорнильного надпису
     private void UpdateMapLabel()
     {
         if (mapLabelText == null || myRegionData == null) return;
 
         if (myRegionData.currentState == RegionState.Locked)
         {
-            // Якщо територія заблокована - назва прихована
             mapLabelText.text = "???";
-            mapLabelText.alpha = 0.3f; // Ледь помітне чорнило
+            mapLabelText.alpha = 0.3f;
         }
         else
         {
-            // Якщо відкрита або захоплена - показуємо назву з RegionData
             mapLabelText.text = myRegionData.regionName.ToUpper();
-            mapLabelText.alpha = 0.8f; // Щільне чорнило
+            mapLabelText.alpha = 0.8f;
         }
     }
 

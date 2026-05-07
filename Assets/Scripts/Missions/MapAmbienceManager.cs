@@ -10,8 +10,8 @@ public class MapAmbienceManager : MonoBehaviour
 
     private void Start()
     {
-        // Знаходимо всі регіони на мапі
-        allRegionUIs = FindObjectsOfType<RegionUI>();
+        // Виправлено: Використовуємо новий метод для Unity 6+
+        allRegionUIs = FindObjectsByType<RegionUI>(FindObjectsSortMode.None);
         StartCoroutine(LightningTick());
     }
 
