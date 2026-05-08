@@ -71,9 +71,8 @@ public class PlayerController : MonoBehaviour
     public Image damageFlashImage;
     private TrailRenderer weaponTrail;
 
-    // НОВЕ: Пульсація низького HP
     public Image lowHpVignette;
-    private float lowHpThreshold = 0.3f; // 30% здоров'я
+    private float lowHpThreshold = 0.3f;
 
     [Header("HUD UI References")]
     public Slider hpSlider;
@@ -97,7 +96,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Meta Upgrades")]
     [HideInInspector] public float globalDamageMultiplier = 1f;
-    [HideInInspector] public float globalCritChance = 0.05f; // НОВЕ: Базовий шанс криту 5%
+    [HideInInspector] public float globalCritChance = 0.05f;
     private float damageReduction = 0f;
 
     [Header("MegaBoom Settings")]
@@ -247,9 +246,6 @@ public class PlayerController : MonoBehaviour
         float weaponDmgBonus = PlayerPrefs.GetFloat("EquippedWeaponDamage", 0f);
         meleeDamage += weaponDmgBonus;
 
-        // НОВЕ: Читаємо шанс криту збережений у Магазині (якщо ти додав його збереження)
-        // Якщо ні, беремо базові 5% + шанс від зброї. 
-        // Припускаємо, що ти зберіг його як "EquippedWeaponCrit"
         globalCritChance = PlayerPrefs.GetFloat("EquippedWeaponCrit", 0.05f);
 
         int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
@@ -305,15 +301,13 @@ public class PlayerController : MonoBehaviour
             xpSlider.value = visualXP;
         }
 
-        // НОВЕ: Пульсація при низькому ХП
         if (lowHpVignette != null && !isCampMode)
         {
             float hpRatio = currentHealth / maxHealth;
             if (hpRatio <= lowHpThreshold)
             {
-                // Що менше ХП, то швидше пульсує (від 2 до 5 пульсацій в секунду)
                 float pulseSpeed = Mathf.Lerp(5f, 2f, hpRatio / lowHpThreshold);
-                float alpha = (Mathf.Sin(Time.time * pulseSpeed) + 1f) / 2f * 0.4f; // Макс прозорість 0.4
+                float alpha = (Mathf.Sin(Time.time * pulseSpeed) + 1f) / 2f * 0.4f;
 
                 Color c = lowHpVignette.color;
                 c.a = alpha;
@@ -431,6 +425,14 @@ public class PlayerController : MonoBehaviour
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
             anim.SetBool("IsGrounded", characterController.isGrounded);
 
+            // --- НОВЕ: Розумний напрямок руху (2D) ---
+            Vector3 localVelocity = transform.InverseTransformDirection(currentVelocityMove);
+
+            // Нормалізуємо значення від -1 до 1, щоб було простіше налаштувати Blend Tree
+            anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
+            anim.SetFloat("MoveZ", Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f));
+            // ----------------------------------------
+
             if (characterController.isGrounded)
             {
                 if (!isCampMode)
@@ -528,7 +530,7 @@ public class PlayerController : MonoBehaviour
         Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
         bool hitEnemy = false;
         bool hitResource = false;
-        bool isCriticalHit = Random.value <= globalCritChance; // Розрахунок криту
+        bool isCriticalHit = Random.value <= globalCritChance;
 
         foreach (Collider col in hitObjects)
         {
@@ -538,9 +540,9 @@ public class PlayerController : MonoBehaviour
                 if (enemy != null)
                 {
                     float finalDmg = meleeDamage * globalDamageMultiplier;
-                    if (isCriticalHit) finalDmg *= 2.5f; // Крит б'є у 2.5 рази сильніше
+                    if (isCriticalHit) finalDmg *= 2.5f;
 
-                    enemy.TakeDamage(finalDmg, isCriticalHit); // ТУТ ТРЕБА ПЕРЕДАВАТИ ПРАПОРЕЦЬ КРИТУ У ТВОЮ СИСТЕМУ ПОПАПІВ, ЯКЩО ВОНА Є
+                    enemy.TakeDamage(finalDmg, isCriticalHit);
 
                     Vector3 pushDir = (enemy.transform.position - transform.position).normalized;
                     pushDir.y = 0;
@@ -565,18 +567,15 @@ public class PlayerController : MonoBehaviour
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
 
-            // Направлена віддача: штовхаємо камеру назад відносно того, куди дивиться гравець
             Vector3 recoilDir = -transform.forward;
 
             if (isCriticalHit)
             {
-                // Соковитий крит: сильна зупинка часу, потужна віддача
                 if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 1.2f, 0.25f, 0.2f);
                 StartCoroutine(HitStopRoutine(0.12f));
             }
             else
             {
-                // Звичайний удар: швидка мікро-віддача
                 if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 0.5f, 0.1f, 0.05f);
                 StartCoroutine(HitStopRoutine(0.04f));
             }
@@ -591,7 +590,7 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator HitStopRoutine(float duration)
     {
-        Time.timeScale = 0.05f; // Заморожуємо час майже повністю
+        Time.timeScale = 0.05f;
         yield return new WaitForSecondsRealtime(duration);
         Time.timeScale = 1f;
     }
@@ -617,10 +616,9 @@ public class PlayerController : MonoBehaviour
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Hurt);
 
-        // Направлена вібрація ПРИ ОТРИМАННІ ШКОДИ: камера "втискається" в персонажа
         if (cameraFollow != null)
         {
-            Vector3 hitPushDir = transform.forward; // Камера штовхається вперед, наче тебе вдарили в спину
+            Vector3 hitPushDir = transform.forward;
             cameraFollow.TriggerDirectionalShake(hitPushDir, 1.5f, 0.3f, 0.3f);
         }
 
@@ -644,9 +642,9 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator FlashRoutine()
     {
-        float t = 0.3f; // Зробив спалах трішки швидшим, щоб він не мозолив очі
+        float t = 0.3f;
         Color c = damageFlashImage.color;
-        c.a = 0.6f; // Прозорість 60% (менше червоного мила)
+        c.a = 0.6f;
         damageFlashImage.color = c;
         while (c.a > 0)
         {
@@ -751,7 +749,7 @@ public class PlayerController : MonoBehaviour
         float targetFOV = originalFOV + 12f;
 
         if (dashParticles != null) dashParticles.Play();
-        if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f); // Залишаємо звичайну тряску для дашу
+        if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
 
         if (direction == Vector3.zero) direction = transform.forward;
         else

@@ -3,7 +3,8 @@ using System.Collections;
 
 public class MapTableInteract : MonoBehaviour
 {
-    public static event System.Action OnMapFullyOpened; // Глобальний сигнал
+    public static event System.Action OnMapFullyOpened;
+    public static bool IsMapActive = false; // НОВЕ: Надійний глобальний статус мапи
 
     [Header("Camera Flight Target")]
     public Transform mapCameraPosition;
@@ -12,7 +13,7 @@ public class MapTableInteract : MonoBehaviour
     public CanvasGroup mapCanvasGroup;
     public MapPanelUI mapPanelUI;
     [Tooltip("Перетягніть сюди літаючу іконку над столом")]
-    public GameObject floatingIcon; // ДОДАНО: Для вимкнення іконки
+    public GameObject floatingIcon;
 
     [Header("Flight Settings (Juice)")]
     public float flightDuration = 1.5f;
@@ -31,6 +32,7 @@ public class MapTableInteract : MonoBehaviour
 
     private void Start()
     {
+        IsMapActive = false; // Завжди вимкнено на старті
         if (mapCanvasGroup != null)
         {
             mapCanvasGroup.alpha = 0f;
@@ -45,14 +47,17 @@ public class MapTableInteract : MonoBehaviour
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
     }
 
+    private void OnDestroy()
+    {
+        IsMapActive = false; // Страховка при виході зі сцени
+    }
+
     private void Update()
     {
         if (isTransitioning) return;
 
         if (playerInRange && !isMapOpen && Input.GetKeyDown(KeyCode.E))
         {
-            // --- НОВЕ: Перевіряємо рівень Хатини Розвідника ---
-            // Рівень 1: Халупа. Рівень 2: З'являється Стіл.
             int lodgeLevel = PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 1);
 
             if (lodgeLevel < 2)
@@ -63,7 +68,6 @@ public class MapTableInteract : MonoBehaviour
                 }
                 return;
             }
-            // ---------------------------------------------------
 
             activeSequence = StartCoroutine(OpenMapSequence());
         }
@@ -93,6 +97,7 @@ public class MapTableInteract : MonoBehaviour
 
     private IEnumerator OpenMapSequence()
     {
+        IsMapActive = true; // МАПА ВІДКРИТА
         isTransitioning = true;
         isMapOpen = true;
 
@@ -103,7 +108,6 @@ public class MapTableInteract : MonoBehaviour
             GlobalHUD.Instance.SetGameplayPanelsActive(false);
         }
 
-        // ДОДАНО: Вимикаємо іконку
         if (floatingIcon != null) floatingIcon.SetActive(false);
 
         if (playerController != null) playerController.enabled = false;
@@ -148,9 +152,11 @@ public class MapTableInteract : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
+        // Чекаємо тільки поки зникне інтерфейс мапи
         yield return StartCoroutine(FadeCanvas(mapCanvasGroup, 0f, uiFadeDuration));
 
-        // ДОДАНО: Вмикаємо іконку назад
+        IsMapActive = false; // МАПУ ПРИХОВАНО (Одразу дозволяємо паузу!)
+
         if (floatingIcon != null) floatingIcon.SetActive(true);
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);

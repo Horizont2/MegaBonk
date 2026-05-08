@@ -5,6 +5,8 @@ using TMPro;
 using System.Collections;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 public class ShopManager : MonoBehaviour
 {
@@ -23,6 +25,12 @@ public class ShopManager : MonoBehaviour
     public Transform weaponInspectPos;
     public Transform offscreenLeft;
     public Transform offscreenRight;
+
+    [Header("Depth Of Field Control (NEW)")]
+    public Volume globalVolume;
+    public float heroFocusDistance = 8.93f;
+    public float weaponFocusDistance = 4.75f;
+    private DepthOfField dofComponent;
 
     [Header("UI Dynamic Swapping")]
     public RectTransform mainUIPanel;
@@ -51,13 +59,13 @@ public class ShopManager : MonoBehaviour
     public Color wepStat2Color = new Color(1f, 0.9f, 0.1f);
     public Color wepStat3Color = new Color(0.1f, 1f, 0.8f);
 
-    [Header("UI Power Stat (NEW 4th Stat)")]
+    [Header("UI Power Stat")]
     public TextMeshProUGUI powerLabel;
     public Slider powerSlider;
     public TextMeshProUGUI powerValueText;
     public TextMeshProUGUI powerPercentText;
     public Image powerFill;
-    public Color powerColor = new Color(1f, 0.8f, 0.2f); // Золотий
+    public Color powerColor = new Color(1f, 0.8f, 0.2f);
 
     [Header("Animation Settings")]
     public float swipeSpeed = 4f;
@@ -79,6 +87,7 @@ public class ShopManager : MonoBehaviour
     public Button backButton;
     public Button leftArrow;
     public Button rightArrow;
+    public Button switchModeButton;
 
     [Header("UI Upgrade Button")]
     public Button upgradeButton;
@@ -104,12 +113,21 @@ public class ShopManager : MonoBehaviour
     private const string SELECTED_HERO_KEY = "SelectedHeroID";
     private const string SELECTED_WEP_KEY = "SelectedWeaponID";
 
+    // --- ДОДАНО ДЛЯ ІНТЕГРАЦІЇ З GLOBAL HUD ---
+    public bool IsInspecting() { return isInspectingWeapon; }
+
     private void Start()
     {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
         if (mainCamera == null) mainCamera = Camera.main;
+
+        if (globalVolume == null) globalVolume = FindFirstObjectByType<Volume>();
+        if (globalVolume != null && globalVolume.profile.TryGet(out dofComponent))
+        {
+            dofComponent.active = true;
+        }
 
         panelStartX = mainUIPanel.anchoredPosition.x;
 
@@ -124,12 +142,15 @@ public class ShopManager : MonoBehaviour
         for (int i = 0; i < weapons.Length; i++) { if (weapons[i].weaponID == savedWepID) { currentWeaponIndex = i; break; } }
 
         currentMode = ShopMode.Heroes;
+        SetFocusDistance(heroFocusDistance);
+
         ApplyUITheme();
         if (heroes.Length > 0) SpawnModel(currentHeroIndex, heroPedestalPos.position);
         UpdateUI(false);
         OnSwitchToHeroes.Invoke();
 
         if (inspectButton != null) inspectButton.SetActive(false);
+        if (switchModeButton != null) switchModeButton.interactable = true;
 
         if (leftArrow != null) leftArrow.onClick.AddListener(PreviousItem);
         if (rightArrow != null) rightArrow.onClick.AddListener(NextItem);
@@ -157,6 +178,14 @@ public class ShopManager : MonoBehaviour
                 }
                 else StopInspect();
             }
+        }
+    }
+
+    private void SetFocusDistance(float targetDistance)
+    {
+        if (dofComponent != null)
+        {
+            dofComponent.focusDistance.value = targetDistance;
         }
     }
 
@@ -231,6 +260,9 @@ public class ShopManager : MonoBehaviour
         nextModeSwitchTime = Time.time + modeSwitchCooldown;
         ShopMode targetMode = (currentMode == ShopMode.Heroes) ? ShopMode.Weapons : ShopMode.Heroes;
         if (isInspectingWeapon) StopInspect();
+
+        if (switchModeButton != null) switchModeButton.interactable = false;
+
         StartCoroutine(TransitionShopMode(targetMode));
     }
 
@@ -239,10 +271,28 @@ public class ShopManager : MonoBehaviour
         isTransitioningUI = true;
         currentMode = newMode;
 
+        float startFocus = dofComponent != null ? dofComponent.focusDistance.value : 5f;
+        float targetFocus = (newMode == ShopMode.Heroes) ? heroFocusDistance : weaponFocusDistance;
+
         if (currentMode == ShopMode.Heroes) OnSwitchToHeroes.Invoke();
         else OnSwitchToWeapons.Invoke();
 
-        yield return StartCoroutine(MoveUIPanel(panelHidePositionX));
+        float t = 0;
+        Vector2 pos = mainUIPanel.anchoredPosition;
+        float startX = pos.x;
+
+        while (t < 1)
+        {
+            t += Time.deltaTime * 3f;
+            float smooth = Mathf.SmoothStep(0, 1, t);
+
+            pos.x = Mathf.Lerp(startX, panelHidePositionX, smooth);
+            mainUIPanel.anchoredPosition = pos;
+
+            if (dofComponent != null) dofComponent.focusDistance.value = Mathf.Lerp(startFocus, targetFocus, smooth);
+
+            yield return null;
+        }
 
         if (currentModel != null) Destroy(currentModel);
         ApplyUITheme();
@@ -254,6 +304,12 @@ public class ShopManager : MonoBehaviour
         if (inspectButton != null) inspectButton.SetActive(currentMode == ShopMode.Weapons);
 
         yield return StartCoroutine(MoveUIPanel(panelStartX));
+
+        float waitTime = nextModeSwitchTime - Time.time;
+        if (waitTime > 0) yield return new WaitForSeconds(waitTime);
+
+        if (switchModeButton != null) switchModeButton.interactable = true;
+
         isTransitioningUI = false;
     }
 
@@ -504,7 +560,6 @@ public class ShopManager : MonoBehaviour
         bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
         bool isSelected = PlayerPrefs.GetInt(selectKey, 0) == id;
 
-        // 1. ЛОГІКА ГОЛОВНОЇ КНОПКИ
         if (!isBought)
         {
             priceText.text = "BUY FOR\n" + price.ToString("N0");
@@ -533,7 +588,6 @@ public class ShopManager : MonoBehaviour
             priceText.color = Color.white;
         }
 
-        // 2. ЛОГІКА ДРУГОЇ КНОПКИ (ПРОКАЧКА)
         if (currentMode == ShopMode.Weapons && isBought)
         {
             if (upgradeButton != null) upgradeButton.gameObject.SetActive(true);
@@ -570,7 +624,6 @@ public class ShopManager : MonoBehaviour
 
         if (itemNameText != null) itemNameText.text = itemName;
 
-        // Оновлення базових 3 статів
         if (stat1ValueText != null) stat1ValueText.text = stat1Str;
         if (stat2ValueText != null) stat2ValueText.text = stat2Str;
         if (stat3ValueText != null) stat3ValueText.text = stat3Str;
@@ -581,7 +634,6 @@ public class ShopManager : MonoBehaviour
         if (stat2Slider != null) stat2Slider.value = stat2FillVal;
         if (stat3Slider != null) stat3Slider.value = stat3FillVal;
 
-        // Оновлення нового 4-го стата (Power)
         if (powerValueText != null) powerValueText.text = powerStr;
         if (powerPercentText != null) powerPercentText.text = Mathf.RoundToInt(powerFillVal * 100) + "%";
         if (powerSlider != null) powerSlider.value = powerFillVal;
@@ -614,7 +666,6 @@ public class ShopManager : MonoBehaviour
                 }
             }
 
-        // Застосовуємо множник кузні до загальної сили
         int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
         float forgeMultiplier = 1.00f;
         switch (forgeLevel)

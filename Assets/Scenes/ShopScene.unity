@@ -10497,7 +10497,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &920277709
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18651,6 +18651,9 @@ MonoBehaviour:
   weaponInspectPos: {fileID: 771667847}
   offscreenLeft: {fileID: 1007561362}
   offscreenRight: {fileID: 587249941}
+  globalVolume: {fileID: 0}
+  heroFocusDistance: 8.93
+  weaponFocusDistance: 4.75
   mainUIPanel: {fileID: 247566169}
   panelHidePositionX: -1200
   camManager: {fileID: 1715304436}
@@ -18695,6 +18698,7 @@ MonoBehaviour:
   backButton: {fileID: 1225575041}
   leftArrow: {fileID: 819422658}
   rightArrow: {fileID: 1964798206}
+  switchModeButton: {fileID: 556443673}
   upgradeButton: {fileID: 788388457}
   upgradePriceText: {fileID: 1010792904}
   upgradeDiamondIcon: {fileID: 2140282638}

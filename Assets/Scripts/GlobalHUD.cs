@@ -100,29 +100,30 @@ public class GlobalHUD : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            // --- 0. ПРІОРИТЕТ: ОГЛЯД ЗБРОЇ (Shop) ---
+            ShopManager shop = FindFirstObjectByType<ShopManager>();
+            if (shop != null && shop.IsInspecting())
+            {
+                shop.StopInspect();
+                return;
+            }
+
             // --- 1. ПРІОРИТЕТ: НАЛАШТУВАННЯ ---
-            // Якщо відкрита панель налаштувань, Esc закриває ТІЛЬКИ її і не чіпає паузу!
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {
                 SettingsUI.Instance.CloseSettings();
                 return;
             }
 
-            // --- 2. ПРІОРИТЕТ: МАПА ---
-            // Замість перевірки activeInHierarchy, ми перевіряємо, чи мапа клікабельна (interactable)
-            GameObject mapCanvas = GameObject.Find("MapCanvas");
-            if (mapCanvas != null)
-            {
-                CanvasGroup mapCG = mapCanvas.GetComponent<CanvasGroup>();
-                if (mapCG != null && mapCG.interactable) return; // Мапа відкрита, ігноруємо паузу (вона закриється сама)
-            }
+            // --- 2. ПРІОРИТЕТ: МАПА (НОВИЙ БЕЗБАГОВИЙ ФОРМАТ) ---
+            if (MapTableInteract.IsMapActive) return;
 
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
             if (mapPanel != null && mapPanel.IsPanelOpen()) return;
 
             // --- 3. ПРІОРИТЕТ: ПАУЗА ---
             string sceneName = SceneManager.GetActiveScene().name;
-            if (sceneName == "GameScene" || sceneName == "CampScene") TogglePause();
+            if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene") TogglePause();
         }
     }
 
@@ -130,7 +131,7 @@ public class GlobalHUD : MonoBehaviour
     {
         StartCoroutine(SyncCameraAndVolumeRoutine());
 
-        bool showGameplayUI = (scene.name != "Menu");
+        bool showGameplayUI = (scene.name != "Menu" && scene.name != "ShopScene");
         if (gameplayPanels != null)
         {
             foreach (GameObject panel in gameplayPanels)
@@ -147,7 +148,6 @@ public class GlobalHUD : MonoBehaviour
 
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
 
-        // Скидаємо паузу при завантаженні нової сцени
         if (isPaused)
         {
             isPaused = false;
@@ -167,7 +167,7 @@ public class GlobalHUD : MonoBehaviour
         if (canvas != null)
         {
             canvas.renderMode = defaultRenderMode;
-            canvas.sortingOrder = 50; // Завжди поверх іншого UI
+            canvas.sortingOrder = 50;
 
             if (defaultRenderMode == RenderMode.ScreenSpaceCamera)
             {
@@ -177,12 +177,20 @@ public class GlobalHUD : MonoBehaviour
             }
         }
 
-        Volume volume = FindFirstObjectByType<Volume>();
-        if (volume != null && volume.profile != null)
+        // --- ФІКС БЛЮРУ: Тепер він не зникатиме в магазині ---
+        Volume[] allVolumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+        foreach (Volume v in allVolumes)
         {
-            if (volume.profile.TryGet(out dofEffect)) dofEffect.active = false;
+            if (v.isGlobal && v.profile != null)
+            {
+                if (v.profile.TryGet(out dofEffect))
+                {
+                    bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
+                    dofEffect.active = isShop || isPaused;
+                    break;
+                }
+            }
         }
-        else dofEffect = null;
     }
 
     public void FadeAndLoadScene(string sceneName)
@@ -322,11 +330,22 @@ public class GlobalHUD : MonoBehaviour
     {
         if (pausePanelGroup == null) return;
 
+        // --- ФІКС: Якщо ми знімаємо з паузи (Continue), але налаштування відкриті - закриваємо їх ---
+        if (isPaused && SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
+        {
+            SettingsUI.Instance.CloseSettings();
+        }
+
         isPaused = !isPaused;
         Time.timeScale = isPaused ? 0f : 1f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-        if (dofEffect != null) dofEffect.active = isPaused;
+
+        if (dofEffect != null)
+        {
+            bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
+            dofEffect.active = isShop || isPaused;
+        }
 
         if (isPaused)
         {
@@ -335,8 +354,17 @@ public class GlobalHUD : MonoBehaviour
         }
         else StartCoroutine(HideMenuRoutine());
 
-        Cursor.visible = isPaused;
-        Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked;
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (currentScene == "ShopScene" || currentScene == "Menu")
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
+        else
+        {
+            Cursor.visible = isPaused;
+            Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked;
+        }
     }
 
     private IEnumerator ShowMenuRoutine()
