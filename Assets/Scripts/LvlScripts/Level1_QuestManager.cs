@@ -43,7 +43,12 @@ public class Level1_QuestManager : MonoBehaviour
 
     private void Start()
     {
-        if (subtitleText != null) subtitleText.text = "";
+        if (subtitleText != null)
+        {
+            subtitleText.text = "";
+            // Скидаємо обмеження на кількість видимих символів на старті
+            subtitleText.maxVisibleCharacters = 99999;
+        }
 
         if (skeletonsWave1 != null)
         {
@@ -107,11 +112,9 @@ public class Level1_QuestManager : MonoBehaviour
             if (brain != null) brain.enabled = false;
         }
 
-        // ФІКС 2: Більше ніякого авто-запуску діалогу! Просто показуємо ціль
         UpdateObjectiveUI();
     }
 
-    // ФІКС 3: Цей метод тепер захищений від повторних натискань
     public void StartIntroDialogue()
     {
         if (isDialogueStarted) return;
@@ -168,7 +171,6 @@ public class Level1_QuestManager : MonoBehaviour
         return pos;
     }
 
-    // --- ЗАСІДКА (ДИНАМІЧНА КАМЕРА З ДРОНА) ---
     private IEnumerator TriggerAmbushWave1Routine()
     {
         isAmbushTriggered = true;
@@ -178,7 +180,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         Vector3 spawnPos = playerTransform.position - (playerTransform.forward * spawnDistanceBehind);
-        spawnPos = GetTerrainPos(spawnPos); // ФІКС: Ставимо чітко на землю!
+        spawnPos = GetTerrainPos(spawnPos);
 
         skeletonsWave1.transform.position = spawnPos;
         skeletonsWave1.transform.LookAt(playerTransform);
@@ -189,7 +191,6 @@ public class Level1_QuestManager : MonoBehaviour
             if (ai != null) ai.isCinematicFrozen = true;
         }
 
-        // ФІКС: Камера летить 3.5 сек, а вилазять вони за 2.5 сек (щоб ти встиг побачити їх повністю на землі)
         Coroutine cameraFly = StartCoroutine(DroneCameraFlyAndTrack(spawnPos, 3.5f));
         Coroutine riseAnim = StartCoroutine(RiseFromGroundAnim(skeletonsWave1.transform, 2.5f));
 
@@ -218,7 +219,6 @@ public class Level1_QuestManager : MonoBehaviour
         }
     }
 
-    // --- ФІНАЛ: ЖАХ І ВТЕЧА ДО КОНЯ ---
     private IEnumerator TriggerHordeAndFleeRoutine()
     {
         PlayerController pController = playerTransform.GetComponent<PlayerController>();
@@ -228,7 +228,7 @@ public class Level1_QuestManager : MonoBehaviour
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Good job! Wait... do you hear that?", 1.5f));
 
         Vector3 hordePos = playerTransform.position + (playerTransform.right * spawnDistanceBehind);
-        hordePos = GetTerrainPos(hordePos); // ФІКС: Ставимо орду на реальну землю!
+        hordePos = GetTerrainPos(hordePos);
 
         skeletonsHordeWave2.transform.position = hordePos;
         skeletonsHordeWave2.transform.LookAt(playerTransform);
@@ -243,7 +243,7 @@ public class Level1_QuestManager : MonoBehaviour
             }
         }
 
-        StartCoroutine(RiseFromGroundAnim(skeletonsHordeWave2.transform, 2.5f)); // Орда вилазить швидше
+        StartCoroutine(RiseFromGroundAnim(skeletonsHordeWave2.transform, 2.5f));
         yield return StartCoroutine(DroneCameraFlyAndTrack(hordePos, 3f));
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: IT'S A WHOLE ARMY! THERE'S TOO MANY!", 2f));
 
@@ -266,7 +266,6 @@ public class Level1_QuestManager : MonoBehaviour
         StartCoroutine(ShowTutorialHint("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!", 6f));
     }
 
-    // --- ДРОН-КАМЕРА: ВИСОКО І ДИНАМІЧНО ---
     private IEnumerator DroneCameraFlyAndTrack(Vector3 targetPosition, float flyDuration)
     {
         Camera mainCam = Camera.main;
@@ -304,31 +303,54 @@ public class Level1_QuestManager : MonoBehaviour
         SetCinematicMode(false);
     }
 
+    // ФІКСОВАНА ТУТОРІАЛ-ПІДКАЗКА
     private IEnumerator ShowTutorialHint(string text, float duration)
     {
         if (subtitleText == null) yield break;
+
+        // Відключаємо обмеження, щоб підказка показалася повністю відразу
+        subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = $"<color=#88CCFF>{text}</color>";
+
         yield return new WaitForSeconds(duration);
         subtitleText.text = "";
     }
 
+    // ФІКСОВАНИЙ РОЗУМНИЙ TYPEWRITER
     private IEnumerator ShowSubtitleTypewriter(string text, float stayDuration)
     {
         if (subtitleText == null) yield break;
-        subtitleText.text = "";
-        foreach (char c in text)
+
+        // 1. Одразу передаємо весь текст. Це змусить TextMeshPro розрахувати 
+        // фінальні розміри, перенесення на нові рядки та центрування.
+        subtitleText.text = text;
+
+        // 2. Примусово оновлюємо сітку (Mesh) тексту в цьому ж кадрі, 
+        // щоб отримати точну кількість символів.
+        subtitleText.ForceMeshUpdate();
+        int totalCharacters = subtitleText.textInfo.characterCount;
+
+        // 3. Робимо всі символи "невидимими"
+        subtitleText.maxVisibleCharacters = 0;
+
+        // 4. Плавно збільшуємо кількість видимих символів. 
+        // Оскільки фінальний макет вже прорахований, текст не буде скакати!
+        for (int i = 0; i <= totalCharacters; i++)
         {
-            subtitleText.text += c;
+            subtitleText.maxVisibleCharacters = i;
             yield return new WaitForSeconds(typingSpeed);
         }
+
         yield return new WaitForSeconds(stayDuration);
         subtitleText.text = "";
+
+        // 5. Повертаємо параметр у стандартний стан для майбутніх текстів
+        subtitleText.maxVisibleCharacters = 99999;
     }
 
     private IEnumerator RiseFromGroundAnim(Transform group, float duration)
     {
         Vector3 finalPos = group.position;
-        // Зменшив глибину до -2.5, щоб голови з'являлися майже одразу
         group.position = finalPos - new Vector3(0, 2.5f, 0);
 
         float elapsed = 0f;
@@ -337,7 +359,6 @@ public class Level1_QuestManager : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
 
-            // Математична функція SmoothStep для плавного старту і сповільнення в кінці
             t = t * t * (3f - 2f * t);
 
             group.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);

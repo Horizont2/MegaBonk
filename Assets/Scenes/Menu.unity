@@ -412,6 +412,219 @@ MonoBehaviour:
   hoverScale: 1.05
   clickScale: 0.95
   speed: 15
+--- !u!1 &100712593
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 100712595}
+  - component: {fileID: 100712594}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &100712594
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100712593}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb912440a83ff847b32e7ad84819e6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  uiClick:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  uiHover:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  uiQuestAccept:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  uiQuestComplete:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  uiError:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  uiLevelUp:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  uiPurchase:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerDash:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerSwing:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerHitEnemy:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerHitResource:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerHurt:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerThrow:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerHeal:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  playerFootstep:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  explosion:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  enemyAgro:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  enemyTelegraph:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  enemyAttack:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  enemyHurt:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  enemyDie:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  enemyFootstep:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  campCollectItem:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  campCollectGem:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  campBuildStart:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  campBuildDone:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  npcWork:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  envThunder:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  envChestOpen:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  animalCatMeow:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  animalChicken:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  musicCamp:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  musicBattle:
+    clips: []
+    volume: 1
+    pitch: 1
+    randomizePitch: 0
+  sfxPoolSize: 15
+  musicFadeDuration: 1.5
+  globalMusicVolume: 1
+  globalSFXVolume: 1
+--- !u!4 &100712595
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100712593}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 66.88833, y: 0, z: -5.74562}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &131750123
 GameObject:
   m_ObjectHideFlags: 0
@@ -41456,3 +41669,4 @@ SceneRoots:
   - {fileID: 1143485224}
   - {fileID: 1172047027}
   - {fileID: 2139682948}
+  - {fileID: 100712595}

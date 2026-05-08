@@ -1,0 +1,112 @@
+using UnityEngine;
+using UnityEngine.AI;
+
+public class ChickenAI : AnimalAI
+{
+    [Header("Chicken Settings")]
+    public float walkSpeed = 1f;
+    public float panicSpeed = 3.5f;
+    public float panicDistance = 4f;
+
+    [Header("Effects")]
+    public ParticleSystem featherParticles;
+
+    private bool isPanicking = false;
+    private float panicTimer = 0f;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        agent.speed = walkSpeed;
+    }
+
+    // --- ÑÒÀÍ: ÑÒÎ¯ÒÜ (ÇÀÌ²ÑÒÜ ÊËŞÂÀÍÍß ÏĞÎÑÒÎ IDLE) ---
+    protected override void UpdateIdle()
+    {
+        agent.speed = 0f;
+        stateTimer += Time.deltaTime;
+
+        if (stateTimer >= Random.Range(minStateTime, maxStateTime))
+        {
+            Vector3 dest = GetRandomNavMeshPoint(startPosition, wanderRadius);
+            agent.SetDestination(dest);
+            agent.speed = walkSpeed;
+            ChangeState(AnimalState.Wander);
+        }
+    }
+
+    // --- ÑÒÀÍ: ÃÓËßª ÏÎ ÒÀÁÎĞÓ ---
+    protected override void UpdateWander()
+    {
+        if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+        {
+            ChangeState(AnimalState.Idle);
+        }
+    }
+
+    // --- ÑÒÀÍ: ÏÀÍ²ÊÀ (Ò²ÊÀª Â²Ä ÃĞÀÂÖß) ---
+    // --- ÑÒÀÍ: ÏÀÍ²ÊÀ (Ò²ÊÀª Â²Ä ÃĞÀÂÖß) ---
+    protected override void UpdateFlee()
+    {
+        if (!isPanicking)
+        {
+            isPanicking = true;
+            agent.speed = panicSpeed;
+            if (featherParticles != null) featherParticles.Play();
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Animal_Chicken);
+        }
+
+        panicTimer += Time.deltaTime;
+
+        if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+        {
+            if (panicTimer > 4f)
+            {
+                isPanicking = false;
+                panicTimer = 0f;
+
+                // --- ÂÈÏĞÀÂËÅÍÍß: Çóïèíÿºìî åôåêò ï³ğ'ÿ, êîëè êóğêà çàñïîêî¿ëàñü ---
+                if (featherParticles != null) featherParticles.Stop();
+
+                ChangeState(AnimalState.Idle);
+            }
+            else
+            {
+                Vector3 dest = GetRandomNavMeshPoint(transform.position, 5f);
+                agent.SetDestination(dest);
+            }
+        }
+    }
+
+    protected override void UpdateMoveToPOI() { }
+    protected override void UpdateInteractPOI() { }
+
+    // --- ÑÅÍÑÎĞ: ĞÅÀÊÖ²ß ÍÀ ÃĞÀÂÖß ---
+    // --- ÑÅÍÑÎĞ: ĞÅÀÊÖ²ß ÍÀ ÃĞÀÂÖß ---
+    protected override void CheckPlayerPresence()
+    {
+        if (player == null || currentState == AnimalState.Jumping || currentState == AnimalState.Flee) return;
+
+        float dist = Vector3.Distance(transform.position, player.position);
+
+        if (dist < panicDistance)
+        {
+            // Îòğèìóºìî ô³çè÷íèé êîíòğîëåğ ÑÀÌÅ ÃĞÀÂÖß
+            CharacterController playerCC = player.GetComponent<CharacterController>();
+
+            // Ïåğåâ³ğÿºìî, ÷è ãğàâåöü ğóõàºòüñÿ øâèäêî (øâèäê³ñòü > 2)
+            if (playerCC != null && playerCC.velocity.magnitude > 2f)
+            {
+                Vector3 runDirection = (transform.position - player.position).normalized;
+                Vector3 runTarget = transform.position + runDirection * 6f;
+
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(runTarget, out hit, 6f, NavMesh.AllAreas))
+                {
+                    agent.SetDestination(hit.position);
+                    ChangeState(AnimalState.Flee);
+                }
+            }
+        }
+    }
+}
