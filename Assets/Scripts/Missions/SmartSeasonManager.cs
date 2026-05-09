@@ -70,6 +70,10 @@ public class SmartSeasonManager : MonoBehaviour
     private Coroutine activePropsCoroutine;
     private bool isMissionMode = false; // НОВЕ: Флаг для місій
 
+    [Header("AAA Transitions")]
+    public float transitionDuration = 12f; // Скільки секунд триватиме плавна зміна погоди
+    private Coroutine transitionCoroutine;
+
     private void Start()
     {
         totalSecondsPerSeason = minutesPerSeason * 60f;
@@ -149,52 +153,105 @@ public class SmartSeasonManager : MonoBehaviour
     {
         if (activePropsCoroutine != null) StopCoroutine(activePropsCoroutine);
 
-        if (snowParticles) snowParticles.SetActive(false);
-        if (leavesParticles) leavesParticles.SetActive(false);
-        if (firefliesParticles) firefliesParticles.SetActive(false);
-        if (dustParticles) dustParticles.SetActive(false);
-        if (rainParticles) rainParticles.SetActive(false);
+        // 1. Плавне увімкнення/вимкнення частинок (дозволяє їм зникнути природньо)
+        SetParticlesActive(snowParticles, targetSeason == Season.Winter);
+        SetParticlesActive(leavesParticles, targetSeason == Season.Autumn || targetSeason == Season.LateAutumn);
+        SetParticlesActive(firefliesParticles, targetSeason == Season.Summer && !isRaining);
+        SetParticlesActive(dustParticles, targetSeason == Season.EarlyAutumn && !isRaining);
+        SetParticlesActive(rainParticles, isRaining);
+
         if (winterProps) winterProps.SetActive(false);
         if (autumnProps) autumnProps.SetActive(false);
-        if (playerFootprints) playerFootprints.SetActive(false);
+        if (playerFootprints) playerFootprints.SetActive(targetSeason == Season.Winter);
+
+        // 2. Готуємо цільові кольори для плавного переходу
+        Color targetSun = Color.white;
+        Color targetFog = Color.white;
+        Texture2D targetTex = null;
 
         switch (targetSeason)
         {
-            case Season.Summer:
-                SetEnvironment(sunSummer, fogSummer, summerTexture);
-                break;
-            case Season.EarlyAutumn:
-                SetEnvironment(sunEarlyAutumn, fogEarlyAutumn, earlyAutumnTexture);
-                if (dustParticles && !isRaining) dustParticles.SetActive(true);
-                break;
-            case Season.Autumn:
-                SetEnvironment(sunAutumn, fogAutumn, autumnTexture);
-                if (leavesParticles) leavesParticles.SetActive(true);
-                if (autumnProps) activePropsCoroutine = StartCoroutine(ShowPropsDelayed(autumnProps, propsDelay));
-                break;
-            case Season.LateAutumn:
-                SetEnvironment(sunLateAutumn, fogLateAutumn, lateAutumnTexture);
-                if (leavesParticles) leavesParticles.SetActive(true);
-                break;
-            case Season.Winter:
-                SetEnvironment(sunWinter, fogWinter, winterTexture);
-                if (snowParticles) snowParticles.SetActive(true);
-                if (playerFootprints) playerFootprints.SetActive(true);
-                if (winterProps) activePropsCoroutine = StartCoroutine(ShowPropsDelayed(winterProps, propsDelay));
-                break;
-            case Season.Spring:
-                SetEnvironment(sunSpring, fogSpring, springTexture);
-                break;
+            case Season.Summer:      targetSun = sunSummer;      targetFog = fogSummer;      targetTex = summerTexture;      break;
+            case Season.EarlyAutumn: targetSun = sunEarlyAutumn; targetFog = fogEarlyAutumn; targetTex = earlyAutumnTexture; break;
+            case Season.Autumn:      targetSun = sunAutumn;      targetFog = fogAutumn;      targetTex = autumnTexture;
+                if (autumnProps) activePropsCoroutine = StartCoroutine(ShowPropsDelayed(autumnProps, propsDelay)); break;
+            case Season.LateAutumn:  targetSun = sunLateAutumn;  targetFog = fogLateAutumn;  targetTex = lateAutumnTexture;  break;
+            case Season.Winter:      targetSun = sunWinter;      targetFog = fogWinter;      targetTex = winterTexture;
+                if (winterProps) activePropsCoroutine = StartCoroutine(ShowPropsDelayed(winterProps, propsDelay)); break;
+            case Season.Spring:      targetSun = sunSpring;      targetFog = fogSpring;      targetTex = springTexture;      break;
         }
 
         if (isRaining)
         {
-            if (rainParticles) rainParticles.SetActive(true);
-            currentSeasonFogColor = fogRain;
-            currentSeasonSunColor = Color.Lerp(currentSeasonSunColor, Color.gray, 0.5f);
+            targetFog = fogRain;
+            // Змішуємо цільовий колір із густим темно-синім штормовим відтінком
+            targetSun = Color.Lerp(targetSun, new Color(0.3f, 0.35f, 0.45f), 0.75f); 
         }
 
-        if (enableDayNight && !isMissionMode) UpdateDayNightVisuals();
+        // 3. Запускаємо плавну зміну
+        if (transitionCoroutine != null) StopCoroutine(transitionCoroutine);
+        transitionCoroutine = StartCoroutine(EnvironmentTransitionRoutine(targetSun, targetFog, targetTex));
+    }
+
+    private void SetParticlesActive(GameObject vfx, bool active)
+    {
+        if (vfx == null) return;
+        ParticleSystem ps = vfx.GetComponent<ParticleSystem>();
+
+        if (ps != null)
+        {
+            if (active)
+            {
+                vfx.SetActive(true);
+                if (!ps.isPlaying) ps.Play();
+            }
+            else
+            {
+                // Замість миттєвого зникнення (SetActive(false)), наказуємо частинкам припинити спавн
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            }
+        }
+        else vfx.SetActive(active);
+    }
+
+    private IEnumerator EnvironmentTransitionRoutine(Color targetSun, Color targetFog, Texture2D tex)
+    {
+        Color startSun = currentSeasonSunColor;
+        Color startFog = currentSeasonFogColor;
+
+        if (globalMaterial != null && tex != null) globalMaterial.SetTexture("_BaseMap", tex);
+
+        float elapsed = 0f;
+        // Якщо це старт гри (кольори ще нульові), робимо перехід миттєвим, щоб не було чорного екрана
+        float actualDuration = (startSun == new Color(0, 0, 0, 0)) ? 0.1f : transitionDuration;
+
+        while (elapsed < actualDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / actualDuration;
+
+            t = t * t * (3f - 2f * t); // SmoothStep для кінематографічної плавності
+
+            currentSeasonSunColor = Color.Lerp(startSun, targetSun, t);
+            currentSeasonFogColor = Color.Lerp(startFog, targetFog, t);
+
+            if (!enableDayNight || isMissionMode)
+            {
+                if (directionalLight) directionalLight.color = currentSeasonSunColor;
+                RenderSettings.fogColor = currentSeasonFogColor;
+            }
+
+            yield return null; // Чекаємо наступного кадру
+        }
+
+        currentSeasonSunColor = targetSun;
+        currentSeasonFogColor = targetFog;
+
+        if (!enableDayNight || isMissionMode)
+        {
+            if (directionalLight) directionalLight.color = currentSeasonSunColor;
+            RenderSettings.fogColor = currentSeasonFogColor;
+        }
     }
 
     private IEnumerator ShowPropsDelayed(GameObject propsObject, float delayTime)

@@ -3,22 +3,22 @@ using UnityEngine;
 public class WeaponOrbit : MonoBehaviour
 {
     [Header("Orbit Settings")]
-    [Tooltip("The center point of the orbit. (Usually the Player)")]
-    public Transform pivot; 
-
-    [Tooltip("How many degrees per second the weapon rotates when moving.")]
-    public float rotationSpeed = 360f;
-
-    [Tooltip("The height of the orbital plane above the pivot's center.")]
+    public Transform pivot;
+    public float baseRotationSpeed = 120f;  // Швидкість, коли стоїмо
+    public float runRotationMultiplier = 2f; // Прискорення під час бігу
+    public float orbitDistance = 2.5f;
     public float orbitHeight = 1f;
 
-    // Internal variables
+    [Header("AAA Smoothness")]
+    public float followSpeed = 15f;   // Плавність наздоганяння гравця
+    public float bobbingAmount = 0.4f; // Амплітуда левітації
+    public float bobbingSpeed = 3f;    // Швидкість левітації
+
     private float currentAngle;
-    private float orbitDistance;
+    private Vector3 targetPosition;
 
     private void Start()
     {
-        // 1. If we forgot to assign the pivot in Inspector, try to find the player
         if (pivot == null)
         {
             GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
@@ -27,13 +27,10 @@ public class WeaponOrbit : MonoBehaviour
 
         if (pivot != null)
         {
-            // 2. Detach this object from the parent (the Player) immediately.
-            // This is the key! We are now a free object in world space.
-            transform.parent = null;
-
-            // 3. Calculate how far this object was from the pivot at the start.
-            // This sets the permanent orbit radius.
-            orbitDistance = Vector3.Distance(transform.position, pivot.position);
+            transform.parent = null; // Відв'язуємо, щоб молот літав сам
+            Vector3 startPos = transform.position;
+            startPos.y = pivot.position.y + orbitHeight;
+            transform.position = startPos;
         }
     }
 
@@ -41,34 +38,32 @@ public class WeaponOrbit : MonoBehaviour
     {
         if (pivot == null) return;
 
-        // 4. Update the angle ONLY if WASD or Arrows are pressed
+        // 1. Рахуємо швидкість: повільно, якщо стоїмо, швидко — якщо біжимо
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
+        float currentSpeed = (h != 0 || v != 0) ? baseRotationSpeed * runRotationMultiplier : baseRotationSpeed;
 
-        if (h != 0 || v != 0)
-        {
-            // Update the angle of the orbit
-            currentAngle += rotationSpeed * Time.deltaTime;
-            
-            // Keep the angle between 0 and 360 (for clean math)
-            if (currentAngle > 360f) currentAngle -= 360f;
-        }
+        // 2. Оновлюємо кут
+        currentAngle += currentSpeed * Time.deltaTime;
+        if (currentAngle > 360f) currentAngle -= 360f;
 
-        // 5. Calculate the new position based on the center (pivot), distance, and angle
-        // Pure trigonometry (X = sin, Z = cos) makes a perfect circle
+        // 3. Рахуємо ідеальну позицію кола
         float x = Mathf.Sin(currentAngle * Mathf.Deg2Rad) * orbitDistance;
         float z = Mathf.Cos(currentAngle * Mathf.Deg2Rad) * orbitDistance;
 
-        // 6. Set the final position and rotation of the hammer
-        // It stays on a fixed world-space circle, ignoring player rotation
-        Vector3 desiredPosition = pivot.position + new Vector3(x, orbitHeight, z);
-        transform.position = desiredPosition;
+        // 4. Додаємо ефект левітації (Sine wave)
+        float currentBobbing = Mathf.Sin(Time.time * bobbingSpeed) * bobbingAmount;
 
-        // Optionally: make the hammer look where it's going along the circle
-        Vector3 orbitDirection = (desiredPosition - pivot.position).normalized;
-        if (orbitDirection != Vector3.zero)
-        {
-            transform.rotation = Quaternion.LookRotation(orbitDirection);
-        }
+        // 5. Розраховуємо цільову позицію
+        targetPosition = pivot.position + new Vector3(x, orbitHeight + currentBobbing, z);
+
+        // 6. ПЛАВНО переміщуємо молот до цілі (Lerp) замість жорсткої телепортації
+        transform.position = Vector3.Lerp(transform.position, targetPosition, followSpeed * Time.deltaTime);
+
+        // 7. Повертаємо молот у напрямку його руху
+        Vector3 orbitDirection = (targetPosition - pivot.position).normalized;
+        // Додаємо 90 градусів, щоб молот летів "боком" або "носом" уперед
+        Quaternion lookRot = Quaternion.LookRotation(new Vector3(-orbitDirection.z, 0, orbitDirection.x));
+        transform.rotation = Quaternion.Slerp(transform.rotation, lookRot, 10f * Time.deltaTime);
     }
 }

@@ -94,7 +94,7 @@ public class PlayerController : MonoBehaviour
     [Header("Meta Upgrades")]
     [HideInInspector] public float globalDamageMultiplier = 1f;
     [HideInInspector] public float globalCritChance = 0.05f;
-    private float damageReduction = 0f;
+    [HideInInspector] public float damageReduction = 0f;
 
     [Header("MegaBoom Settings")]
     public float stackRadius = 7f;

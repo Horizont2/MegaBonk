@@ -25,6 +25,7 @@ public class GlobalHUD : MonoBehaviour
 
     [Header("Scene Transition & Loading")]
     public float sceneFadeSpeed = 1.5f;
+    public CanvasGroup blackFadeGroup;
     public CanvasGroup loadingPanelGroup;
     public Slider loadingSlider;
     public TextMeshProUGUI loadingText;
@@ -90,6 +91,13 @@ public class GlobalHUD : MonoBehaviour
         {
             loadingPanelGroup.gameObject.SetActive(false);
             loadingPanelGroup.alpha = 0f;
+        }
+
+        // НОВЕ: Ховаємо чорний екран на старті
+        if (blackFadeGroup != null)
+        {
+            blackFadeGroup.gameObject.SetActive(false);
+            blackFadeGroup.alpha = 0f;
         }
     }
 
@@ -209,17 +217,34 @@ public class GlobalHUD : MonoBehaviour
             canvas.sortingOrder = 999;
         }
 
-        loadingPanelGroup.gameObject.SetActive(true);
-        loadingPanelGroup.transform.SetAsLastSibling();
+        // 1. Плавне згасання в ТЕМРЯВУ
+        if (blackFadeGroup != null)
+        {
+            blackFadeGroup.gameObject.SetActive(true);
+            blackFadeGroup.transform.SetAsLastSibling();
+            while (blackFadeGroup.alpha < 1f)
+            {
+                blackFadeGroup.alpha += Time.unscaledDeltaTime * sceneFadeSpeed * 1.2f;
+                yield return null;
+            }
+        }
+
+        // 2. ФІКС: Плавне з'явлення інтерфейсу завантаження (Slider, Hints) поверх чорного
+        if (loadingPanelGroup != null)
+        {
+            loadingPanelGroup.gameObject.SetActive(true);
+            loadingPanelGroup.alpha = 0f;
+            loadingPanelGroup.transform.SetAsLastSibling();
+
+            while (loadingPanelGroup.alpha < 1f)
+            {
+                loadingPanelGroup.alpha += Time.unscaledDeltaTime * sceneFadeSpeed * 2f;
+                yield return null;
+            }
+        }
 
         if (hintCycleCoroutine != null) StopCoroutine(hintCycleCoroutine);
         hintCycleCoroutine = StartCoroutine(CycleHintsRoutine());
-
-        while (loadingPanelGroup.alpha < 1f)
-        {
-            loadingPanelGroup.alpha += Time.unscaledDeltaTime * sceneFadeSpeed;
-            yield return null;
-        }
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneToLoad);
         asyncLoad.allowSceneActivation = false;
@@ -228,7 +253,7 @@ public class GlobalHUD : MonoBehaviour
         while (!asyncLoad.isDone)
         {
             float targetProgress = asyncLoad.progress / 0.9f;
-            visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, Time.unscaledDeltaTime * 2.5f);
+            visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, Time.unscaledDeltaTime * 1.5f);
 
             if (loadingSlider != null) loadingSlider.value = visualProgress;
             if (loadingText != null) loadingText.text = $"LOADING... {Mathf.FloorToInt(visualProgress * 100)}%";
@@ -236,9 +261,11 @@ public class GlobalHUD : MonoBehaviour
             if (asyncLoad.progress >= 0.9f && visualProgress >= 0.99f)
             {
                 if (loadingSlider != null) loadingSlider.value = 1f;
-                if (loadingText != null) loadingText.text = "LOADING... 100%";
+                if (loadingText != null) loadingText.text = "READY";
 
-                yield return new WaitForSecondsRealtime(0.15f);
+                // ФІКС ПРОЛАГУ: Чекаємо півсекунди ПЕРЕД активацією, 
+                // щоб дати системі "дихнути" і підготувати ресурси
+                yield return new WaitForSecondsRealtime(0.5f);
                 asyncLoad.allowSceneActivation = true;
             }
             yield return null;
@@ -247,13 +274,35 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator FadeOutLoadingScreen()
     {
-        loadingPanelGroup.alpha = 1f;
-        while (loadingPanelGroup.alpha > 0f)
+        // ФІКС ПРОЛАГУ: Чекаємо трохи ПІСЛЯ завантаження сцени, 
+        // щоб всі об'єкти (Player, Spawner) встигли виконати свій Start()
+        yield return new WaitForSecondsRealtime(0.4f);
+
+        // 1. Плавне зникнення лише тексту і слайдера (чорний екран все ще тримає паузу)
+        if (loadingPanelGroup != null)
         {
-            loadingPanelGroup.alpha -= Time.unscaledDeltaTime * sceneFadeSpeed;
-            yield return null;
+            while (loadingPanelGroup.alpha > 0f)
+            {
+                loadingPanelGroup.alpha -= Time.unscaledDeltaTime * sceneFadeSpeed * 2f;
+                yield return null;
+            }
+            loadingPanelGroup.gameObject.SetActive(false);
         }
-        loadingPanelGroup.gameObject.SetActive(false);
+
+        // 2. Тільки тепер плавно відкриваємо гру
+        if (blackFadeGroup != null)
+        {
+            blackFadeGroup.alpha = 1f;
+            blackFadeGroup.transform.SetAsLastSibling();
+
+            while (blackFadeGroup.alpha > 0f)
+            {
+                // Тут можна зробити швидкість трохи повільнішою для ефекту "пробудження"
+                blackFadeGroup.alpha -= Time.unscaledDeltaTime * (sceneFadeSpeed * 0.8f);
+                yield return null;
+            }
+            blackFadeGroup.gameObject.SetActive(false);
+        }
     }
 
     private IEnumerator CycleHintsRoutine()
