@@ -1,7 +1,7 @@
 using UnityEngine;
-using System.Collections.Generic; // Потрібно для роботи зі списками
+using System.Collections; // Потрібно для корутин
+using System.Collections.Generic;
 
-// Створюємо нову структуру для налаштування ворогів в Інспекторі
 [System.Serializable]
 public class SpawnableEnemy
 {
@@ -13,11 +13,15 @@ public class SpawnableEnemy
 public class EnemySpawner : MonoBehaviour
 {
     [Header("Spawner Settings")]
-    // Тепер це список, де можна вказати час появи для кожного!
     public SpawnableEnemy[] enemyPool;
     public Transform player;
     public float baseSpawnInterval = 1.5f;
-    public float spawnRadius = 15f;
+
+    [Header("Spawn Area")]
+    [Tooltip("Мінімальна відстань від гравця (безпечна зона)")]
+    public float minSpawnRadius = 10f;
+    [Tooltip("Максимальна відстань від гравця")]
+    public float maxSpawnRadius = 20f;
 
     private float timer;
 
@@ -39,7 +43,6 @@ public class EnemySpawner : MonoBehaviour
 
     private void SpawnEnemy(float minutesSurvived)
     {
-        // 1. ШУКАЄМО, ХТО ВЖЕ МОЖЕ З'ЯВЛЯТИСЯ
         List<GameObject> availableEnemies = new List<GameObject>();
         foreach (SpawnableEnemy se in enemyPool)
         {
@@ -49,11 +52,12 @@ public class EnemySpawner : MonoBehaviour
             }
         }
 
-        // Якщо масив порожній (наприклад, всі стоять з 1 хвилини, а гра тільки почалась)
         if (availableEnemies.Count == 0) return;
 
-        // 2. Рахуємо позицію
-        Vector2 randomCircle = Random.insideUnitCircle.normalized * spawnRadius;
+        // ФІКС: Спавн у кільці (не впритул, і не занадто далеко)
+        float randomDist = Random.Range(minSpawnRadius, maxSpawnRadius);
+        Vector2 randomCircle = Random.insideUnitCircle.normalized * randomDist;
+
         float spawnX = player.position.x + randomCircle.x;
         float spawnZ = player.position.z + randomCircle.y;
         float spawnY = 0.5f;
@@ -61,12 +65,11 @@ public class EnemySpawner : MonoBehaviour
         if (Terrain.activeTerrain != null)
         {
             Vector3 worldPos = new Vector3(spawnX, 0, spawnZ);
-            spawnY = Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y + 1.5f;
+            spawnY = Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y;
         }
 
         Vector3 spawnPos = new Vector3(spawnX, spawnY, spawnZ);
 
-        // 3. ВИБИРАЄМО ВИПАДКОВОГО ДОСТУПНОГО ВОРОГА
         int randomIndex = Random.Range(0, availableEnemies.Count);
         GameObject selectedPrefab = availableEnemies[randomIndex];
 
@@ -79,6 +82,37 @@ public class EnemySpawner : MonoBehaviour
             enemyScript.damage *= (1f + minutesSurvived * 0.15f);
             enemyScript.moveSpeed *= Mathf.Min(1.5f, 1f + minutesSurvived * 0.05f);
             enemyScript.xpRewardMultiplier = 1f + (minutesSurvived * 0.2f);
+        }
+
+        // АНІМАЦІЯ ПОЯВИ З-ПІД ЗЕМЛІ
+        StartCoroutine(RiseFromGroundRoutine(newEnemy));
+    }
+
+    private IEnumerator RiseFromGroundRoutine(GameObject enemy)
+    {
+        EnemyAI ai = enemy.GetComponent<EnemyAI>();
+        if (ai != null) ai.isCinematicFrozen = true; // Заморожуємо ШІ
+
+        Vector3 finalPos = enemy.transform.position;
+        enemy.transform.position = finalPos - new Vector3(0, 2.5f, 0); // Ставимо під землю
+
+        float duration = 1.5f; // Скільки секунд вилазить
+        float elapsed = 0f;
+
+        while (elapsed < duration && enemy != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            t = t * t * (3f - 2f * t); // SmoothStep для плавності
+
+            enemy.transform.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);
+            yield return null;
+        }
+
+        if (enemy != null)
+        {
+            enemy.transform.position = finalPos;
+            if (ai != null) ai.isCinematicFrozen = false; // Розморожуємо, тепер може бити
         }
     }
 }

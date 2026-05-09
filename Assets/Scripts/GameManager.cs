@@ -9,7 +9,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Region Data")]
     public RegionData currentRegion;
-    public bool isRegionMission = false; // Прапорець для розумної генерації біомів
+    public bool isRegionMission = false;
 
     [Header("UI References")]
     public CanvasGroup gameOverPanel;
@@ -26,17 +26,33 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // --- ФІКС: Робимо GameManager безсмертним між сценами ---
         if (Instance == null)
         {
             Instance = this;
-            transform.parent = null; // Відв'язуємо від батьків, бо DontDestroyOnLoad працює тільки в корені сцени
+            transform.parent = null;
             DontDestroyOnLoad(gameObject);
+
+            // ФІКС: Підписуємось на подію завантаження сцени
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
         {
             Destroy(gameObject);
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    // ФІКС: Скидаємо всі змінні, коли завантажується табір або новий рівень
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        survivalTime = 0f;
+        nextSurvivalTick = 1f;
+        isGameOver = false;
+        if (gameOverPanel != null) gameOverPanel.alpha = 0f;
     }
 
     private void Start()
@@ -71,6 +87,8 @@ public class GameManager : MonoBehaviour
 
     public void TriggerGameOver()
     {
+        if (isGameOver) return; // Захист від подвійного спрацьовування!
+
         isGameOver = true;
 
         PlayerPrefs.SetInt("IsRunActive", 0);

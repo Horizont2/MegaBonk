@@ -71,18 +71,15 @@ public class PlayerController : MonoBehaviour
     public Image damageFlashImage;
     private TrailRenderer weaponTrail;
 
-    public Image lowHpVignette;
-    private float lowHpThreshold = 0.3f;
-
     [Header("HUD UI References")]
-    public Slider hpSlider;
-    public Slider xpSlider;
+    public Image hpFill;         // Змінили Slider на Image
+    public Image xpFill;         // Змінили Slider на Image
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI crystalText;
     public TextMeshProUGUI hpText;
 
     [Header("Juicy UI & Effects")]
-    public Slider hpCatchupSlider;
+    public Image hpCatchupFill;  // Змінили Slider на Image
     public float uiLerpSpeed = 5f;
     private float visualXP = 0f;
 
@@ -107,7 +104,7 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public int currentMultiplier = 1;
 
     private CameraFollow cameraFollow;
-    private BloodFlashEffect bloodEffect;
+    private HealthVisuals healthVisuals; // ВАЖЛИВО: Змінили посилання на новий скрипт
     private CharacterController characterController;
     private Vector3 velocity;
     private Animator anim;
@@ -144,20 +141,16 @@ public class PlayerController : MonoBehaviour
         }
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
-        bloodEffect = FindFirstObjectByType<BloodFlashEffect>();
+
+        // Знаходимо новий скрипт
+        healthVisuals = FindFirstObjectByType<HealthVisuals>();
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
-
-        if (lowHpVignette != null)
-        {
-            Color c = lowHpVignette.color;
-            c.a = 0f;
-            lowHpVignette.color = c;
-        }
     }
 
     private void Start()
     {
+        isDead = false;
         if (!isCampMode) ApplyMetaUpgrades();
         currentHealth = maxHealth;
         visualXP = currentXP;
@@ -290,35 +283,20 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (hpCatchupSlider != null && hpCatchupSlider.value > currentHealth)
+        float targetHpFill = currentHealth / maxHealth;
+
+        // Плавне наздоганяння ХП (біла/жовта смужка під червоною)
+        if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
         {
-            hpCatchupSlider.value = Mathf.Lerp(hpCatchupSlider.value, currentHealth, Time.deltaTime * uiLerpSpeed);
+            hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.deltaTime * uiLerpSpeed);
         }
 
-        if (xpSlider != null && visualXP < currentXP)
+        // Плавне заповнення EXP
+        float targetXpFill = currentXP / xpToNextLevel;
+        if (xpFill != null && visualXP < currentXP)
         {
             visualXP = Mathf.Lerp(visualXP, currentXP, Time.deltaTime * uiLerpSpeed);
-            xpSlider.value = visualXP;
-        }
-
-        if (lowHpVignette != null && !isCampMode)
-        {
-            float hpRatio = currentHealth / maxHealth;
-            if (hpRatio <= lowHpThreshold)
-            {
-                float pulseSpeed = Mathf.Lerp(5f, 2f, hpRatio / lowHpThreshold);
-                float alpha = (Mathf.Sin(Time.time * pulseSpeed) + 1f) / 2f * 0.4f;
-
-                Color c = lowHpVignette.color;
-                c.a = alpha;
-                lowHpVignette.color = c;
-            }
-            else
-            {
-                Color c = lowHpVignette.color;
-                c.a = Mathf.Lerp(c.a, 0f, Time.deltaTime * 5f);
-                lowHpVignette.color = c;
-            }
+            xpFill.fillAmount = visualXP / xpToNextLevel;
         }
 
         CheckStack();
@@ -425,13 +403,9 @@ public class PlayerController : MonoBehaviour
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
             anim.SetBool("IsGrounded", characterController.isGrounded);
 
-            // --- НОВЕ: Розумний напрямок руху (2D) ---
             Vector3 localVelocity = transform.InverseTransformDirection(currentVelocityMove);
-
-            // Нормалізуємо значення від -1 до 1, щоб було простіше налаштувати Blend Tree
             anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
             anim.SetFloat("MoveZ", Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f));
-            // ----------------------------------------
 
             if (characterController.isGrounded)
             {
@@ -622,7 +596,8 @@ public class PlayerController : MonoBehaviour
             cameraFollow.TriggerDirectionalShake(hitPushDir, 1.5f, 0.3f, 0.3f);
         }
 
-        if (bloodEffect != null) bloodEffect.Flash();
+        // ВАЖЛИВО: Викликаємо новий ефект пульсації замість старого блимання
+        if (healthVisuals != null) healthVisuals.TriggerHitFlash();
 
         if (damageFlashImage != null)
         {
@@ -635,7 +610,7 @@ public class PlayerController : MonoBehaviour
 
         if (currentHealth <= 0)
         {
-            if (hpCatchupSlider != null) hpCatchupSlider.value = 0;
+            if (hpCatchupFill != null) hpCatchupFill.fillAmount = 0;
             Die();
         }
     }
@@ -654,8 +629,15 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Додаємо цей прапорець перед методом
+    private bool isDead = false;
+
     private void Die()
     {
+        // ФІКС: Якщо ми вже мертві, просто ігноруємо всі наступні удари
+        if (isDead) return;
+        isDead = true;
+
         SaveManager.AddCrystals(crystalsCollected);
 
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
@@ -721,17 +703,18 @@ public class PlayerController : MonoBehaviour
 
     public void UpdateHUD()
     {
-        if (hpSlider != null) { hpSlider.maxValue = maxHealth; hpSlider.value = currentHealth; }
+        float hpRatio = currentHealth / maxHealth;
 
-        if (hpCatchupSlider != null)
+        if (hpFill != null) hpFill.fillAmount = hpRatio;
+
+        if (hpCatchupFill != null && hpCatchupFill.fillAmount < hpRatio)
         {
-            hpCatchupSlider.maxValue = maxHealth;
-            if (hpCatchupSlider.value < currentHealth) hpCatchupSlider.value = currentHealth;
+            hpCatchupFill.fillAmount = hpRatio;
         }
 
         if (hpText != null) hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
 
-        if (xpSlider != null) { xpSlider.maxValue = xpToNextLevel; }
+        if (xpFill != null) xpFill.fillAmount = currentXP / xpToNextLevel;
 
         if (levelText != null) levelText.text = "LVL: " + currentLevel;
         if (crystalText != null) crystalText.text = crystalsCollected.ToString();
