@@ -17,6 +17,7 @@ public class SmartSeasonManager : MonoBehaviour
 
     [Header("Day & Night Cycle (NEW)")]
     public bool enableDayNight = true;
+    public float nightSpeedMultiplier = 2.5f; // Швидкість плину часу вночі
     public float dayDurationMinutes = 15f;
     [Range(0f, 1f)] public float timeOfDay = 0.4f;
     public Color nightAmbientColor = new Color(0.05f, 0.05f, 0.15f);
@@ -96,7 +97,11 @@ public class SmartSeasonManager : MonoBehaviour
 
         if (enableDayNight)
         {
-            timeOfDay += Time.deltaTime / (dayDurationMinutes * 60f);
+            float speed = 1f;
+            // Ніч - це коли сонце зайшло (приблизно timeOfDay < 0.2 або > 0.8)
+            if (timeOfDay < 0.2f || timeOfDay > 0.8f) speed = nightSpeedMultiplier;
+
+            timeOfDay += (Time.deltaTime * speed) / (dayDurationMinutes * 60f);
             if (timeOfDay >= 1f) timeOfDay -= 1f;
             UpdateDayNightVisuals();
         }

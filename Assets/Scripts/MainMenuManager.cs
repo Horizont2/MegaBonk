@@ -160,21 +160,37 @@ public class MainMenuManager : MonoBehaviour
         PlayerPrefs.Save();
 
         if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
-
         HideMenuBeforeLoad();
 
-        // ОБОВ'ЯЗКОВО ПЕРЕВІР НАЗВУ СЦЕНИ ТУТ:
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
-        else SceneManager.LoadScene("Lvl_1");
+        // ФІКС: Якщо туторіал не пройдено - кидаємо на Lvl_1
+        if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
+        {
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
+            else SceneManager.LoadScene("Lvl_1");
+        }
+        else
+        {
+            // Інакше кидаємо відразу в табір
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
+            else SceneManager.LoadScene(campSceneName);
+        }
     }
 
     public void ContinueGame()
     {
         PlayClickSound();
+        HideMenuBeforeLoad();
+
+        // ФІКС: Захист, якщо гравець якось натиснув Continue без пройденого туторіалу
+        if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
+        {
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
+            else SceneManager.LoadScene("Lvl_1");
+            return;
+        }
+
         PlayerPrefs.SetInt("IsContinuing", 1);
         PlayerPrefs.Save();
-
-        HideMenuBeforeLoad();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
         else SceneManager.LoadScene(campSceneName);

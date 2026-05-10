@@ -24,6 +24,7 @@ public class GlobalHUD : MonoBehaviour
     public TextMeshProUGUI objectiveText;
 
     [Header("Scene Transition & Loading")]
+    private bool isLoading = false;
     public float sceneFadeSpeed = 1.5f;
     public CanvasGroup blackFadeGroup;
     public CanvasGroup loadingPanelGroup;
@@ -131,7 +132,7 @@ public class GlobalHUD : MonoBehaviour
 
             // --- 3. ПРІОРИТЕТ: ПАУЗА ---
             string sceneName = SceneManager.GetActiveScene().name;
-            if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene") TogglePause();
+            if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene" || sceneName == "Lvl_1") TogglePause();
         }
     }
 
@@ -199,17 +200,21 @@ public class GlobalHUD : MonoBehaviour
                 }
             }
         }
-    }
+    }  
 
     public void FadeAndLoadScene(string sceneName)
     {
+        // ФІКС: Блокуємо повторне натискання, щоб завантаження не "перезапускалося"
+        if (isLoading) return;
+
         if (isPaused) TogglePause();
-        if (loadingPanelGroup != null) StartCoroutine(LoadSceneAsyncRoutine(sceneName));
-        else SceneManager.LoadScene(sceneName);
+        StartCoroutine(LoadSceneAsyncRoutine(sceneName));
     }
 
     private IEnumerator LoadSceneAsyncRoutine(string sceneToLoad)
     {
+        isLoading = true; // Починаємо завантаження
+
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null)
         {
@@ -221,20 +226,26 @@ public class GlobalHUD : MonoBehaviour
         if (blackFadeGroup != null)
         {
             blackFadeGroup.gameObject.SetActive(true);
-            blackFadeGroup.transform.SetAsLastSibling();
+            blackFadeGroup.transform.SetAsLastSibling(); // ФІКС: Робимо чорний екран поверх усієї гри
+            blackFadeGroup.alpha = 0f;
             while (blackFadeGroup.alpha < 1f)
             {
-                blackFadeGroup.alpha += Time.unscaledDeltaTime * sceneFadeSpeed * 1.2f;
+                blackFadeGroup.alpha += Time.unscaledDeltaTime * sceneFadeSpeed;
                 yield return null;
             }
         }
 
-        // 2. ФІКС: Плавне з'явлення інтерфейсу завантаження (Slider, Hints) поверх чорного
+        // 2. Плавне з'явлення інтерфейсу завантаження
         if (loadingPanelGroup != null)
         {
+            loadingSlider.value = 0f;
             loadingPanelGroup.gameObject.SetActive(true);
+            loadingPanelGroup.transform.SetAsLastSibling(); // ФІКС: Тепер панель завантаження стає ПОВЕРХ чорного екрану!
             loadingPanelGroup.alpha = 0f;
-            loadingPanelGroup.transform.SetAsLastSibling();
+
+            if (hintCycleCoroutine != null) StopCoroutine(hintCycleCoroutine);
+            if (hintTypingCoroutine != null) StopCoroutine(hintTypingCoroutine);
+            hintText.text = "";
 
             while (loadingPanelGroup.alpha < 1f)
             {
@@ -243,28 +254,29 @@ public class GlobalHUD : MonoBehaviour
             }
         }
 
-        if (hintCycleCoroutine != null) StopCoroutine(hintCycleCoroutine);
         hintCycleCoroutine = StartCoroutine(CycleHintsRoutine());
 
+        // 3. Асинхронне завантаження
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneToLoad);
         asyncLoad.allowSceneActivation = false;
+
         float visualProgress = 0f;
 
         while (!asyncLoad.isDone)
         {
-            float targetProgress = asyncLoad.progress / 0.9f;
-            visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, Time.unscaledDeltaTime * 1.5f);
+            float targetProgress = Mathf.Clamp01(asyncLoad.progress / 0.9f);
+
+            visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, Time.unscaledDeltaTime * 0.5f);
 
             if (loadingSlider != null) loadingSlider.value = visualProgress;
             if (loadingText != null) loadingText.text = $"LOADING... {Mathf.FloorToInt(visualProgress * 100)}%";
 
             if (asyncLoad.progress >= 0.9f && visualProgress >= 0.99f)
             {
+                visualProgress = 1f;
                 if (loadingSlider != null) loadingSlider.value = 1f;
                 if (loadingText != null) loadingText.text = "READY";
 
-                // ФІКС ПРОЛАГУ: Чекаємо півсекунди ПЕРЕД активацією, 
-                // щоб дати системі "дихнути" і підготувати ресурси
                 yield return new WaitForSecondsRealtime(0.5f);
                 asyncLoad.allowSceneActivation = true;
             }
@@ -274,11 +286,9 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator FadeOutLoadingScreen()
     {
-        // ФІКС ПРОЛАГУ: Чекаємо трохи ПІСЛЯ завантаження сцени, 
-        // щоб всі об'єкти (Player, Spawner) встигли виконати свій Start()
-        yield return new WaitForSecondsRealtime(0.4f);
+        yield return new WaitForSecondsRealtime(0.5f);
 
-        // 1. Плавне зникнення лише тексту і слайдера (чорний екран все ще тримає паузу)
+        // Ховаємо інтерфейс завантаження
         if (loadingPanelGroup != null)
         {
             while (loadingPanelGroup.alpha > 0f)
@@ -289,20 +299,19 @@ public class GlobalHUD : MonoBehaviour
             loadingPanelGroup.gameObject.SetActive(false);
         }
 
-        // 2. Тільки тепер плавно відкриваємо гру
+        // Розтухає чорний екран, відкриваючи нову сцену
         if (blackFadeGroup != null)
         {
-            blackFadeGroup.alpha = 1f;
-            blackFadeGroup.transform.SetAsLastSibling();
-
+            blackFadeGroup.transform.SetAsLastSibling(); // На всякий випадок закріплюємо сортування
             while (blackFadeGroup.alpha > 0f)
             {
-                // Тут можна зробити швидкість трохи повільнішою для ефекту "пробудження"
-                blackFadeGroup.alpha -= Time.unscaledDeltaTime * (sceneFadeSpeed * 0.8f);
+                blackFadeGroup.alpha -= Time.unscaledDeltaTime * sceneFadeSpeed;
                 yield return null;
             }
             blackFadeGroup.gameObject.SetActive(false);
         }
+
+        isLoading = false; // Дозволяємо нові завантаження
     }
 
     private IEnumerator CycleHintsRoutine()
@@ -480,10 +489,12 @@ public class GlobalHUD : MonoBehaviour
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
+        string currentScene = SceneManager.GetActiveScene().name;
+
         if (!isConfirmingGiveUp)
         {
             isConfirmingGiveUp = true;
-            if (giveUpText != null) giveUpText.text = "You sure?\nAll journey progress will be lost";
+            if (giveUpText != null) giveUpText.text = (currentScene == "Lvl_1") ? "Skip Tutorial?" : "You sure?\nAll journey progress will be lost";
 
             foreach (var btn in pauseButtonGroups)
             {
@@ -497,23 +508,27 @@ public class GlobalHUD : MonoBehaviour
         else
         {
             TogglePause();
-            if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
-            FadeAndLoadScene("CampScene");
+            if (currentScene == "Lvl_1")
+            {
+                FadeAndLoadScene("Menu"); // Повертаємо в меню
+            }
+            else
+            {
+                if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
+                FadeAndLoadScene("CampScene");
+            }
         }
     }
 
     private void ResetGiveUpState()
     {
         isConfirmingGiveUp = false;
-        if (giveUpText != null) giveUpText.text = "Give Up";
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (giveUpText != null) giveUpText.text = (currentScene == "Lvl_1") ? "Back to Menu" : "Give Up";
 
         foreach (var btn in pauseButtonGroups)
         {
-            if (btn != null)
-            {
-                btn.alpha = 1f;
-                btn.interactable = true;
-            }
+            if (btn != null) { btn.alpha = 1f; btn.interactable = true; }
         }
     }
 
@@ -525,6 +540,38 @@ public class GlobalHUD : MonoBehaviour
 
     public void HideLevelObjective()
     {
-        if (objectivePanelGroup != null) objectivePanelGroup.alpha = 0f;
+        if (objectivePanelGroup != null && objectivePanelGroup.alpha > 0)
+        {
+            StartCoroutine(HideObjectiveRoutine());
+        }
+    }
+
+    private IEnumerator HideObjectiveRoutine()
+    {
+        RectTransform rect = objectivePanelGroup.GetComponent<RectTransform>();
+        Vector2 startPos = rect.anchoredPosition;
+
+        // Відтяжка вправо (бо панель зліва)
+        float t = 0;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 6f;
+            rect.anchoredPosition = Vector2.Lerp(startPos, startPos + new Vector2(30f, 0), Mathf.Sin(t * Mathf.PI * 0.5f));
+            yield return null;
+        }
+
+        // Виліт вліво за екран
+        t = 0;
+        Vector2 midPos = rect.anchoredPosition;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 3f;
+            rect.anchoredPosition = Vector2.Lerp(midPos, midPos + new Vector2(-600f, 0), t * t * t);
+            objectivePanelGroup.alpha = 1f - t;
+            yield return null;
+        }
+
+        objectivePanelGroup.alpha = 0f;
+        rect.anchoredPosition = startPos; // Повертаємо на початкове місце для майбутніх місій
     }
 }
