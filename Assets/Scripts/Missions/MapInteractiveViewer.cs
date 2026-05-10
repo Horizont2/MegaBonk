@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
 {
@@ -8,7 +10,7 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
     private RectTransform parentViewport;
 
     [Header("Zoom Settings")]
-    public float zoomSpeed = 0.2f;
+    public float zoomSpeed = 0.5f;
     public float minZoom = 1.0f;
     public float maxZoom = 4f;
     public float smoothZoomSpeed = 10f;
@@ -19,46 +21,83 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
     private Vector2 targetPosition;
 
     [Header("Parallax Effect")]
-    [Tooltip("Шар з намальованими хмарами або заднім фоном")]
     public RectTransform parallaxLayer;
-    [Tooltip("Наскільки сильно рухається фон (0.1 = повільно, 0.5 = швидко)")]
-    public float parallaxStrength = 0.15f;
+    public float parallaxStrength = 0.12f;
 
     private void Awake()
     {
         mapRect = GetComponent<RectTransform>();
         parentViewport = transform.parent.GetComponent<RectTransform>();
         targetPosition = mapRect.anchoredPosition;
-        targetZoom = Mathf.Clamp(targetZoom, minZoom, maxZoom);
     }
 
-    // --- НОВЕ: Автоматично центруємо мапу при кожному її відкритті ---
     private void OnEnable()
     {
-        // Запускаємо через корутину (чекаємо 1 кадр), щоб всі RegionUI встигли завантажитись
-        StartCoroutine(AutoFocusRoutine());
+        MapTableInteract.OnMapFullyOpened += TriggerAutoFocus;
     }
 
-    private IEnumerator AutoFocusRoutine()
+    private void OnDisable()
     {
-        yield return null; 
-        AutoFocusOnLatestRegion();
+        MapTableInteract.OnMapFullyOpened -= TriggerAutoFocus;
+    }
+
+    private void TriggerAutoFocus()
+    {
+        StopAllCoroutines();
+        StartCoroutine(DelayedAutoFocus());
+    }
+
+    private IEnumerator DelayedAutoFocus()
+    {
+        yield return new WaitForSecondsRealtime(0.4f);
+        AutoFocusOnLatestRegion(false);
     }
 
     private void Update()
     {
-        float currentZoom = Mathf.Lerp(mapRect.localScale.x, targetZoom, Time.deltaTime * smoothZoomSpeed);
+        // 1. ДИНАМІЧНИЙ МІНІМАЛЬНИЙ ЗУМ (не дозволяємо мапі бути меншою за екран)
+        float viewWidth = parentViewport.rect.width;
+        float viewHeight = parentViewport.rect.height;
+        float minZoomX = viewWidth / mapRect.rect.width;
+        float minZoomY = viewHeight / mapRect.rect.height;
+        float dynamicMinZoom = Mathf.Max(minZoom, Mathf.Max(minZoomX, minZoomY));
+
+        targetZoom = Mathf.Clamp(targetZoom, dynamicMinZoom, maxZoom);
+
+        // 2. ОБМЕЖЕННЯ ЦІЛЬОВОЇ ПОЗИЦІЇ (Target Position)
+        // Розраховуємо межі для ЦІЛЬОВОГО зуму, щоб при віддаленні мапа одразу стягувалась до центру
+        float targetMapWidth = mapRect.rect.width * targetZoom;
+        float targetMapHeight = mapRect.rect.height * targetZoom;
+        float maxTargetX = Mathf.Max(0, (targetMapWidth - viewWidth) / 2f);
+        float maxTargetY = Mathf.Max(0, (targetMapHeight - viewHeight) / 2f);
+
+        targetPosition.x = Mathf.Clamp(targetPosition.x, -maxTargetX, maxTargetX);
+        targetPosition.y = Mathf.Clamp(targetPosition.y, -maxTargetY, maxTargetY);
+
+        // 3. ПЛАВНИЙ ЗУМ ТА РУХ
+        float currentZoom = Mathf.Lerp(mapRect.localScale.x, targetZoom, Time.unscaledDeltaTime * smoothZoomSpeed);
         mapRect.localScale = new Vector3(currentZoom, currentZoom, 1f);
 
-        mapRect.anchoredPosition = Vector2.Lerp(mapRect.anchoredPosition, targetPosition, Time.deltaTime * smoothDragSpeed);
+        mapRect.anchoredPosition = Vector2.Lerp(mapRect.anchoredPosition, targetPosition, Time.unscaledDeltaTime * smoothDragSpeed);
 
+        // 4. ЖОРСТКЕ ОБМЕЖЕННЯ ФАКТИЧНОЇ ПОЗИЦІЇ (Current Position)
+        // Щоб навіть під час надшвидкого скролу краї мапи не "відставали" від екрану і не показували сцену
+        float currentMapWidth = mapRect.rect.width * currentZoom;
+        float currentMapHeight = mapRect.rect.height * currentZoom;
+        float maxCurrentX = Mathf.Max(0, (currentMapWidth - viewWidth) / 2f);
+        float maxCurrentY = Mathf.Max(0, (currentMapHeight - viewHeight) / 2f);
+
+        Vector2 clampedPos = mapRect.anchoredPosition;
+        clampedPos.x = Mathf.Clamp(clampedPos.x, -maxCurrentX, maxCurrentX);
+        clampedPos.y = Mathf.Clamp(clampedPos.y, -maxCurrentY, maxCurrentY);
+        mapRect.anchoredPosition = clampedPos;
+
+        // 5. ПАРАЛАКС
         if (parallaxLayer != null)
         {
             parallaxLayer.anchoredPosition = mapRect.anchoredPosition * parallaxStrength;
             parallaxLayer.localScale = Vector3.one * (1f + (currentZoom - 1f) * (parallaxStrength / 2f));
         }
-
-        ClampPosition();
     }
 
     public void OnScroll(PointerEventData eventData)
@@ -75,101 +114,48 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         targetPosition += (localPoint - prevLocalPoint);
     }
 
-    // --- НОВА ФУНКЦІЯ: Фокусування на конкретному регіоні ---
     public void FocusOnNode(RectTransform nodeRect, bool instant = true)
     {
-        // Встановлюємо приємний зум для огляду
-        targetZoom = Mathf.Clamp(2.5f, minZoom, maxZoom);
+        targetZoom = Mathf.Clamp(1.7f, minZoom, maxZoom);
 
-        // Вираховуємо локальну позицію вузла відносно мапи
-        Vector2 nodeLocalPos = nodeRect.localPosition;
-        
-        // Зсуваємо мапу в протилежний бік
+        Vector2 nodeLocalPos = mapRect.InverseTransformPoint(nodeRect.position);
         targetPosition = -nodeLocalPos * targetZoom;
 
         if (instant)
         {
             mapRect.localScale = new Vector3(targetZoom, targetZoom, 1f);
             mapRect.anchoredPosition = targetPosition;
-            ClampPosition(); 
-            targetPosition = mapRect.anchoredPosition; 
+            // Наступний кадр Update() сам математично ідеально затисне цільові та фактичні координати
         }
     }
 
-    // --- НОВА ФУНКЦІЯ: Пошук найактуальнішого регіону ---
-    public void AutoFocusOnLatestRegion()
+    public void AutoFocusOnLatestRegion(bool instant = true)
     {
-        RegionUI[] allRegions = GetComponentsInChildren<RegionUI>(true);
-        if (allRegions.Length == 0) allRegions = FindObjectsByType<RegionUI>(FindObjectsSortMode.None);
+        RegionUI[] allRegions = FindObjectsByType<RegionUI>(FindObjectsSortMode.None);
+        if (allRegions.Length == 0) return;
 
         RegionUI targetNode = null;
 
-        // Пріоритет 1: Щойно розблокований регіон (Сюди гравець має піти зараз)
-        foreach (var node in allRegions)
+        var availableRegions = allRegions
+            .Where(r => r.myRegionData != null && r.myRegionData.currentState == RegionState.Available)
+            .OrderByDescending(r => r.myRegionData.regionID)
+            .ToList();
+
+        if (availableRegions.Count > 0)
         {
-            if (node.myRegionData != null && node.myRegionData.currentState == RegionState.Available && node.myRegionData.isNewlyUnlocked)
-            {
-                targetNode = node;
-                break;
-            }
+            targetNode = availableRegions.FirstOrDefault(r => r.myRegionData.isNewlyUnlocked) ?? availableRegions[0];
+        }
+        else
+        {
+            targetNode = allRegions
+                .Where(r => r.myRegionData != null && r.myRegionData.currentState == RegionState.Conquered)
+                .OrderByDescending(r => r.myRegionData.regionID)
+                .FirstOrDefault();
         }
 
-        // Пріоритет 2: Будь-який доступний регіон (Якщо гравець ще не пройшов поточну зону)
-        if (targetNode == null)
-        {
-            foreach (var node in allRegions)
-            {
-                if (node.myRegionData != null && node.myRegionData.currentState == RegionState.Available)
-                {
-                    targetNode = node;
-                    break;
-                }
-            }
-        }
-
-        // Пріоритет 3: Останній пройдений регіон (Якщо гра пройдена повністю)
-        if (targetNode == null)
-        {
-            foreach (var node in allRegions)
-            {
-                if (node.myRegionData != null && node.myRegionData.currentState == RegionState.Conquered)
-                {
-                    targetNode = node; // Не робимо break, щоб цикл дійшов до останнього
-                }
-            }
-        }
-
-        // Якщо знайшли щось логічне - центруємо камеру на ньому!
         if (targetNode != null)
         {
-            FocusOnNode(targetNode.GetComponent<RectTransform>(), true);
+            FocusOnNode(targetNode.GetComponent<RectTransform>(), instant);
         }
-    }
-
-    private void ClampPosition()
-    {
-        float viewWidth = parentViewport.rect.width;
-        float viewHeight = parentViewport.rect.height;
-
-        float minZoomX = viewWidth / mapRect.rect.width;
-        float minZoomY = viewHeight / mapRect.rect.height;
-        float dynamicMinZoom = Mathf.Max(minZoom, Mathf.Max(minZoomX, minZoomY));
-
-        targetZoom = Mathf.Clamp(targetZoom, dynamicMinZoom, maxZoom);
-
-        float currentScale = mapRect.localScale.x;
-        float mapWidth = mapRect.rect.width * currentScale;
-        float mapHeight = mapRect.rect.height * currentScale;
-
-        float maxX = Mathf.Max(0, (mapWidth - viewWidth) / 2f);
-        float maxY = Mathf.Max(0, (mapHeight - viewHeight) / 2f);
-
-        targetPosition.x = Mathf.Clamp(targetPosition.x, -maxX, maxX);
-        targetPosition.y = Mathf.Clamp(targetPosition.y, -maxY, maxY);
-
-        Vector2 clampedPos = mapRect.anchoredPosition;
-        clampedPos.x = Mathf.Clamp(clampedPos.x, -maxX, maxX);
-        clampedPos.y = Mathf.Clamp(clampedPos.y, -maxY, maxY);
-        mapRect.anchoredPosition = clampedPos;
     }
 }
