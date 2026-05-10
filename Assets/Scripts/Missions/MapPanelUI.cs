@@ -63,7 +63,6 @@ public class MapPanelUI : MonoBehaviour
     private bool isConfirmingUpgrade = false;
     private Vector3 currentRegionPos;
 
-    // Кольори для UI
     private string colorGreen = "#4CAF50";
     private string colorRed = "#F44336";
 
@@ -198,7 +197,10 @@ public class MapPanelUI : MonoBehaviour
         if (conquerFoodText != null) conquerFoodText.text = $"+{currentRegion.foodReward}";
         if (conquerDiamondText != null) conquerDiamondText.text = $"+{currentRegion.diamondReward}";
 
-        int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
+        // --- ФІКС БАГУ З POWER ---
+        // Якщо гравець щойно почав гру і ще не заходив у Shop, дефолтне значення буде 70 (Герой 50 + Зброя 20), а не 50.
+        int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 70);
+
         string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? colorGreen : colorRed;
         if (recommendedPowerText != null) recommendedPowerText.text = $"<size=50%><color=#D4AF37>RECOMMENDED</color></size>\n{currentRegion.recommendedPower}";
         if (playerPowerText != null) playerPowerText.text = $"<size=50%><color=#D4AF37>YOUR POWER</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
