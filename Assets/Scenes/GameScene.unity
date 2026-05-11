@@ -20,12 +20,12 @@ RenderSettings:
   m_FogDensity: 0.02
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.30756134, g: 0.3547264, b: 0.4490565, a: 1}
-  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
-  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  m_AmbientSkyColor: {r: 0.41960785, g: 0.69803923, b: 0.9647059, a: 1}
+  m_AmbientEquatorColor: {r: 0.75686276, g: 0.7882353, b: 0.8392157, a: 1}
+  m_AmbientGroundColor: {r: 0.22745098, g: 0.29411766, b: 0.22745098, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
-  m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
+  m_AmbientMode: 1
+  m_SubtractiveShadowColor: {r: 0.37025982, g: 0.40751266, b: 0.5018867, a: 1}
   m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
@@ -955,56 +955,43 @@ MonoBehaviour:
   peakSharpness: 2.5
   terraceCount: 24
   edgeMountainMultiplier: 2
-  grassLayer: {fileID: 8574412962073106934, guid: 88ae7c361a379464e8ea3c1a0140b44d, type: 2}
-  sandLayer: {fileID: 8574412962073106934, guid: 406a82348762e6e4d82558e5677abf98, type: 2}
-  snowLayer: {fileID: 8574412962073106934, guid: ebdd4d4dc9ef6eb478f5b1ed57440e35, type: 2}
+  skyboxMaterial: {fileID: 2100000, guid: a1994d51737e25c4a84fe6cf3fa978d6, type: 2}
+  riverDepth: 5
+  riverWidth: 12
+  bankSmoothness: 8
+  bridgePrefab: {fileID: 1530991319808082263, guid: 6a880bef213fb4644b75b620a009a420, type: 3}
+  waterPlanePrefab: {fileID: 0}
+  grassLayer: {fileID: 8574412962073106934, guid: a81995a1b9792014b8df74c003aef209, type: 2}
+  sandLayer: {fileID: 8574412962073106934, guid: b0bff560aeb461f4ab4c2c556d09ce73, type: 2}
+  snowLayer: {fileID: 8574412962073106934, guid: 81e91e370b984c440840e5b9aaba5988, type: 2}
   rockLayer: {fileID: 8574412962073106934, guid: 3ffb748fce1b62b438d7803f36f13b83, type: 2}
+  forestFoliageColor: {r: 0.31764707, g: 0.64705884, b: 0.24313726, a: 1}
+  desertFoliageColor: {r: 0.6075471, g: 0.50695795, b: 0.20519039, a: 1}
+  snowFoliageColor: {r: 0.86966896, g: 0.93302363, b: 0.9622642, a: 1}
+  forestRockColor: {r: 0.554717, g: 0.554717, b: 0.554717, a: 1}
+  desertRockColor: {r: 0.7294118, g: 0.57254905, b: 0.40784314, a: 1}
+  snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 30000
   clusterScale: 10
   forestThreshold: 0.48
   globalBiomeScale: 2
-  forestTrees:
-  - {fileID: 2082692394303509808, guid: 7edbde541a1aae946af15af19cc66409, type: 3}
-  - {fileID: 7777646624041042307, guid: 36bdcf78b8565f147bf4f84ab8d8d969, type: 3}
-  - {fileID: 8762195842682141857, guid: 965b7e5733028e646b8dbdc9c72f435e, type: 3}
-  - {fileID: 5282087354350472380, guid: 4bf2f67afc275ee4085e5bc12bfb8882, type: 3}
-  desertTrees:
-  - {fileID: 4387556561146438884, guid: bc98b004502243b45ae38d018bf38050, type: 3}
-  - {fileID: 9000113146178964020, guid: c631b4bf55530864d9336e962f79a54e, type: 3}
-  - {fileID: 850153613400678640, guid: 1fa46d9347e471541bf708aecbb7321c, type: 3}
-  - {fileID: 2187926801874106002, guid: 4065a005d23872a43820b5d4a2f093c1, type: 3}
-  snowTrees:
-  - {fileID: 4766257514078400996, guid: 9d8b7ca1e928e9b4188c3753c3d105cc, type: 3}
-  - {fileID: 4848555166206009842, guid: 49f117f46a737044eaa447ddacffb548, type: 3}
-  - {fileID: 7283303965256266388, guid: 869966f50fe9e2b48a4187591c2eeb0f, type: 3}
-  - {fileID: 2927237728854604879, guid: 2227744a44fa05f45ad469e874676648, type: 3}
-  forestGrass:
-  - {fileID: 6124437282203982327, guid: 20126fd0fb6f0814f8faf3a7e25c45b3, type: 3}
-  - {fileID: 1286167345426655491, guid: 9102ec52a9887824fa9bc26aa57edb9a, type: 3}
-  - {fileID: 5721968754549008035, guid: 8ab5ab79450a049439b736c7ce66771f, type: 3}
-  - {fileID: 6517705805481257378, guid: b1bddc1a6a1497547b609d80d978a373, type: 3}
-  desertGrass:
-  - {fileID: 7138445709065509919, guid: 3a1052daf3a6dce489385d9a9d7e6f18, type: 3}
-  - {fileID: 2357958524070385245, guid: 924cfe428f1de2b4a95500e60cf5ff5e, type: 3}
-  - {fileID: 4276390741564147802, guid: 94837c9afb91cc3458e44f584d8b0740, type: 3}
-  - {fileID: 1392343421055548980, guid: 279190552a8320b4c90439a2aa89fa16, type: 3}
-  snowGrass:
-  - {fileID: 4979604933774305725, guid: 36730f85e5d894645897d560aeee29e0, type: 3}
-  - {fileID: 4219618048599347213, guid: d84fecdb8c5d85e47a57f6162f9551db, type: 3}
-  - {fileID: 7473686090908187847, guid: e1b6422729790d5469e091684afa335a, type: 3}
-  - {fileID: 8794599636297893694, guid: 70c6faf05fcf10f47a339d3868d09df8, type: 3}
-  forestRocks:
+  giantTrees: []
+  baseTrees:
+  - {fileID: 7131453652126606360, guid: 66f2e851acea268478d72e0f9f78b2d7, type: 3}
+  - {fileID: 7131453652126606360, guid: 8679eb0fe9f522b4f93212a7b2c2b671, type: 3}
+  baseGrass:
+  - {fileID: 4388143748066298371, guid: 571770eccaa8c9147be0f0810affa3e1, type: 3}
+  - {fileID: 4388143748066298371, guid: 96f9b5f287fafbd4c93c66322b357164, type: 3}
+  - {fileID: 4388143748066298371, guid: c01058ce063c5dd41909448e644dad38, type: 3}
+  baseRocks:
   - {fileID: 3173614303439725726, guid: ae390e1c956557b43851c43417dcc52e, type: 3}
   - {fileID: 1612657073637104694, guid: a2ea7d649c236f9458fb76384050faa6, type: 3}
   - {fileID: 8420380102451872740, guid: 8b34c79fdcb7b19478732cb21ad6e224, type: 3}
-  desertRocks:
-  - {fileID: 3173614303439725726, guid: ae390e1c956557b43851c43417dcc52e, type: 3}
-  - {fileID: 1612657073637104694, guid: a2ea7d649c236f9458fb76384050faa6, type: 3}
-  - {fileID: 8420380102451872740, guid: 8b34c79fdcb7b19478732cb21ad6e224, type: 3}
-  snowRocks:
-  - {fileID: 3173614303439725726, guid: ae390e1c956557b43851c43417dcc52e, type: 3}
-  - {fileID: 1612657073637104694, guid: a2ea7d649c236f9458fb76384050faa6, type: 3}
-  - {fileID: 8420380102451872740, guid: 8b34c79fdcb7b19478732cb21ad6e224, type: 3}
+  baseBushes:
+  - {fileID: 626541880792361729, guid: a84014ab78d3b5e448d1fae7964f03e8, type: 3}
+  baseFlowers:
+  - {fileID: 4898303536820266227, guid: 9ca830ce22a6cc440862930bce38b1cd, type: 3}
+  - {fileID: 4898303536820266227, guid: 14bbde07441624249820ad2b342f9b4d, type: 3}
   logPrefabs:
   - {fileID: 1255758057252634, guid: 0761e9c9debdfd34fa20f5859c6f08ff, type: 3}
   - {fileID: 1330862079685384, guid: 7c1b7eb3905d5694688d9bb9fe2c0d47, type: 3}
@@ -1274,7 +1261,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c36557f77a324e458aa88442c389443, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DayNightCycle
-  dayDurationInSeconds: 2000
+  dayDurationInSeconds: 1000
   timeOfDay: 8
   sunLight: {fileID: 410087040}
   moonLight: {fileID: 790339834}
@@ -1490,7 +1477,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   currentWeather: 0
-  weatherChangeInterval: 300
+  weatherChangeInterval: 60
   weatherTransitionSpeed: 0.5
   clearFogDensity: 0.005
   stormFogDensity: 0.02
@@ -1500,6 +1487,11 @@ MonoBehaviour:
   clearWindTurbulence: 0.1
   stormWindTurbulence: 1.2
   windRotationSpeed: 2
+  triForgeWind: {fileID: 0}
+  clearTreeWind: 0.3
+  stormTreeWind: 1.8
+  clearGrassWind: 0.5
+  stormGrassWind: 2.5
   starsParticles: {fileID: 1222502574}
   firefliesVFX: {fileID: 763814132}
   rainVFX: {fileID: 919215059}
@@ -6775,6 +6767,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   smoothSpeed: 10
+  positionSmoothTime: 0.08
   mouseSensitivity: 2.7
   minYAngle: -20
   maxYAngle: 80
@@ -17940,7 +17933,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.000061035156, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0.0001, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &877864315
@@ -40592,10 +40585,10 @@ MonoBehaviour:
   bloodVignette: {fileID: 1791223501}
   dangerThreshold: 0.3
   breathSpeed: 1.5
-  maxAlpha: 0.9
+  maxAlpha: 1
   hitFlashSpeed: 5
-  hitColor: {r: 0.8, g: 0, b: 0, a: 0.50980395}
-  dangerColor: {r: 0.15, g: 0, b: 0, a: 1}
+  hitColor: {r: 0.8, g: 0, b: 0, a: 0.5882353}
+  dangerColor: {r: 0.12452829, g: 0.009163389, b: 0.009163389, a: 1}
 --- !u!1 &1831909132
 GameObject:
   m_ObjectHideFlags: 0

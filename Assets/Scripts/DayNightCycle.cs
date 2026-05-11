@@ -26,14 +26,14 @@ public class DayNightCycle : MonoBehaviour
 
     [Header("Weather System")]
     public WeatherState currentWeather = WeatherState.Clear;
-    public float weatherChangeInterval = 60f;
-    public float weatherTransitionSpeed = 0.5f;
+    public float weatherChangeInterval = 15f;
+    public float weatherTransitionSpeed = 0.05f;
 
     [Header("Fog Densities")]
     public float clearFogDensity = 0.005f;
     public float stormFogDensity = 0.02f;
 
-    [Header("Wind System (NEW)")]
+    [Header("Standard Wind System")]
     public WindZone windZone;
     [Tooltip("Сила вітру в ясну погоду")]
     public float clearWindMain = 0.2f;
@@ -113,18 +113,31 @@ public class DayNightCycle : MonoBehaviour
         RenderSettings.fogDensity = currentFogDensity;
         RenderSettings.fogColor = Color.Lerp(clearFog, stormFog, weatherBlend);
 
-        if (windZone != null)
+        // --- НОВЕ: ДИНАМІЧНИЙ СКАЙБОКС ТА АТМОСФЕРА ---
+        if (RenderSettings.skybox != null)
         {
-            windZone.windMain = Mathf.Lerp(clearWindMain, stormWindMain, weatherBlend);
-            windZone.windTurbulence = Mathf.Lerp(clearWindTurbulence, stormWindTurbulence, weatherBlend);
-            windZone.transform.Rotate(Vector3.up, windRotationSpeed * Time.deltaTime, Space.World);
+            // Плавно зменшуємо яскравість неба під час шторму (Exposure)
+            float exposure = Mathf.Lerp(1f, 0.35f, weatherBlend);
+            if (RenderSettings.skybox.HasProperty("_Exposure"))
+            {
+                RenderSettings.skybox.SetFloat("_Exposure", exposure);
+            }
+
+            // Забарвлюємо небо у сірий відтінок
+            if (RenderSettings.skybox.HasProperty("_Tint"))
+            {
+                RenderSettings.skybox.SetColor("_Tint", Color.Lerp(Color.white, new Color(0.4f, 0.4f, 0.45f), weatherBlend));
+            }
         }
 
-        // --- ВИКЛИК НОВОГО МЕТОДУ ---
+        // Робимо глобальне освітлення сцени (Gradient Ambient) похмурим
+        RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.42f, 0.70f, 0.96f), new Color(0.2f, 0.25f, 0.3f), weatherBlend);
+        RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.76f, 0.79f, 0.84f), new Color(0.15f, 0.2f, 0.25f), weatherBlend);
+        RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.23f, 0.30f, 0.23f), new Color(0.1f, 0.1f, 0.1f), weatherBlend);
+
         UpdateVFXPositions();
     }
 
-    // --- НОВИЙ МЕТОД: Відв'язуємо обертання частинок від камери ---
     private void UpdateVFXPositions()
     {
         if (Camera.main == null) return;
@@ -134,7 +147,6 @@ public class DayNightCycle : MonoBehaviour
         if (starsParticles != null)
         {
             starsParticles.transform.position = camPos;
-            // Зорі не крутяться разом з камерою
             starsParticles.transform.rotation = Quaternion.identity;
         }
 
@@ -143,9 +155,7 @@ public class DayNightCycle : MonoBehaviour
         {
             if (vfx != null && vfx.gameObject.activeSelf)
             {
-                // Емітер завжди над камерою на 12 метрів
                 vfx.transform.position = camPos + Vector3.up * 12f;
-                // Емітер завжди світить рівно вниз (незалежно від того куди дивиться гравець)
                 vfx.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             }
         }
@@ -172,9 +182,18 @@ public class DayNightCycle : MonoBehaviour
     private void ChangeWeatherRandomly()
     {
         float roll = Random.value;
-        if (roll < 0.5f) currentWeather = WeatherState.Clear;
-        else if (roll < 0.8f) currentWeather = WeatherState.Precipitation;
-        else currentWeather = WeatherState.Storm;
+
+        if (currentWeather == WeatherState.Clear)
+        {
+            if (roll < 0.4f) currentWeather = WeatherState.Precipitation;
+            else if (roll < 0.6f) currentWeather = WeatherState.Storm;
+            else currentWeather = WeatherState.Clear;
+        }
+        else
+        {
+            if (roll < 0.7f) currentWeather = WeatherState.Clear;
+            else currentWeather = WeatherState.Precipitation;
+        }
 
         UpdateWeatherVFX();
 

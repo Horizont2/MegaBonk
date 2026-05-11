@@ -7,6 +7,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Scene Mode")]
     public bool isCampMode = false;
+    [HideInInspector] public bool isControlBlocked = false;
 
     [Header("Character & Weapon Spawning")]
     public GameObject[] heroPrefabs;
@@ -72,14 +73,14 @@ public class PlayerController : MonoBehaviour
     private TrailRenderer weaponTrail;
 
     [Header("HUD UI References")]
-    public Image hpFill;         // «м≥нили Slider на Image
-    public Image xpFill;         // «м≥нили Slider на Image
+    public Image hpFill;
+    public Image xpFill;
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI crystalText;
     public TextMeshProUGUI hpText;
 
     [Header("Juicy UI & Effects")]
-    public Image hpCatchupFill;  // «м≥нили Slider на Image
+    public Image hpCatchupFill;
     public float uiLerpSpeed = 5f;
     private float visualXP = 0f;
 
@@ -104,10 +105,11 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public int currentMultiplier = 1;
 
     private CameraFollow cameraFollow;
-    private HealthVisuals healthVisuals; // ¬ј∆Ћ»¬ќ: «м≥нили посиланн€ на новий скрипт
+    private HealthVisuals healthVisuals;
     private CharacterController characterController;
     private Vector3 velocity;
     private Animator anim;
+    private bool isDead = false;
 
     private void Awake()
     {
@@ -141,8 +143,6 @@ public class PlayerController : MonoBehaviour
         }
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
-
-        // «находимо новий скрипт
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
@@ -284,14 +284,11 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         float targetHpFill = currentHealth / maxHealth;
-
-        // ѕлавне наздоган€нн€ ’ѕ (б≥ла/жовта смужка п≥д червоною)
         if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
         {
             hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.deltaTime * uiLerpSpeed);
         }
 
-        // ѕлавне заповненн€ EXP
         float targetXpFill = currentXP / xpToNextLevel;
         if (xpFill != null && visualXP < currentXP)
         {
@@ -329,13 +326,19 @@ public class PlayerController : MonoBehaviour
         }
 
         Vector3 movement = Vector3.zero;
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-        Vector3 inputDir = new Vector3(horizontal, 0f, vertical).normalized;
+        Vector3 inputDir = Vector3.zero;
 
-        if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= lastDashTime + dashCooldown)
+        // ЅЋќ ”¬јЌЌя  ≈–”¬јЌЌя ¬  ј“—÷≈Ќј’
+        if (!isControlBlocked)
         {
-            StartCoroutine(DashRoutine(inputDir));
+            float horizontal = Input.GetAxisRaw("Horizontal");
+            float vertical = Input.GetAxisRaw("Vertical");
+            inputDir = new Vector3(horizontal, 0f, vertical).normalized;
+
+            if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= lastDashTime + dashCooldown)
+            {
+                StartCoroutine(DashRoutine(inputDir));
+            }
         }
 
         if (isDashing) return;
@@ -346,9 +349,14 @@ public class PlayerController : MonoBehaviour
         camForward.y = 0f; camRight.y = 0f;
         camForward.Normalize(); camRight.Normalize();
 
-        if (camForward.sqrMagnitude > 0.001f)
+        // 1. ќбчислюЇмо куди ми хочемо йти в≥дносно камери
+        Vector3 targetMoveDirection = Vector3.zero;
+        if (inputDir.magnitude >= 0.1f)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(camForward);
+            targetMoveDirection = (camForward * inputDir.z + camRight * inputDir.x).normalized;
+
+            // 2. ѕовертаЇмо персонажа ќЅЋ»„„яћ туди, куди в≥н б≥жить!
+            Quaternion targetRotation = Quaternion.LookRotation(targetMoveDirection);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
@@ -373,7 +381,8 @@ public class PlayerController : MonoBehaviour
 
         if (inputDir.magnitude >= 0.1f)
         {
-            Vector3 targetMove = (camForward * inputDir.z + camRight * inputDir.x).normalized * actualSpeed;
+            // 3. ћножимо наш напр€мок на швидк≥сть
+            Vector3 targetMove = targetMoveDirection * actualSpeed;
             currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMove, currentAccel * Time.deltaTime);
         }
         else
@@ -385,7 +394,7 @@ public class PlayerController : MonoBehaviour
         float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
 
         if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
-        if (canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
+        if (!isControlBlocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
@@ -407,7 +416,7 @@ public class PlayerController : MonoBehaviour
             anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
             anim.SetFloat("MoveZ", Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f));
 
-            if (characterController.isGrounded)
+            if (characterController.isGrounded && !isControlBlocked)
             {
                 if (!isCampMode)
                 {
@@ -429,14 +438,14 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            if (!isCampMode && Input.GetMouseButton(1) && isAimingGrenade)
+            if (!isCampMode && !isControlBlocked && Input.GetMouseButton(1) && isAimingGrenade)
             {
                 currentThrowForce += chargeRate * Time.deltaTime;
                 if (currentThrowForce > maxThrowForce) currentThrowForce = maxThrowForce;
                 DrawTrajectory();
             }
 
-            if (!isCampMode && Input.GetMouseButtonUp(1))
+            if (!isCampMode && (!isControlBlocked && Input.GetMouseButtonUp(1) || (isControlBlocked && isAimingGrenade)))
             {
                 if (isAimingGrenade)
                 {
@@ -596,7 +605,6 @@ public class PlayerController : MonoBehaviour
             cameraFollow.TriggerDirectionalShake(hitPushDir, 1.5f, 0.3f, 0.3f);
         }
 
-        // ¬ј∆Ћ»¬ќ: ¬икликаЇмо новий ефект пульсац≥њ зам≥сть старого блиманн€
         if (healthVisuals != null) healthVisuals.TriggerHitFlash();
 
         if (damageFlashImage != null)
@@ -629,12 +637,8 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // ƒодаЇмо цей прапорець перед методом
-    private bool isDead = false;
-
     private void Die()
     {
-        // ‘≤ —: якщо ми вже мертв≥, просто ≥гноруЇмо вс≥ наступн≥ удари
         if (isDead) return;
         isDead = true;
 

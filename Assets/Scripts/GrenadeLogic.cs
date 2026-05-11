@@ -51,13 +51,21 @@ public class GrenadeLogic : MonoBehaviour
         }
     }
 
+    // НОВЕ: Миттєвий вибух при прямому влучанні у ворога!
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (hasExploded) return;
+        if (collision.gameObject.CompareTag("Enemy"))
+        {
+            Explode();
+        }
+    }
+
     private void Explode()
     {
         hasExploded = true;
 
-        // ЗВУК: Потужний вибух
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Explosion);
-
         if (explosionEffect != null) Instantiate(explosionEffect, transform.position, Quaternion.identity);
 
         Collider[] colliders = Physics.OverlapSphere(transform.position, explosionRadius);

@@ -32,7 +32,6 @@ public class GameManager : MonoBehaviour
             transform.parent = null;
             DontDestroyOnLoad(gameObject);
 
-            // ФІКС: Підписуємось на подію завантаження сцени
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
@@ -46,12 +45,19 @@ public class GameManager : MonoBehaviour
         if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    // ФІКС: Скидаємо всі змінні, коли завантажується табір або новий рівень
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         survivalTime = 0f;
         nextSurvivalTick = 1f;
         isGameOver = false;
+
+        // ФІКС: Динамічно шукаємо UI елементи в новій сцені
+        GameObject timerObj = GameObject.Find("TimerText");
+        if (timerObj != null) timerText = timerObj.GetComponent<TextMeshProUGUI>();
+
+        GameObject panelObj = GameObject.Find("GameOverPanel");
+        if (panelObj != null) gameOverPanel = panelObj.GetComponent<CanvasGroup>();
+
         if (gameOverPanel != null) gameOverPanel.alpha = 0f;
     }
 
@@ -87,7 +93,7 @@ public class GameManager : MonoBehaviour
 
     public void TriggerGameOver()
     {
-        if (isGameOver) return; // Захист від подвійного спрацьовування!
+        if (isGameOver) return;
 
         isGameOver = true;
 
