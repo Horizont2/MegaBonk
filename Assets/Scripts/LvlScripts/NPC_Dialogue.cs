@@ -2,8 +2,17 @@ using UnityEngine;
 
 public class NPC_Dialogue : MonoBehaviour
 {
+    [Header("Quest UI")]
+    public GameObject questMarker; // Посилання на літаючий знак оклику
+
     private bool isPlayerInRange = false;
     private bool hasTalked = false;
+
+    private void Start()
+    {
+        // Переконуємося, що знак оклику увімкнений на початку сцени
+        if (questMarker != null) questMarker.SetActive(true);
+    }
 
     private void OnTriggerEnter(Collider other)
     {
@@ -31,6 +40,9 @@ public class NPC_Dialogue : MonoBehaviour
             isPlayerInRange = false;
 
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+
+            // ВИМИКАЄМО знак оклику, бо діалог розпочато
+            if (questMarker != null) questMarker.SetActive(false);
 
             // Повертаємо ковбоя до гравця
             Transform player = GameObject.FindGameObjectWithTag("Player").transform;

@@ -144,8 +144,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.25}
   m_AnchorMax: {x: 1, y: 0.75}
-  m_AnchoredPosition: {x: -0.29159546, y: 0}
-  m_SizeDelta: {x: -1.5152, y: 0}
+  m_AnchoredPosition: {x: -0.29159546, y: -1.205}
+  m_SizeDelta: {x: -1.5152, y: 2.4099}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7027423889218580833
 MonoBehaviour:
@@ -195,8 +195,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.25}
   m_AnchorMax: {x: 1, y: 0.75}
-  m_AnchoredPosition: {x: -0.39871216, y: 0}
-  m_SizeDelta: {x: 0.7974, y: 0}
+  m_AnchoredPosition: {x: -0.39871216, y: -1.205}
+  m_SizeDelta: {x: 0.7974, y: 2.4099}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2485850491343239221
 CanvasRenderer:
@@ -349,6 +349,8 @@ MonoBehaviour:
   checkboxDone: {fileID: 1181587607446934701}
   backgroundImage: {fileID: 1868166545914976096}
   progressSlider: {fileID: 5627236615524663549}
+  animateAppearance: 0
+  animationDuration: 0.5
   isCompleted: 0
 --- !u!114 &4732936452007576437
 MonoBehaviour:
@@ -652,8 +654,8 @@ MonoBehaviour:
   m_fontSizeMin: 10
   m_fontSizeMax: 15
   m_fontStyle: 1
-  m_HorizontalAlignment: 4
-  m_VerticalAlignment: 1024
+  m_HorizontalAlignment: 2
+  m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -905,7 +907,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 277.58, y: 42.3644}
+  m_SizeDelta: {x: 277.58, y: 58.414}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4467090318239542304
 CanvasRenderer:
@@ -1042,7 +1044,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 277.58, y: 33.52}
+  m_SizeDelta: {x: 277.58, y: 41.141}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6477615478195765266
 CanvasRenderer:

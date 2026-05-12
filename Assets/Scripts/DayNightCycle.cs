@@ -117,7 +117,7 @@ public class DayNightCycle : MonoBehaviour
         if (RenderSettings.skybox != null)
         {
             // Плавно зменшуємо яскравість неба під час шторму (Exposure)
-            float exposure = Mathf.Lerp(1f, 0.35f, weatherBlend);
+            float exposure = Mathf.Lerp(0.7f, 0.35f, weatherBlend);
             if (RenderSettings.skybox.HasProperty("_Exposure"))
             {
                 RenderSettings.skybox.SetFloat("_Exposure", exposure);

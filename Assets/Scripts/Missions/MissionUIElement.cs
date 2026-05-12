@@ -18,6 +18,11 @@ public class MissionUIElement : MonoBehaviour
     [Header("Slider")]
     public Slider progressSlider;
 
+    [Header("Settings")]
+    [Tooltip("Увімкни це ТІЛЬКИ для сюжетної місії на сцені (щоб вона гарно виїжджала)")]
+    public bool animateAppearance = false;
+    public float animationDuration = 0.5f;
+
     private CanvasGroup canvasGroup;
     public bool isCompleted = false;
 
@@ -28,13 +33,18 @@ public class MissionUIElement : MonoBehaviour
     {
         canvasGroup = GetComponent<CanvasGroup>();
         if (checkboxDone != null) checkboxDone.gameObject.SetActive(false);
+
+        // Ховаємо плашку на старті ТІЛЬКИ якщо ввімкнена анімація (для 1 лвлу)
+        if (animateAppearance)
+        {
+            canvasGroup.alpha = 0f;
+        }
     }
 
     public void Setup(string title, string description, int current, int target)
     {
         isCompleted = false;
         StopAllCoroutines();
-        if (canvasGroup != null) canvasGroup.alpha = 1f;
 
         if (checkboxEmpty != null) checkboxEmpty.gameObject.SetActive(true);
         if (checkboxDone != null)
@@ -57,6 +67,36 @@ public class MissionUIElement : MonoBehaviour
         targetVisualProgress = target;
 
         UpdateProgress(current, target);
+
+        // Логіка появи
+        if (animateAppearance)
+        {
+            StartCoroutine(AppearRoutine());
+            animateAppearance = false; // Вимикаємо, щоб не виїжджала повторно при оновленні
+        }
+        else
+        {
+            if (canvasGroup != null) canvasGroup.alpha = 1f;
+        }
+    }
+
+    private IEnumerator AppearRoutine()
+    {
+        float t = 0;
+        // Зсуваємо плашку вправо на 300 пікселів для старту анімації
+        Vector3 startPos = transform.localPosition + new Vector3(300f, 0, 0);
+        Vector3 targetPos = transform.localPosition;
+
+        while (t < 1)
+        {
+            t += Time.deltaTime / animationDuration;
+            float curve = Mathf.SmoothStep(0, 1, t);
+
+            canvasGroup.alpha = curve;
+            transform.localPosition = Vector3.Lerp(startPos, targetPos, curve);
+            yield return null;
+        }
+        transform.localPosition = targetPos;
     }
 
     public void UpdateProgress(int current, int target)
@@ -78,7 +118,6 @@ public class MissionUIElement : MonoBehaviour
         }
     }
 
-    // Звичайна анімація при виконанні під час гри
     public void CompleteMission()
     {
         if (isCompleted) return;
@@ -92,7 +131,7 @@ public class MissionUIElement : MonoBehaviour
         StartCoroutine(CompleteAnimationRoutine());
     }
 
-    // НОВЕ: Миттєве завантаження готової місії при старті гри
+    // МЕТОД ДЛЯ МИТТЄВОГО ЗАВЕРШЕННЯ В ТАБОРІ (Який шукала Unity)
     public void SetCompletedStateInstant()
     {
         isCompleted = true;

@@ -956,20 +956,18 @@ MonoBehaviour:
   terraceCount: 24
   edgeMountainMultiplier: 2
   skyboxMaterial: {fileID: 2100000, guid: a1994d51737e25c4a84fe6cf3fa978d6, type: 2}
-  riverDepth: 5
-  riverWidth: 12
-  bankSmoothness: 8
-  bridgePrefab: {fileID: 1530991319808082263, guid: 6a880bef213fb4644b75b620a009a420, type: 3}
-  waterPlanePrefab: {fileID: 0}
   grassLayer: {fileID: 8574412962073106934, guid: a81995a1b9792014b8df74c003aef209, type: 2}
   sandLayer: {fileID: 8574412962073106934, guid: b0bff560aeb461f4ab4c2c556d09ce73, type: 2}
   snowLayer: {fileID: 8574412962073106934, guid: 81e91e370b984c440840e5b9aaba5988, type: 2}
   rockLayer: {fileID: 8574412962073106934, guid: 3ffb748fce1b62b438d7803f36f13b83, type: 2}
-  forestFoliageColor: {r: 0.31764707, g: 0.64705884, b: 0.24313726, a: 1}
-  desertFoliageColor: {r: 0.6075471, g: 0.50695795, b: 0.20519039, a: 1}
-  snowFoliageColor: {r: 0.86966896, g: 0.93302363, b: 0.9622642, a: 1}
+  forestTreeTexture: {fileID: 2800000, guid: 0bb174f69c9851a48b09bf7d8180c39e, type: 3}
+  desertTreeTexture: {fileID: 2800000, guid: 9ce620aa1cda14240816a569547c421b, type: 3}
+  snowTreeTexture: {fileID: 2800000, guid: 2f7987a9c45e0e2438e599c84cbbd754, type: 3}
+  forestFoliageColor: {r: 0.22612882, g: 0.4867924, b: 0.13134207, a: 1}
+  desertFoliageColor: {r: 0.554717, g: 0.45784596, b: 0.17897472, a: 1}
+  snowFoliageColor: {r: 0.85660374, g: 0.85660374, b: 0.85660374, a: 1}
   forestRockColor: {r: 0.554717, g: 0.554717, b: 0.554717, a: 1}
-  desertRockColor: {r: 0.7294118, g: 0.57254905, b: 0.40784314, a: 1}
+  desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 30000
   clusterScale: 10
@@ -977,8 +975,10 @@ MonoBehaviour:
   globalBiomeScale: 2
   giantTrees: []
   baseTrees:
-  - {fileID: 7131453652126606360, guid: 66f2e851acea268478d72e0f9f78b2d7, type: 3}
-  - {fileID: 7131453652126606360, guid: 8679eb0fe9f522b4f93212a7b2c2b671, type: 3}
+  - {fileID: 3996347160322767372, guid: 6153067b74a89fe4e958c5b32b2ecde3, type: 3}
+  - {fileID: 6147316610173666459, guid: a77968b0dc05d644a89903d2fd03cbbb, type: 3}
+  - {fileID: 3014813734061652239, guid: 0b74e51898bafb9458f000e3ec598e33, type: 3}
+  - {fileID: 6164718011109765826, guid: ea249874850a8bc42ac6097ccf6019b6, type: 3}
   baseGrass:
   - {fileID: 4388143748066298371, guid: 571770eccaa8c9147be0f0810affa3e1, type: 3}
   - {fileID: 4388143748066298371, guid: 96f9b5f287fafbd4c93c66322b357164, type: 3}
@@ -1477,7 +1477,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   currentWeather: 0
-  weatherChangeInterval: 60
+  weatherChangeInterval: 100
   weatherTransitionSpeed: 0.5
   clearFogDensity: 0.005
   stormFogDensity: 0.02
@@ -1487,11 +1487,6 @@ MonoBehaviour:
   clearWindTurbulence: 0.1
   stormWindTurbulence: 1.2
   windRotationSpeed: 2
-  triForgeWind: {fileID: 0}
-  clearTreeWind: 0.3
-  stormTreeWind: 1.8
-  clearGrassWind: 0.5
-  stormGrassWind: 2.5
   starsParticles: {fileID: 1222502574}
   firefliesVFX: {fileID: 763814132}
   rainVFX: {fileID: 919215059}
@@ -1750,6 +1745,14 @@ PrefabInstance:
     - target: {fileID: 8686651896565861522, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_RaycastTarget
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8927102210572930983, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 690.3181
+      objectReference: {fileID: 0}
+    - target: {fileID: 8927102210572930983, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -108.39905
       objectReference: {fileID: 0}
     - target: {fileID: 9004548933636707589, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
@@ -6768,9 +6771,9 @@ MonoBehaviour:
     m_Bits: 512
   smoothSpeed: 10
   positionSmoothTime: 0.08
-  mouseSensitivity: 2.7
-  minYAngle: -20
-  maxYAngle: 80
+  mouseSensitivity: 2.5
+  minYAngle: -30
+  maxYAngle: 60
   isCinematicMode: 0
 --- !u!1 &342501710
 GameObject:
@@ -18115,8 +18118,12 @@ PrefabInstance:
       value: 1.05
       objectReference: {fileID: 0}
     - target: {fileID: 5665401646391167737, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: orbitHeight
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5665401646391167737, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: orbitDistance
-      value: 1.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5665401646391167737, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: baseRotationSpeed
@@ -18259,6 +18266,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1880990564}
     - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: meleeRadius
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: pickupRadius
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: dashParticles
       value: 
       objectReference: {fileID: 1183163080}
@@ -18267,8 +18282,16 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1589978116}
     - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: maxThrowForce
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: visualYOffset
       value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: attackCooldown
+      value: 0.8
       objectReference: {fileID: 0}
     - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: hpCatchupSlider
@@ -33352,7 +33375,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 40, y: -40}
+  m_AnchoredPosition: {x: 40, y: -109}
   m_SizeDelta: {x: 922.8896, y: 319.7791}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1197337338

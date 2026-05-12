@@ -86,7 +86,7 @@ public class Level1_QuestManager : MonoBehaviour
         {
             // Блокуємо гравця та UI
             GameObject pObj = GameObject.FindGameObjectWithTag("Player");
-            if (pObj != null) pObj.GetComponent<PlayerController>().enabled = false;
+            if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = true;
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
             yield return null; // Чекаємо один кадр, щоб таймлайн точно ініціалізувався
@@ -96,23 +96,38 @@ public class Level1_QuestManager : MonoBehaviour
                 yield return null;
             }
 
-            // Повертаємо контроль після таймлайну
-            if (pObj != null) pObj.GetComponent<PlayerController>().enabled = true;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
-
+            // --- ПОВЕРНУТО ТА ПОКРАЩЕНО ФІКС КАМЕРИ ---
             CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
             if (cf != null)
             {
+                // Запам'ятовуємо, куди дивилася камера в останній кадр катсцени
                 Vector3 currentRot = Camera.main.transform.eulerAngles;
-                cf.SyncRotation(currentRot.y, currentRot.x);
+
+                // Перевірка на "перекручені" кути (наприклад, 350 градусів замість -10)
+                float pitchX = currentRot.x;
+                if (pitchX > 180f) pitchX -= 360f;
+
+                // Передаємо ці кути звичайній камері, щоб не було різкого стрибка
+                cf.SyncRotation(currentRot.y, pitchX);
             }
+            // -----------------------------
+
+            // Повертаємо контроль після таймлайну
+            if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
+
             SetCinematicMode(false);
 
             var brain = Camera.main.GetComponent<CinemachineBrain>();
             if (brain != null) brain.enabled = false;
-        }
 
-        UpdateObjectiveUI();
+            // Викликаємо оновлення UI ТІЛЬКИ ТУТ, щоб плашка виїхала красиво
+            UpdateObjectiveUI();
+        }
+        else
+        {
+            UpdateObjectiveUI();
+        }
     }
 
     public void StartIntroDialogue()
@@ -147,8 +162,6 @@ public class Level1_QuestManager : MonoBehaviour
         if (currentQuestStep == 1 && ResourceManager.Instance != null) startingWood = ResourceManager.Instance.runWood;
         else if (currentQuestStep == 2) StartCoroutine(TriggerAmbushWave1Routine());
         else if (currentQuestStep == 3) StartCoroutine(TriggerHordeAndFleeRoutine());
-
-        UpdateObjectiveUI();
     }
 
     private void Update()
@@ -176,7 +189,7 @@ public class Level1_QuestManager : MonoBehaviour
         isAmbushTriggered = true;
 
         PlayerController pController = playerTransform.GetComponent<PlayerController>();
-        if (pController != null) pController.enabled = false;
+        if (pController != null) pController.isControlBlocked = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         Vector3 spawnPos = playerTransform.position - (playerTransform.forward * spawnDistanceBehind);
@@ -203,7 +216,7 @@ public class Level1_QuestManager : MonoBehaviour
             if (ai != null) ai.isCinematicFrozen = false;
         }
 
-        if (pController != null) pController.enabled = true;
+        if (pController != null) pController.isControlBlocked = false;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
         StartCoroutine(ShowTutorialHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.", 5f));
@@ -222,7 +235,7 @@ public class Level1_QuestManager : MonoBehaviour
     private IEnumerator TriggerHordeAndFleeRoutine()
     {
         PlayerController pController = playerTransform.GetComponent<PlayerController>();
-        if (pController != null) pController.enabled = false;
+        if (pController != null) pController.isControlBlocked = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Good job! Wait... do you hear that?", 1.5f));
@@ -260,7 +273,7 @@ public class Level1_QuestManager : MonoBehaviour
             if (ai != null) ai.isCinematicFrozen = false;
         }
 
-        if (pController != null) pController.enabled = true;
+        if (pController != null) pController.isControlBlocked = false;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
         StartCoroutine(ShowTutorialHint("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!", 6f));
@@ -298,7 +311,10 @@ public class Level1_QuestManager : MonoBehaviour
         if (cf != null)
         {
             Vector3 currentRot = mainCam.transform.eulerAngles;
-            cf.SyncRotation(currentRot.y, currentRot.x);
+            // Той самий захист від перекручених кутів
+            float pitchX = currentRot.x;
+            if (pitchX > 180f) pitchX -= 360f;
+            cf.SyncRotation(currentRot.y, pitchX);
         }
         SetCinematicMode(false);
     }

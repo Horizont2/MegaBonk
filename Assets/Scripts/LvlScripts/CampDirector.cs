@@ -38,7 +38,7 @@ public class CampDirector : MonoBehaviour
             if (pObj != null) player = pObj.GetComponent<PlayerController>();
         }
 
-        if (player != null) player.enabled = false;
+        if (player != null) player.isControlBlocked = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         SetCinematicMode(true);
@@ -89,8 +89,7 @@ public class CampDirector : MonoBehaviour
         PlayerPrefs.SetInt("CampTutorialPlayed", 1);
         PlayerPrefs.SetInt("SaveBld_ScoutsLodge", 1);
         PlayerPrefs.Save();
-
-        if (player != null) player.enabled = true;
+        if (player != null) player.isControlBlocked = false; if (player != null) player.enabled = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
         var brain = Camera.main.GetComponent<CinemachineBrain>();
