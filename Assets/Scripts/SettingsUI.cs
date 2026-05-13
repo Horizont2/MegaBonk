@@ -24,13 +24,13 @@ public class SettingsUI : MonoBehaviour
     public Toggle damagePopupsToggle;
     public Toggle screenShakeToggle;
     public Toggle limitFPSToggle;
-    public Toggle showFPSToggle; // НОВЕ: Показати FPS
+    public Toggle showFPSToggle;
 
     [Header("Checkmark Graphics (Для анімації)")]
     public Graphic damageCheckmark;
     public Graphic screenShakeCheckmark;
     public Graphic fpsLimitCheckmark;
-    public Graphic showFPSCheckmark; // НОВЕ: Галочка для FPS
+    public Graphic showFPSCheckmark;
 
     [Header("Buttons (Для анімації)")]
     public Button closeButton;
@@ -61,11 +61,20 @@ public class SettingsUI : MonoBehaviour
         if (damagePopupsToggle) damagePopupsToggle.onValueChanged.AddListener(OnDamagePopupsChanged);
         if (screenShakeToggle) screenShakeToggle.onValueChanged.AddListener(OnScreenShakeChanged);
         if (limitFPSToggle) limitFPSToggle.onValueChanged.AddListener(OnFPSLimitChanged);
-        if (showFPSToggle) showFPSToggle.onValueChanged.AddListener(OnShowFPSChanged); // НОВЕ
+        if (showFPSToggle) showFPSToggle.onValueChanged.AddListener(OnShowFPSChanged);
 
         // Авто-аніматори кнопок
         if (closeButton != null) closeButton.gameObject.AddComponent<AutoButtonAnimator>().Setup(closeButtonText, true);
-        if (saveButton != null) saveButton.gameObject.AddComponent<AutoButtonAnimator>().Setup(null, false);
+
+        if (saveButton != null)
+        {
+            saveButton.gameObject.AddComponent<AutoButtonAnimator>().Setup(null, false);
+
+            // ФІКС: Жорстко прив'язуємо кнопку збереження ТІЛЬКИ до закриття панелі
+            // Це ігнорує будь-які неправильні налаштування в Інспекторі Unity
+            saveButton.onClick.RemoveAllListeners();
+            saveButton.onClick.AddListener(CloseSettings);
+        }
     }
 
     private void Update()
@@ -75,7 +84,7 @@ public class SettingsUI : MonoBehaviour
             AnimateCheckmark(damageCheckmark, damagePopupsToggle.isOn);
             AnimateCheckmark(screenShakeCheckmark, screenShakeToggle.isOn);
             AnimateCheckmark(fpsLimitCheckmark, limitFPSToggle.isOn);
-            AnimateCheckmark(showFPSCheckmark, showFPSToggle.isOn); // НОВЕ
+            AnimateCheckmark(showFPSCheckmark, showFPSToggle.isOn);
         }
     }
 
@@ -110,31 +119,30 @@ public class SettingsUI : MonoBehaviour
         if (damagePopupsToggle) damagePopupsToggle.isOn = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
         if (screenShakeToggle) screenShakeToggle.isOn = PlayerPrefs.GetInt("Settings_ScreenShake", 1) == 1;
         if (limitFPSToggle) limitFPSToggle.isOn = PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1;
-        if (showFPSToggle) showFPSToggle.isOn = PlayerPrefs.GetInt("Settings_ShowFPS", 0) == 1; // НОВЕ
+        if (showFPSToggle) showFPSToggle.isOn = PlayerPrefs.GetInt("Settings_ShowFPS", 0) == 1;
 
         // Миттєве виставлення стану галочок
         ForceCheckmarkState(damageCheckmark, damagePopupsToggle.isOn);
         ForceCheckmarkState(screenShakeCheckmark, screenShakeToggle.isOn);
         ForceCheckmarkState(fpsLimitCheckmark, limitFPSToggle.isOn);
-        ForceCheckmarkState(showFPSCheckmark, showFPSToggle.isOn); // НОВЕ
+        ForceCheckmarkState(showFPSCheckmark, showFPSToggle.isOn);
 
+        // ФІКС: Кнопка завжди тільки зберігає і закриває
         if (saveButton != null)
         {
             TextMeshProUGUI btnText = saveButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null) btnText.text = SceneManager.GetActiveScene().name == "Menu" ? "SAVE & CLOSE" : "SAVE & QUIT TO MENU";
+            if (btnText != null) btnText.text = "SAVE & CLOSE";
         }
 
         if (panelAnimCoroutine != null) StopCoroutine(panelAnimCoroutine);
         panelAnimCoroutine = StartCoroutine(AnimatePanelIn());
     }
 
-    // --- НОВИЙ МЕТОД ДЛЯ FPS ---
     private void OnShowFPSChanged(bool isOn)
     {
         if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
         PlayerPrefs.SetInt("Settings_ShowFPS", isOn ? 1 : 0);
 
-        // Повідомляємо лічильнику, що треба оновити видимість
         if (FPSDisplay.Instance != null) FPSDisplay.Instance.UpdateVisibility();
     }
 
@@ -197,17 +205,6 @@ public class SettingsUI : MonoBehaviour
         Color c = checkmark.color;
         c.a = isOn ? 1f : 0f;
         checkmark.color = c;
-    }
-
-    public void ReturnToMenu()
-    {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-        PlayerPrefs.Save();
-        if (SceneManager.GetActiveScene().name == "Menu") { CloseSettings(); return; }
-        Time.timeScale = 1f;
-        PlayerPrefs.SetInt("IsRunActive", 1);
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Menu");
-        else SceneManager.LoadScene("Menu");
     }
 
     // Методи гучності

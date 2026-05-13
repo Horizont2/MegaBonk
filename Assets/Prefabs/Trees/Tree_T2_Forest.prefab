@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 124420486902960224}
   - component: {fileID: 1496850244751615342}
   - component: {fileID: 2429068110466461205}
-  m_Layer: 9
+  m_Layer: 15
   m_Name: msVFX_Stylized Smoke 4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4672,7 +4672,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 08d8e6a17c7452c4a8d9b5e890e82b5b, type: 3}
       propertyPath: m_Layer
-      value: 9
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 08d8e6a17c7452c4a8d9b5e890e82b5b, type: 3}
       propertyPath: m_TagString
@@ -4744,8 +4744,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.17645526, y: 0.12111671, z: 0.037389338}
-  m_Center: {x: -0.016526148, y: 0.0046801353, z: -0.0113908425}
+  m_Size: {x: 0.026091442, y: 0.025130276, z: 0.022497557}
+  m_Center: {x: 0.00012143874, y: 0.00025602285, z: -0.0038099415}
 --- !u!114 &-5627332003951164780
 MonoBehaviour:
   m_ObjectHideFlags: 0

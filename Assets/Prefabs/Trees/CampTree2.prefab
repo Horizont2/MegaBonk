@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2884420201435890006}
   - component: {fileID: 2242552578410995923}
   - component: {fileID: 6261812013971882466}
-  m_Layer: 9
+  m_Layer: 15
   m_Name: msVFX_Stylized Smoke 4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4629,7 +4629,7 @@ GameObject:
   - component: {fileID: 8188054793576677876}
   - component: {fileID: 3686377821802567084}
   - component: {fileID: 9202823928544976057}
-  m_Layer: 9
+  m_Layer: 15
   m_Name: msVFX_Stylized Smoke 4 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9251,7 +9251,7 @@ GameObject:
   - component: {fileID: 9144521717635715240}
   - component: {fileID: 1370900323710861779}
   - component: {fileID: 4329815658123254836}
-  m_Layer: 0
+  m_Layer: 15
   m_Name: CampTree2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9351,8 +9351,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2.0906005, y: 7.878863, z: 2.0018213}
-  m_Center: {x: -0.12775467, y: 4.194095, z: -0.40916586}
+  m_Size: {x: 0.67371637, y: 6.5895023, z: 0.78651375}
+  m_Center: {x: -0.18028796, y: 3.5494146, z: -0.28799993}
 --- !u!114 &9144521717635715240
 MonoBehaviour:
   m_ObjectHideFlags: 0

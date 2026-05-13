@@ -584,7 +584,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.039215688, g: 0.06666667, b: 0.15686275, a: 0.39215687}
+  m_BackGroundColor: {r: 1, g: 1, b: 1, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -653,7 +653,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MinimapFollow
   player: {fileID: 907436303}
-  cameraHeight: 30
+  cameraHeight: 40
 --- !u!1 &124161012
 GameObject:
   m_ObjectHideFlags: 0
@@ -915,6 +915,98 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &222576100
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 222576101}
+  - component: {fileID: 222576103}
+  - component: {fileID: 222576102}
+  - component: {fileID: 222576104}
+  m_Layer: 10
+  m_Name: HorseIcon
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &222576101
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 222576100}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1567755695}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 27.289307, y: 4.9157715}
+  m_SizeDelta: {x: 48.9373, y: 25.7795}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &222576102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 222576100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 0.04627394, b: 0, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: f63cebd471974854ebf86ccc7b8bc580, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &222576103
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 222576100}
+  m_CullTransparentMesh: 1
+--- !u!114 &222576104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 222576100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c759006cb7009b44adbf513d9f657b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MinimapIconTracker
+  minimapRect: {fileID: 1030564822}
+  iconImage: {fileID: 222576102}
+  minimapCamera: {fileID: 90100287}
+  iconMargin: 10
 --- !u!1 &240858628
 GameObject:
   m_ObjectHideFlags: 0
@@ -6620,6 +6712,7 @@ GameObject:
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
   - component: {fileID: 330585548}
+  - component: {fileID: 330585549}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -6674,7 +6767,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 1015
+    m_Bits: 33783
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -6775,6 +6868,25 @@ MonoBehaviour:
   minYAngle: -30
   maxYAngle: 60
   isCinematicMode: 0
+--- !u!114 &330585549
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d78e271980d618409189dc0277e5654, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraOcclusion
+  playerTarget: {fileID: 907436303}
+  foliageLayer:
+    serializedVersion: 2
+    m_Bits: 32768
+  raycastRadius: 1.5
+  fadeAlpha: 0.25
+  fadeSpeed: 3
 --- !u!1 &342501710
 GameObject:
   m_ObjectHideFlags: 0
@@ -18105,6 +18217,26 @@ PrefabInstance:
       propertyPath: knockbackForce
       value: 4
       objectReference: {fileID: 0}
+    - target: {fileID: 3388024236579309694, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3388024236579309694, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3388024236579309694, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3388024236579309694, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 4.86
+      objectReference: {fileID: 0}
+    - target: {fileID: 3388024236579309694, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0
+      objectReference: {fileID: 0}
     - target: {fileID: 4372745146860552250, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: m_Name
       value: Player
@@ -18180,6 +18312,26 @@ PrefabInstance:
     - target: {fileID: 7005003726609898094, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: m_SkinWidth
       value: 0.05
+      objectReference: {fileID: 0}
+    - target: {fileID: 7955636745300321228, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 8240373012033261101, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8240373012033261101, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8240373012033261101, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8240373012033261101, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.498
       objectReference: {fileID: 0}
     - target: {fileID: 8240373012033261101, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -18267,7 +18419,7 @@ PrefabInstance:
       objectReference: {fileID: 1880990564}
     - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: meleeRadius
-      value: 2
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 9075288641294795275, guid: 0bc3a0eb5f9670640b9a1468823f03b3, type: 3}
       propertyPath: pickupRadius
@@ -39458,6 +39610,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 37920567}
+  - {fileID: 222576101}
   m_Father: {fileID: 61710612}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -40610,7 +40763,7 @@ MonoBehaviour:
   breathSpeed: 1.5
   maxAlpha: 1
   hitFlashSpeed: 5
-  hitColor: {r: 0.8, g: 0, b: 0, a: 0.5882353}
+  hitColor: {r: 0.8, g: 0, b: 0, a: 0.6666667}
   dangerColor: {r: 0.12452829, g: 0.009163389, b: 0.009163389, a: 1}
 --- !u!1 &1831909132
 GameObject:
@@ -40806,8 +40959,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -2.2404785, y: -0.70318604}
+  m_SizeDelta: {x: 48.2086, y: 41.7034}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2005627423
 MonoBehaviour:

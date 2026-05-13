@@ -109,7 +109,7 @@ public class GlobalHUD : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            // --- 0. ПРІОРИТЕТ: ОГЛЯД ЗБРОЇ (Shop) ---
+            // 0. ОГЛЯД ЗБРОЇ
             ShopManager shop = FindFirstObjectByType<ShopManager>();
             if (shop != null && shop.IsInspecting())
             {
@@ -117,22 +117,34 @@ public class GlobalHUD : MonoBehaviour
                 return;
             }
 
-            // --- 1. ПРІОРИТЕТ: НАЛАШТУВАННЯ ---
+            // 1. НАЛАШТУВАННЯ
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {
                 SettingsUI.Instance.CloseSettings();
                 return;
             }
 
-            // --- 2. ПРІОРИТЕТ: МАПА (НОВИЙ БЕЗБАГОВИЙ ФОРМАТ) ---
+            // 1.5 ДОШКА МІСІЙ
+            // Ми закриваємо її тут, і метод CloseBoard() сам сховає курсор
+            NoticeBoardManager noticeBoard = FindFirstObjectByType<NoticeBoardManager>();
+            if (noticeBoard != null && noticeBoard.isBoardOpen)
+            {
+                noticeBoard.CloseBoard();
+                return; // Виходимо, щоб не відкрилася пауза
+            }
+
+            // 2. МАПА
             if (MapTableInteract.IsMapActive) return;
 
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
             if (mapPanel != null && mapPanel.IsPanelOpen()) return;
 
-            // --- 3. ПРІОРИТЕТ: ПАУЗА ---
+            // 3. ПАУЗА (Додав Lvl_1 у список)
             string sceneName = SceneManager.GetActiveScene().name;
-            if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene" || sceneName == "Lvl_1") TogglePause();
+            if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene" || sceneName == "Lvl_1")
+            {
+                TogglePause();
+            }
         }
     }
 

@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 23009263249696568}
   - component: {fileID: 3899497483928395502}
   - component: {fileID: 2432089441041712281}
-  m_Layer: 0
+  m_Layer: 15
   m_Name: rpgpp_lt_tree_pine_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -113,8 +113,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2.0906005, y: 8.133526, z: 2.0018213}
-  m_Center: {x: -0.12775469, y: 4.066763, z: -0.40916583}
+  m_Size: {x: 0.8390008, y: 6.3140664, z: 0.9828049}
+  m_Center: {x: -0.23192483, y: 3.3417165, z: -0.29951602}
 --- !u!114 &2432089441041712281
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140,7 +140,7 @@ GameObject:
   - component: {fileID: 3843940152498903413}
   - component: {fileID: 8868280187887032073}
   - component: {fileID: 5283815541079789331}
-  m_Layer: 9
+  m_Layer: 15
   m_Name: msVFX_Stylized Smoke 4 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4758,7 +4758,7 @@ GameObject:
   - component: {fileID: 6880999188534741706}
   - component: {fileID: 4499238968733468452}
   - component: {fileID: 2659079245506803504}
-  m_Layer: 9
+  m_Layer: 15
   m_Name: msVFX_Stylized Smoke 4
   m_TagString: Untagged
   m_Icon: {fileID: 0}

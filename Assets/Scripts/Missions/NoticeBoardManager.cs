@@ -27,7 +27,7 @@ public class NoticeBoardManager : MonoBehaviour
 
     private List<GameObject> activePapers = new List<GameObject>();
     private bool isPlayerNear = false;
-    private bool isBoardOpen = false;
+    public bool isBoardOpen = false;
 
     private void Start()
     {
@@ -91,6 +91,14 @@ public class NoticeBoardManager : MonoBehaviour
         // ЗВУК: Закриття дошки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
+        // Запускаємо корутину замість прямого виклику
+        StartCoroutine(LockCursorRoutine());
+    }
+
+    // НОВИЙ МЕТОД: Чекаємо кінець кадру, щоб перебити стандартну поведінку Unity
+    private System.Collections.IEnumerator LockCursorRoutine()
+    {
+        yield return new WaitForEndOfFrame();
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }

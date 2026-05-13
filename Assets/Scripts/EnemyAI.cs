@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI; // ДОДАНО ДЛЯ РОБОТИ З UI
 using System.Collections;
 
 public class EnemyAI : MonoBehaviour
@@ -21,6 +22,10 @@ public class EnemyAI : MonoBehaviour
     public GameObject diamondPrefab;
     [Range(0f, 1f)] public float diamondDropChance = 0.1f;
     public GameObject damagePopupPrefab;
+
+    [Header("UI (Health Bar)")]
+    public Canvas hpCanvas; // Канвас над ворогами
+    public Image hpFill;    // Смужка здоров'я
 
     [Header("Targeting & Swarm")]
     public Transform target;
@@ -47,6 +52,7 @@ public class EnemyAI : MonoBehaviour
     private float stunTimer = 0f;
     private float lastAttackTime;
     private bool isPreparingAttack = false;
+    private Transform mainCamTransform; // Для повороту UI
 
     private void Awake()
     {
@@ -74,6 +80,7 @@ public class EnemyAI : MonoBehaviour
 
     private void Start()
     {
+        if (Camera.main != null) mainCamTransform = Camera.main.transform;
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
@@ -111,6 +118,7 @@ public class EnemyAI : MonoBehaviour
         }
 
         currentHealth = maxHealth;
+        UpdateHealthUI(); // Оновлюємо UI на старті
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
@@ -120,9 +128,23 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    private void UpdateHealthUI()
+    {
+        if (hpFill != null)
+        {
+            hpFill.fillAmount = currentHealth / maxHealth;
+        }
+    }
+
     private void Update()
     {
         if (isDead || target == null) return;
+
+        // Поворот смужки здоров'я до камери
+        if (hpCanvas != null && mainCamTransform != null)
+        {
+            hpCanvas.transform.rotation = Quaternion.LookRotation(hpCanvas.transform.position - mainCamTransform.position);
+        }
 
         if (knockbackVelocity.magnitude > 0.1f)
         {
@@ -243,12 +265,16 @@ public class EnemyAI : MonoBehaviour
         if (isDead || isInvincible) return;
 
         currentHealth -= damageAmount;
+        if (currentHealth < 0) currentHealth = 0; // Щоб смужка не йшла в мінус
+
+        UpdateHealthUI(); // Оновлюємо смужку здоров'я
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
         StartCoroutine(HitFlashRoutine());
 
-        // НОВЕ: Перевірка налаштувань гравця перед тим як спавнити цифри!
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
 
+        // Попап спавниться ТІЛЬКИ тут, коли ворог отримує шкоду
         if (damagePopupPrefab != null && showPopups)
         {
             GameObject popup = Instantiate(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
@@ -295,6 +321,8 @@ public class EnemyAI : MonoBehaviour
     {
         if (isDead) return;
         isDead = true;
+
+        if (hpCanvas != null) hpCanvas.gameObject.SetActive(false); // Ховаємо смужку здоров'я
 
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);

@@ -12,6 +12,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Evacuation_Horse
       objectReference: {fileID: 0}
+    - target: {fileID: 100372, guid: 12d878159cd1a3e43a1401d93cf78c4b, type: 3}
+      propertyPath: m_TagString
+      value: ExtractionPoint
+      objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 12d878159cd1a3e43a1401d93cf78c4b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: -22.102169

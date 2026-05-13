@@ -12,6 +12,11 @@ public class CampNPC_Elias : MonoBehaviour
     public GameObject exclamationMark;
     public GameObject mapTableObject;
 
+    [Header("Dialogue Settings")]
+    public float dialogueBreakDistance = 7f; // Відстань, на якій текст остаточно зникає
+
+    private Transform playerTransform; // Кешуємо гравця
+
     private bool isPlayerInRange = false;
     private bool isTalking = false;
     private float stateCheckTimer = 0f;
@@ -28,6 +33,9 @@ public class CampNPC_Elias : MonoBehaviour
     private void Start()
     {
         UpdateNPCState();
+
+        GameObject pObj = GameObject.FindGameObjectWithTag("Player");
+        if (pObj != null) playerTransform = pObj.transform;
     }
 
     private void Update()
@@ -39,6 +47,13 @@ public class CampNPC_Elias : MonoBehaviour
             {
                 stateCheckTimer = 0f;
                 UpdateNPCState();
+            }
+        }
+        else // --- НОВА ЛОГІКА ПЕРЕРИВАННЯ ПО ДИСТАНЦІЇ ---
+        {
+            if (playerTransform != null && Vector3.Distance(transform.position, playerTransform.position) > dialogueBreakDistance)
+            {
+                InterruptDialogue();
             }
         }
 
@@ -90,6 +105,7 @@ public class CampNPC_Elias : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             isPlayerInRange = false;
+            // Просто ховаємо підказку "Press E", але текст діалогу продовжує йти!
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         }
     }
@@ -190,5 +206,19 @@ public class CampNPC_Elias : MonoBehaviour
         yield return new WaitForSeconds(stayDuration);
         subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
+    }
+
+    private void InterruptDialogue()
+    {
+        StopAllCoroutines();
+
+        if (subtitleText != null)
+        {
+            subtitleText.text = "";
+            subtitleText.maxVisibleCharacters = 99999;
+        }
+
+        isTalking = false;
+        UpdateNPCState();
     }
 }

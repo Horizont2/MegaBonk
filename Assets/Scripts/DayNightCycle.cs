@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.SceneManagement; // НОВЕ: Потрібно для перевірки назви сцени
 
 public enum WeatherState { Clear, Precipitation, Storm }
 
@@ -35,13 +36,10 @@ public class DayNightCycle : MonoBehaviour
 
     [Header("Standard Wind System")]
     public WindZone windZone;
-    [Tooltip("Сила вітру в ясну погоду")]
     public float clearWindMain = 0.2f;
-    [Tooltip("Сила вітру під час шторму")]
     public float stormWindMain = 1.5f;
     public float clearWindTurbulence = 0.1f;
     public float stormWindTurbulence = 1.2f;
-    [Tooltip("Швидкість зміни напрямку вітру")]
     public float windRotationSpeed = 2f;
 
     private float currentFogDensity;
@@ -61,6 +59,14 @@ public class DayNightCycle : MonoBehaviour
     private void Start()
     {
         currentBiome = PlayerPrefs.GetInt("RegionBiomeType", 0);
+        string currentScene = SceneManager.GetActiveScene().name;
+
+        // --- МАГІЯ СИНХРОНІЗАЦІЇ ЧАСУ ---
+        // Зчитуємо час із Табору ТІЛЬКИ якщо це НЕ перший рівень
+        if (currentScene != "Lvl_1" && PlayerPrefs.HasKey("SavedTimeOfDay"))
+        {
+            timeOfDay = PlayerPrefs.GetFloat("SavedTimeOfDay") * 24f;
+        }
 
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
@@ -113,24 +119,13 @@ public class DayNightCycle : MonoBehaviour
         RenderSettings.fogDensity = currentFogDensity;
         RenderSettings.fogColor = Color.Lerp(clearFog, stormFog, weatherBlend);
 
-        // --- НОВЕ: ДИНАМІЧНИЙ СКАЙБОКС ТА АТМОСФЕРА ---
         if (RenderSettings.skybox != null)
         {
-            // Плавно зменшуємо яскравість неба під час шторму (Exposure)
             float exposure = Mathf.Lerp(0.7f, 0.35f, weatherBlend);
-            if (RenderSettings.skybox.HasProperty("_Exposure"))
-            {
-                RenderSettings.skybox.SetFloat("_Exposure", exposure);
-            }
-
-            // Забарвлюємо небо у сірий відтінок
-            if (RenderSettings.skybox.HasProperty("_Tint"))
-            {
-                RenderSettings.skybox.SetColor("_Tint", Color.Lerp(Color.white, new Color(0.4f, 0.4f, 0.45f), weatherBlend));
-            }
+            if (RenderSettings.skybox.HasProperty("_Exposure")) RenderSettings.skybox.SetFloat("_Exposure", exposure);
+            if (RenderSettings.skybox.HasProperty("_Tint")) RenderSettings.skybox.SetColor("_Tint", Color.Lerp(Color.white, new Color(0.4f, 0.4f, 0.45f), weatherBlend));
         }
 
-        // Робимо глобальне освітлення сцени (Gradient Ambient) похмурим
         RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.42f, 0.70f, 0.96f), new Color(0.2f, 0.25f, 0.3f), weatherBlend);
         RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.76f, 0.79f, 0.84f), new Color(0.15f, 0.2f, 0.25f), weatherBlend);
         RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.23f, 0.30f, 0.23f), new Color(0.1f, 0.1f, 0.1f), weatherBlend);
@@ -254,5 +249,17 @@ public class DayNightCycle : MonoBehaviour
             }
         }
         lightningCoroutine = null;
+    }
+
+    private void OnDestroy()
+    {
+        string currentScene = SceneManager.GetActiveScene().name;
+
+        // Зберігаємо час ТІЛЬКИ якщо це не перший рівень, щоб не збити час у таборі після туторіалу
+        if (currentScene != "Lvl_1")
+        {
+            PlayerPrefs.SetFloat("SavedTimeOfDay", timeOfDay / 24f);
+            PlayerPrefs.Save();
+        }
     }
 }
