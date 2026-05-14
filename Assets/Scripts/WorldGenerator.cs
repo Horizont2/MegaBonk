@@ -1,9 +1,13 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 [RequireComponent(typeof(Terrain))]
 public class WorldGenerator : MonoBehaviour
 {
+    // Прапорець для синхронізації з екраном завантаження
+    public static bool IsGenerationDone = false;
+
     [Header("Mountain & Arena Settings")]
     public float depth = 120f;
     public float scale = 2.5f;
@@ -46,7 +50,7 @@ public class WorldGenerator : MonoBehaviour
     [Range(0f, 1f)] public float forestThreshold = 0.48f;
     public float globalBiomeScale = 2.5f;
 
-    [Header("Base Nature Prefabs (Only 1 array per type)")]
+    [Header("Base Nature Prefabs")]
     public GameObject[] giantTrees;
     public GameObject[] baseTrees;
     public GameObject[] baseGrass;
@@ -69,8 +73,9 @@ public class WorldGenerator : MonoBehaviour
     private Terrain terrain;
     private Dictionary<string, Material> biomeMaterialsCache = new Dictionary<string, Material>();
 
-    private void Awake()
+    private void Start()
     {
+        IsGenerationDone = false; // Скидаємо прапорець на початку
         terrain = GetComponent<Terrain>();
 
         if (skyboxMaterial != null)
@@ -98,11 +103,17 @@ public class WorldGenerator : MonoBehaviour
         terrain.terrainData = GenerateHeights(terrain.terrainData);
         PaintTerrain(terrain.terrainData);
 
-        PopulateBiomes();
-        Physics.SyncTransforms();
+        // Запуск асинхронної генерації лісу
+        StartCoroutine(GenerateWorldRoutine());
+    }
 
-        SpawnPOIs();
-        SpawnExtractionCarts();
+    private IEnumerator GenerateWorldRoutine()
+    {
+        yield return StartCoroutine(PopulateBiomesRoutine());
+        yield return StartCoroutine(SpawnPOIsRoutine());
+        yield return StartCoroutine(SpawnExtractionCartsRoutine());
+
+        Physics.SyncTransforms();
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
@@ -110,6 +121,12 @@ public class WorldGenerator : MonoBehaviour
             float groundY = terrain.SampleHeight(player.transform.position) + terrain.transform.position.y;
             player.transform.position = new Vector3(player.transform.position.x, groundY + 1.5f, player.transform.position.z);
         }
+
+        // Даємо DistanceOptimizer час (2 кадри) щоб сховати всі далекі об'єкти ДО того, як зникне чорний екран
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+
+        IsGenerationDone = true; // Даємо сигнал LoadingManager-у
     }
 
     private void AdjustSettingsForBiome()
@@ -172,7 +189,6 @@ public class WorldGenerator : MonoBehaviour
                 float edgeWall = Mathf.Pow(distFromCenter / centerX, 4f) * edgeMountainMultiplier;
 
                 float finalHeight = Mathf.Clamp01(sharpenedNoise + edgeWall);
-
                 heights[x, y] = finalHeight;
             }
         }
@@ -212,6 +228,7 @@ public class WorldGenerator : MonoBehaviour
         }
         terrainData.SetAlphamaps(0, 0, splatmapData);
     }
+
     private void ApplyBiomeTexture(GameObject obj, Texture2D biomeTexture)
     {
         if (biomeTexture == null) return;
@@ -219,11 +236,9 @@ public class WorldGenerator : MonoBehaviour
 
         foreach (Renderer rend in renderers)
         {
-            // --- НОВИЙ ЗАХИСТ ВІД ПЕРЕФАРБОВУВАННЯ ЕФЕКТІВ ---
-            if (rend is ParticleSystemRenderer) continue; // Ігноруємо системи часток Unity
+            if (rend is ParticleSystemRenderer) continue;
             string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue; // Ігноруємо меші-ефекти
-            // ------------------------------------------------
+            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
 
             Material[] currentMaterials = rend.sharedMaterials;
             bool hasChanged = false;
@@ -250,17 +265,16 @@ public class WorldGenerator : MonoBehaviour
             if (hasChanged) rend.sharedMaterials = currentMaterials;
         }
     }
+
     private void ApplyBiomeColor(GameObject obj, Color biomeColor)
     {
         Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
 
         foreach (Renderer rend in renderers)
         {
-            // --- ДОДАЙ ЦЕЙ САМИЙ ЗАХИСТ І СЮДИ ---
             if (rend is ParticleSystemRenderer) continue;
             string objName = rend.gameObject.name.ToLower();
             if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
-            // ---------------------------------------
 
             Material[] currentMaterials = rend.sharedMaterials;
             bool hasChanged = false;
@@ -276,16 +290,11 @@ public class WorldGenerator : MonoBehaviour
                 {
                     Material newMat = new Material(mat);
 
-                    // 1. Стандартні параметри
                     if (newMat.HasColor("_Color")) newMat.SetColor("_Color", biomeColor);
                     if (newMat.HasColor("_BaseColor")) newMat.SetColor("_BaseColor", biomeColor);
-
-                    // 2. "Ті самі" ключі з ранньої версії для складних шейдерів рослинності
                     if (newMat.HasColor("_Primary_Color")) newMat.SetColor("_Primary_Color", biomeColor);
                     if (newMat.HasColor("_Secondary_Color")) newMat.SetColor("_Secondary_Color", biomeColor);
                     if (newMat.HasColor("_Tertiary_Color")) newMat.SetColor("_Tertiary_Color", biomeColor);
-
-                    // 3. Додаткові ключі для сучасних URP шейдерів
                     if (newMat.HasColor("_TintColor")) newMat.SetColor("_TintColor", biomeColor);
                     if (newMat.HasColor("_TopColor")) newMat.SetColor("_TopColor", biomeColor);
 
@@ -300,7 +309,6 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    // Повертаємо сюди Color замість Texture2D
     private void SpawnNatureCluster(GameObject prefab, Vector3 centerPos, Transform container, int minCount, int maxCount, float radius, bool alignToSlope, Quaternion slopeRotation, Color tintColor)
     {
         if (prefab == null) return;
@@ -319,11 +327,11 @@ public class WorldGenerator : MonoBehaviour
             GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
             obj.transform.localScale *= Random.Range(0.7f, 1.3f);
 
-            ApplyBiomeColor(obj, tintColor); // Застосовуємо колір для трави/кущів
+            ApplyBiomeColor(obj, tintColor);
         }
     }
 
-    private void PopulateBiomes()
+    private IEnumerator PopulateBiomesRoutine()
     {
         float w = terrain.terrainData.size.x;
         float l = terrain.terrainData.size.z;
@@ -336,6 +344,9 @@ public class WorldGenerator : MonoBehaviour
 
         for (int i = 0; i < spawnAttempts; i++)
         {
+            // Тайм-слайсинг: не даємо рушію залагати під час генерації тисяч об'єктів
+            if (i % 250 == 0) yield return null;
+
             float px = Random.Range(10f, w - 10f); float pz = Random.Range(10f, l - 10f);
             float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
             float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
@@ -347,25 +358,19 @@ public class WorldGenerator : MonoBehaviour
             Vector3 terrainNormal = terrain.terrainData.GetInterpolatedNormal(normalizedX, normalizedZ);
             Quaternion slopeRotation = Quaternion.FromToRotation(Vector3.up, terrainNormal);
 
-            // Визначаємо текстуру для дерев та кольори для всього іншого
             Texture2D currentTreeTexture = forestTreeTexture;
             Color currentFoliageColor = forestFoliageColor;
             Color currentRockColor = forestRockColor;
 
             if (localTemp >= 0.65f)
             {
-                currentTreeTexture = desertTreeTexture;
-                currentFoliageColor = desertFoliageColor;
-                currentRockColor = desertRockColor;
+                currentTreeTexture = desertTreeTexture; currentFoliageColor = desertFoliageColor; currentRockColor = desertRockColor;
             }
             else if (localTemp <= 0.35f)
             {
-                currentTreeTexture = snowTreeTexture;
-                currentFoliageColor = snowFoliageColor;
-                currentRockColor = snowRockColor;
+                currentTreeTexture = snowTreeTexture; currentFoliageColor = snowFoliageColor; currentRockColor = snowRockColor;
             }
 
-            // ГІРСЬКІ ПОРОДИ (Скелі)
             if (steepness > 45f)
             {
                 if (Random.value > 0.98f)
@@ -384,12 +389,10 @@ public class WorldGenerator : MonoBehaviour
 
             float density = Mathf.PerlinNoise(normalizedX * clusterScale + offsetX, normalizedZ * clusterScale + offsetZ);
 
-            // ЛІСИ ТА ПОЛЯ
             if (density > forestThreshold && steepness <= 25f)
             {
                 float randomSpawn = Random.value;
 
-                // Дерева використовують ТЕКСТУРИ
                 if (density > forestThreshold + 0.2f && randomSpawn > 0.85f && giantTrees != null && giantTrees.Length > 0)
                 {
                     GameObject giantTreePrefab = GetRandomPrefab(giantTrees);
@@ -407,7 +410,6 @@ public class WorldGenerator : MonoBehaviour
                         ApplyBiomeTexture(obj, currentTreeTexture);
                     }
                 }
-                // Трава та кущі використовують КОЛІР
                 else if (randomSpawn > 0.35f)
                 {
                     SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 15, 40, 6f, true, slopeRotation, currentFoliageColor);
@@ -418,7 +420,6 @@ public class WorldGenerator : MonoBehaviour
                     SpawnNatureCluster(bushOrFlower, new Vector3(worldX, worldY, worldZ), bushContainer, 3, 8, 3f, true, slopeRotation, currentFoliageColor);
                 }
             }
-            // ПУСТИРІ (Камені)
             else if (density < 0.3f)
             {
                 if (Random.value > 0.93f)
@@ -438,7 +439,6 @@ public class WorldGenerator : MonoBehaviour
                     }
                 }
             }
-            // ЗВИЧАЙНА ЗОНА
             else
             {
                 float rand = Random.value;
@@ -455,13 +455,16 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    private void SpawnPOIs()
+    private IEnumerator SpawnPOIsRoutine()
     {
-        if (poiPrefabs == null || poiPrefabs.Length == 0) return;
+        if (poiPrefabs == null || poiPrefabs.Length == 0) yield break;
         Transform poiContainer = new GameObject("POIContainer").transform; poiContainer.SetParent(this.transform);
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCount = 0;
+
         for (int i = 0; i < 3000; i++)
         {
+            if (i % 250 == 0) yield return null;
+
             if (spawnedCount >= maxPOIs) break;
             float px = Random.Range(20f, w - 20f); float pz = Random.Range(20f, l - 20f);
             float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
@@ -477,12 +480,15 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    private void SpawnExtractionCarts()
+    private IEnumerator SpawnExtractionCartsRoutine()
     {
-        if (extractionCartPrefab == null) return;
+        if (extractionCartPrefab == null) yield break;
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCarts = 0;
+
         for (int i = 0; i < 5000; i++)
         {
+            if (i % 250 == 0) yield return null;
+
             if (spawnedCarts >= extractionCartsAmount) break;
             float px = Random.Range(30f, w - 30f); float pz = Random.Range(30f, l - 30f);
             float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;

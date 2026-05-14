@@ -75,6 +75,7 @@ public class PlayerController : MonoBehaviour
     [Header("HUD UI References")]
     public Image hpFill;
     public Image xpFill;
+    public Image dashStaminaFill;
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI crystalText;
     public TextMeshProUGUI hpText;
@@ -283,6 +284,13 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        // --- ‘≤ —: ѕлавне, але швидке зменшенн€ та заповненн€ стам≥ни Dash ---
+        if (dashStaminaFill != null)
+        {
+            float targetDashProgress = Mathf.Clamp01((Time.time - lastDashTime) / dashCooldown);
+            dashStaminaFill.fillAmount = Mathf.Lerp(dashStaminaFill.fillAmount, targetDashProgress, Time.deltaTime * 15f);
+        }
+
         float targetHpFill = currentHealth / maxHealth;
         if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
         {
@@ -328,7 +336,6 @@ public class PlayerController : MonoBehaviour
         Vector3 movement = Vector3.zero;
         Vector3 inputDir = Vector3.zero;
 
-        // ЅЋќ ”¬јЌЌя  ≈–”¬јЌЌя ¬  ј“—÷≈Ќј’
         if (!isControlBlocked)
         {
             float horizontal = Input.GetAxisRaw("Horizontal");
@@ -349,13 +356,11 @@ public class PlayerController : MonoBehaviour
         camForward.y = 0f; camRight.y = 0f;
         camForward.Normalize(); camRight.Normalize();
 
-        // 1. ќбчислюЇмо куди ми хочемо йти в≥дносно камери
         Vector3 targetMoveDirection = Vector3.zero;
         if (inputDir.magnitude >= 0.1f)
         {
             targetMoveDirection = (camForward * inputDir.z + camRight * inputDir.x).normalized;
 
-            // 2. ѕовертаЇмо персонажа ќЅЋ»„„яћ туди, куди в≥н б≥жить!
             Quaternion targetRotation = Quaternion.LookRotation(targetMoveDirection);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
@@ -381,7 +386,6 @@ public class PlayerController : MonoBehaviour
 
         if (inputDir.magnitude >= 0.1f)
         {
-            // 3. ћножимо наш напр€мок на швидк≥сть
             Vector3 targetMove = targetMoveDirection * actualSpeed;
             currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMove, currentAccel * Time.deltaTime);
         }

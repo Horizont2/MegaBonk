@@ -4695,6 +4695,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a7bb4951ddd065d4fa54d450dd05d382, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6822464184019369506}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a7bb4951ddd065d4fa54d450dd05d382, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3849112789518362186}
   m_SourcePrefab: {fileID: 100100000, guid: a7bb4951ddd065d4fa54d450dd05d382, type: 3}
 --- !u!1 &8420380102451872740 stripped
 GameObject:
@@ -4742,6 +4745,19 @@ MonoBehaviour:
   maxDrops: 1
   hitEffect: {fileID: 5062920942190782048}
   stumpPrefab: {fileID: 0}
+--- !u!114 &3849112789518362186
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8420380102451872740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
+  targetObject: {fileID: 0}
 --- !u!4 &9192097234091055454 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a7bb4951ddd065d4fa54d450dd05d382, type: 3}

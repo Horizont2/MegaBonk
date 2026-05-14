@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 4449120862878004}
   - component: {fileID: 33116843740612510}
   - component: {fileID: 23480334074049270}
+  - component: {fileID: 6803635756667484914}
   m_Layer: 0
   m_Name: Log_2
   m_TagString: Untagged
@@ -91,3 +92,16 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &6803635756667484914
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1330862079685384}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
+  targetObject: {fileID: 0}

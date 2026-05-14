@@ -28,7 +28,7 @@ public class ResourceManager : MonoBehaviour
     public int baseRunMaxWood = 100;
     public int baseRunMaxStone = 50;
     public int baseRunMaxFood = 30;
-    public int extraRunCapacity = 0; // Для майбутньої прокачки рюкзака в Магазині
+    public int extraRunCapacity = 0;
 
     [Header("UI Texts")]
     public TextMeshProUGUI inventoryTitleText;
@@ -37,11 +37,11 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI foodText;
     public TextMeshProUGUI diamondsText;
 
-    [Header("UI Sliders")]
-    public Slider woodSlider;
-    public Slider stoneSlider;
-    public Slider foodSlider;
-    public float sliderLerpSpeed = 5f;
+    [Header("UI Fills (Зображення замість Слайдерів)")]
+    public Image woodFill;
+    public Image stoneFill;
+    public Image foodFill;
+    public float fillLerpSpeed = 5f;
 
     [Header("UI Popups")]
     public ResourcePopup woodPopup;
@@ -79,8 +79,6 @@ public class ResourceManager : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         if (isCamp) ClearRunInventory();
-
-        SetupSlidersMax();
         UpdateUI();
     }
 
@@ -90,28 +88,24 @@ public class ResourceManager : MonoBehaviour
         int targetStone = isCamp ? stashStone : runStone;
         int targetFood = isCamp ? stashFood : runFood;
 
-        if (woodSlider != null) woodSlider.value = Mathf.Lerp(woodSlider.value, targetWood, Time.deltaTime * sliderLerpSpeed);
-        if (stoneSlider != null) stoneSlider.value = Mathf.Lerp(stoneSlider.value, targetStone, Time.deltaTime * sliderLerpSpeed);
-        if (foodSlider != null) foodSlider.value = Mathf.Lerp(foodSlider.value, targetFood, Time.deltaTime * sliderLerpSpeed);
+        if (woodFill != null)
+            woodFill.fillAmount = Mathf.Lerp(woodFill.fillAmount, (float)targetWood / GetCurrentMax("Wood"), Time.deltaTime * fillLerpSpeed);
+
+        if (stoneFill != null)
+            stoneFill.fillAmount = Mathf.Lerp(stoneFill.fillAmount, (float)targetStone / GetCurrentMax("Stone"), Time.deltaTime * fillLerpSpeed);
+
+        if (foodFill != null)
+            foodFill.fillAmount = Mathf.Lerp(foodFill.fillAmount, (float)targetFood / GetCurrentMax("Food"), Time.deltaTime * fillLerpSpeed);
     }
 
-    private void SetupSlidersMax()
+    private int GetCurrentMax(string type)
     {
-        // Слайдери підлаштовуються під поточну сцену (Склад або Рюкзак)
-        int maxW = isCamp ? GetMax("Wood") : GetRunMax("Wood");
-        int maxS = isCamp ? GetMax("Stone") : GetRunMax("Stone");
-        int maxF = isCamp ? GetMax("Food") : GetRunMax("Food");
-
-        if (woodSlider != null) woodSlider.maxValue = maxW;
-        if (stoneSlider != null) stoneSlider.maxValue = maxS;
-        if (foodSlider != null) foodSlider.maxValue = maxF;
+        return isCamp ? GetMax(type) : GetRunMax(type);
     }
 
-    // --- ЛІМІТИ СКЛАДУ ---
     public void SetExtraCapacity(int bonusAmount)
     {
         extraCapacity = bonusAmount;
-        SetupSlidersMax();
         UpdateUI();
     }
 
@@ -123,11 +117,9 @@ public class ResourceManager : MonoBehaviour
         return 999999;
     }
 
-    // --- ЛІМІТИ РЮКЗАКА ---
     public void SetExtraRunCapacity(int bonusAmount)
     {
         extraRunCapacity = bonusAmount;
-        SetupSlidersMax();
         UpdateUI();
     }
 
@@ -139,7 +131,6 @@ public class ResourceManager : MonoBehaviour
         return 999;
     }
 
-    // --- ДОДАВАННЯ ПІД ЧАС ГРИ (РЮКЗАК) ---
     public void AddRunResources(int addWood, int addStone, int addFood)
     {
         if (isCamp) return;
@@ -148,7 +139,6 @@ public class ResourceManager : MonoBehaviour
         int oldStone = runStone;
         int oldFood = runFood;
 
-        // Жорстко обмежуємо кількість зібраного лімітами рюкзака
         runWood = Mathf.Min(runWood + addWood, GetRunMax("Wood"));
         runStone = Mathf.Min(runStone + addStone, GetRunMax("Stone"));
         runFood = Mathf.Min(runFood + addFood, GetRunMax("Food"));
@@ -157,7 +147,6 @@ public class ResourceManager : MonoBehaviour
         int actualAddedStone = runStone - oldStone;
         int actualAddedFood = runFood - oldFood;
 
-        // Показуємо попапи тільки якщо ресурс дійсно додався (якщо рюкзак повний - попапу не буде)
         if (woodPopup != null && actualAddedWood > 0) woodPopup.ShowChange(actualAddedWood);
         if (stonePopup != null && actualAddedStone > 0) stonePopup.ShowChange(actualAddedStone);
         if (foodPopup != null && actualAddedFood > 0) foodPopup.ShowChange(actualAddedFood);
@@ -165,7 +154,6 @@ public class ResourceManager : MonoBehaviour
         UpdateUI();
     }
 
-    // --- ДОДАВАННЯ ПРЯМО НА СКЛАД (Місії та Будівлі) ---
     public void AddStashResources(int addWood, int addStone, int addFood)
     {
         int oldWood = stashWood; int oldStone = stashStone; int oldFood = stashFood;
@@ -186,7 +174,6 @@ public class ResourceManager : MonoBehaviour
         UpdateUI();
     }
 
-    // --- ВИТРАТИ В ТАБОРІ (для будівництва) ---
     public bool CanAffordStash(int costWood, int costStone, int costFood)
     {
         return (stashWood >= costWood && stashStone >= costStone && stashFood >= costFood);
@@ -206,14 +193,12 @@ public class ResourceManager : MonoBehaviour
         UpdateUI();
     }
 
-    // --- МАГІЯ ЕВАКУАЦІЇ ---
     public void EvacuateRunToStash()
     {
         int maxW = GetMax("Wood");
         int maxS = GetMax("Stone");
         int maxF = GetMax("Food");
 
-        // Кладемо в склад скільки влізе
         int woodToStore = Mathf.Min(maxW - stashWood, runWood);
         int stoneToStore = Mathf.Min(maxS - stashStone, runStone);
         int foodToStore = Mathf.Min(maxF - stashFood, runFood);
@@ -222,7 +207,6 @@ public class ResourceManager : MonoBehaviour
         stashStone += stoneToStore;
         stashFood += foodToStore;
 
-        // Те, що не влізло в склад, конвертуємо в діаманти (хоча з лімітом рюкзака цього буде менше, але логіка надійна)
         int excessWood = runWood - woodToStore;
         int excessStone = runStone - stoneToStore;
         int excessFood = runFood - foodToStore;
@@ -245,7 +229,7 @@ public class ResourceManager : MonoBehaviour
         if (inventoryTitleText != null)
         {
             inventoryTitleText.text = isCamp ? "CAMP STASH" : "BACKPACK";
-            inventoryTitleText.color = isCamp ? new Color(1f, 0.8f, 0.2f) : Color.white;
+            // Колір тепер не перезаписується і залишається таким, як налаштовано в Інспекторі
         }
 
         if (isCamp)
@@ -254,9 +238,9 @@ public class ResourceManager : MonoBehaviour
             int maxStashStone = GetMax("Stone");
             int maxStashFood = GetMax("Food");
 
-            if (woodText) woodText.text = $"{stashWood} / {maxStashWood}";
-            if (stoneText) stoneText.text = $"{stashStone} / {maxStashStone}";
-            if (foodText) foodText.text = $"{stashFood} / {maxStashFood}";
+            if (woodText) woodText.text = $"( {stashWood} / {maxStashWood} )";
+            if (stoneText) stoneText.text = $"( {stashStone} / {maxStashStone} )";
+            if (foodText) foodText.text = $"( {stashFood} / {maxStashFood} )";
         }
         else
         {
@@ -264,17 +248,22 @@ public class ResourceManager : MonoBehaviour
             int maxRunStone = GetRunMax("Stone");
             int maxRunFood = GetRunMax("Food");
 
-            // Якщо рюкзак заповнений, текст стає червоним
-            string wColor = runWood >= maxRunWood ? "<color=#FF4444>" : "<color=#FFFFFF>";
-            string sColor = runStone >= maxRunStone ? "<color=#FF4444>" : "<color=#FFFFFF>";
-            string fColor = runFood >= maxRunFood ? "<color=#FF4444>" : "<color=#FFFFFF>";
+            // Використовуємо темно-багряний колір для заповненого стану
+            string wColor = runWood >= maxRunWood ? "<color=#8B2E2E>" : "";
+            string wEnd = runWood >= maxRunWood ? "</color>" : "";
 
-            if (woodText) woodText.text = $"{wColor}{runWood}</color> / {maxRunWood}";
-            if (stoneText) stoneText.text = $"{sColor}{runStone}</color> / {maxRunStone}";
-            if (foodText) foodText.text = $"{fColor}{runFood}</color> / {maxRunFood}";
+            string sColor = runStone >= maxRunStone ? "<color=#8B2E2E>" : "";
+            string sEnd = runStone >= maxRunStone ? "</color>" : "";
+
+            string fColor = runFood >= maxRunFood ? "<color=#8B2E2E>" : "";
+            string fEnd = runFood >= maxRunFood ? "</color>" : "";
+
+            if (woodText) woodText.text = $"( {wColor}{runWood}{wEnd} / {maxRunWood} )";
+            if (stoneText) stoneText.text = $"( {sColor}{runStone}{sEnd} / {maxRunStone} )";
+            if (foodText) foodText.text = $"( {fColor}{runFood}{fEnd} / {maxRunFood} )";
         }
 
-        if (diamondsText) diamondsText.text = diamonds.ToString();
+        if (diamondsText) diamondsText.text = $"Diamonds: {diamonds}";
     }
 
     private void SaveStash()

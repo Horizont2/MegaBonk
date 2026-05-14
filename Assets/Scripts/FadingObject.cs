@@ -1,112 +1,185 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 using System.Collections.Generic;
 
 public class FadingObject : MonoBehaviour
 {
-    private float targetAlpha = 1f;
+    private float fadeTargetAlpha = 0.25f;
     private float currentAlpha = 1f;
-    private float minAlpha;
-    private float fadeSpeed;
+    private float fadeSpeed = 4f;
+    private bool isFadingOut = false;
 
     private Renderer[] renderers;
+
+    // Словники для збереження оригінальних та прозорих версій матеріалів
     private Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
-    private Dictionary<Renderer, Material[]> fadeMaterials = new Dictionary<Renderer, Material[]>();
+    private Dictionary<Renderer, Material[]> transparentMaterials = new Dictionary<Renderer, Material[]>();
 
-    private bool isFullyFadedIn = true;
+    private bool isInitialized = false;
 
-    public void Initialize(float targetMinAlpha, float speed)
+    public void Initialize(float targetAlpha, float speed)
     {
-        minAlpha = targetMinAlpha;
+        if (isInitialized) return;
+
+        fadeTargetAlpha = targetAlpha;
         fadeSpeed = speed;
 
         renderers = GetComponentsInChildren<Renderer>();
 
-        foreach (Renderer rend in renderers)
+        foreach (Renderer r in renderers)
         {
-            if (rend is ParticleSystemRenderer) continue;
+            // Ігноруємо ефекти часток
+            if (r is ParticleSystemRenderer) continue;
 
-            originalMaterials[rend] = rend.sharedMaterials;
-            Material[] clones = new Material[rend.sharedMaterials.Length];
+            originalMaterials[r] = r.sharedMaterials;
+            Material[] transMats = new Material[r.sharedMaterials.Length];
 
-            for (int i = 0; i < rend.sharedMaterials.Length; i++)
+            for (int i = 0; i < r.sharedMaterials.Length; i++)
             {
-                Material clone = new Material(rend.sharedMaterials[i]);
+                Material orig = r.sharedMaterials[i];
+                if (orig == null) continue;
 
-                clone.SetFloat("_Surface", 1); 
-                clone.SetOverrideTag("RenderType", "Transparent");
-                clone.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                clone.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                clone.SetInt("_ZWrite", 0);
-                clone.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                Material transMat = new Material(orig);
 
-                clones[i] = clone;
+                // Змушуємо URP матеріал підтримувати прозорість
+                transMat.SetFloat("_Surface", 1);
+                transMat.SetFloat("_Blend", 0);
+                transMat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+                transMat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+                transMat.SetInt("_ZWrite", 0);
+                transMat.renderQueue = (int)RenderQueue.Transparent;
+
+                transMats[i] = transMat;
             }
-            fadeMaterials[rend] = clones;
+            transparentMaterials[r] = transMats;
         }
+
+        currentAlpha = 1f;
+        isInitialized = true;
     }
 
     public void FadeOut()
     {
-        targetAlpha = minAlpha;
-        if (isFullyFadedIn)
-        {
-            isFullyFadedIn = false;
-            foreach (Renderer rend in renderers)
-            {
-                if (fadeMaterials.ContainsKey(rend))
-                    rend.materials = fadeMaterials[rend];
-            }
-        }
+        isFadingOut = true;
     }
 
     public void FadeIn()
     {
-        targetAlpha = 1f;
+        isFadingOut = false;
     }
 
     private void Update()
     {
-        if (isFullyFadedIn) return;
+        if (!isInitialized) return;
 
-        currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
+        float target = isFadingOut ? fadeTargetAlpha : 1f;
 
-        foreach (Renderer rend in renderers)
+        if (Mathf.Abs(currentAlpha - target) > 0.01f)
         {
-            if (!fadeMaterials.ContainsKey(rend)) continue;
+            currentAlpha = Mathf.Lerp(currentAlpha, target, Time.deltaTime * fadeSpeed);
+            ApplyAlpha(currentAlpha);
+        }
+        else if (!isFadingOut)
+        {
+            // Самовидалення для економії ресурсів, коли дерево знову повністю непрозоре
+            Destroy(this);
+        }
+    }
 
-            foreach (Material mat in fadeMaterials[rend])
+    private void ApplyAlpha(float alpha)
+    {
+        foreach (Renderer r in renderers)
+        {
+            if (r == null || r is ParticleSystemRenderer) continue;
+
+            if (r.sharedMaterials != transparentMaterials[r])
             {
+                r.sharedMaterials = transparentMaterials[r];
+            }
+
+            foreach (Material mat in r.sharedMaterials)
+            {
+                if (mat == null) continue;
+
                 if (mat.HasProperty("_BaseColor"))
                 {
                     Color c = mat.GetColor("_BaseColor");
-                    c.a = currentAlpha;
+                    c.a = alpha;
                     mat.SetColor("_BaseColor", c);
                 }
                 else if (mat.HasProperty("_Color"))
                 {
                     Color c = mat.GetColor("_Color");
-                    c.a = currentAlpha;
+                    c.a = alpha;
                     mat.SetColor("_Color", c);
                 }
             }
         }
+    }
 
-        if (currentAlpha >= 0.99f && targetAlpha == 1f)
+    private void RestoreOriginalMaterials()
+    {
+        foreach (Renderer r in renderers)
         {
-            isFullyFadedIn = true;
-            foreach (Renderer rend in renderers)
+            if (r != null && originalMaterials.ContainsKey(r))
             {
-                if (originalMaterials.ContainsKey(rend))
-                    rend.sharedMaterials = originalMaterials[rend];
+                r.sharedMaterials = originalMaterials[r];
             }
         }
     }
 
+    // --- МАГІЯ ДЛЯ МІНІМАПИ ---
+
+    private void OnEnable()
+    {
+        // Підписуємося на події рендерингу камер URP
+        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+        RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+    }
+
+    private void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+        RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+        RestoreOriginalMaterials();
+    }
+
     private void OnDestroy()
     {
-        foreach (var matArray in fadeMaterials.Values)
+        RestoreOriginalMaterials();
+
+        // ВАЖЛИВО: Очищуємо створені клони матеріалів, щоб оперативна пам'ять не переповнювалась
+        foreach (var kvp in transparentMaterials)
         {
-            foreach (Material mat in matArray) Destroy(mat);
+            foreach (Material mat in kvp.Value)
+            {
+                if (mat != null) Destroy(mat);
+            }
+        }
+        transparentMaterials.Clear();
+    }
+
+    private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        // ПЕРЕД тим як MinimapCamera почне малювати, повертаємо дереву оригінальні непрозорі матеріали
+        if (camera.name == "MinimapCamera" && currentAlpha < 1f)
+        {
+            RestoreOriginalMaterials();
+        }
+    }
+
+    private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        // ПІСЛЯ того як мапа намальована, повертаємо дереву напівпрозорий стан назад
+        if (camera.name == "MinimapCamera" && currentAlpha < 1f && isInitialized)
+        {
+            foreach (Renderer r in renderers)
+            {
+                if (r != null && transparentMaterials.ContainsKey(r))
+                {
+                    r.sharedMaterials = transparentMaterials[r];
+                }
+            }
         }
     }
 }

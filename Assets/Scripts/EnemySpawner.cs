@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections; // Потрібно для корутин
+using System.Collections;
 using System.Collections.Generic;
 
 [System.Serializable]
@@ -24,9 +24,19 @@ public class EnemySpawner : MonoBehaviour
     public float maxSpawnRadius = 20f;
 
     private float timer;
+    private WorldGenerator worldGen;
+
+    private void Start()
+    {
+        // Знаходимо генератор світу при старті (якщо він є на сцені)
+        worldGen = FindFirstObjectByType<WorldGenerator>();
+    }
 
     private void Update()
     {
+        // --- ФІКС ЗАВАНТАЖЕННЯ: Чекаємо, поки світ повністю побудується ---
+        if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
+
         if (player == null || enemyPool == null || enemyPool.Length == 0) return;
 
         timer += Time.deltaTime;
@@ -54,7 +64,7 @@ public class EnemySpawner : MonoBehaviour
 
         if (availableEnemies.Count == 0) return;
 
-        // ФІКС: Спавн у кільці (не впритул, і не занадто далеко)
+        // Спавн у кільці (не впритул, і не занадто далеко)
         float randomDist = Random.Range(minSpawnRadius, maxSpawnRadius);
         Vector2 randomCircle = Random.insideUnitCircle.normalized * randomDist;
 

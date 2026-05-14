@@ -7,7 +7,7 @@ public class XpCrystal : MonoBehaviour
     [Header("Smart Magnet AI")]
     public float maxMagnetSpeed = 25f;
     public float acceleration = 12f;
-    public float dropOffMultiplier = 1.8f; // Якщо гравець відійде на цю дистанцію, кристал перестане летіти за ним
+    public float dropOffMultiplier = 1.8f;
 
     [Header("Spawn Pop Animation")]
     public float popRadius = 3f;
@@ -26,12 +26,25 @@ public class XpCrystal : MonoBehaviour
     private float currentFlySpeed = 0f;
     private float baseY;
 
-    private void Awake() { /* Твій код для шарів та колізій залишається */ }
+    // --- ОПТИМІЗАЦІЯ ---
+    private static int lastPlayFrame = -1; // Трекер для звуку
+    private float pickupRadiusSqr;
+    private float dropOffRadiusSqr;
+
+    private void Awake() { /* Залишай тут свій код для ігнорування колізій, якщо він там був */ }
 
     private void Start()
     {
         GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null) { player = p.transform; playerController = p.GetComponent<PlayerController>(); }
+        if (p != null)
+        {
+            player = p.transform;
+            playerController = p.GetComponent<PlayerController>();
+
+            // Рахуємо квадрати дистанцій один раз при старті, а не кожен кадр
+            pickupRadiusSqr = playerController.pickupRadius * playerController.pickupRadius;
+            dropOffRadiusSqr = (playerController.pickupRadius * dropOffMultiplier) * (playerController.pickupRadius * dropOffMultiplier);
+        }
 
         Vector2 randomCircle = Random.insideUnitCircle.normalized * Random.Range(1.5f, popRadius);
         popTarget = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
@@ -42,11 +55,14 @@ public class XpCrystal : MonoBehaviour
 
     private void Update()
     {
+        // 1. Анімація появи
         if (isPopping)
         {
             transform.position = Vector3.MoveTowards(transform.position, popTarget, popSpeed * Time.deltaTime);
             transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime, Space.World);
-            if (Vector3.Distance(transform.position, popTarget) < 0.1f)
+
+            // Оптимізована перевірка дистанції
+            if ((transform.position - popTarget).sqrMagnitude < 0.01f)
             {
                 isPopping = false;
                 baseY = transform.position.y;
@@ -56,38 +72,44 @@ public class XpCrystal : MonoBehaviour
 
         if (player == null || playerController == null) return;
 
-        float distance = Vector3.Distance(transform.position, player.position);
+        // 2. Логіка розумного магніту (ВИКОРИСТОВУЄМО SQR MAGNITUDE)
+        float distSqr = (transform.position - player.position).sqrMagnitude;
 
-        // ЛОГІКА РОЗУМНОГО МАГНІТУ
-        if (!isMagnetized && distance <= playerController.pickupRadius)
+        if (!isMagnetized && distSqr <= pickupRadiusSqr)
         {
             isMagnetized = true;
-            currentFlySpeed = 0f; // Починає летіти повільно
+            currentFlySpeed = 0f;
         }
-        else if (isMagnetized && distance > playerController.pickupRadius * dropOffMultiplier)
+        else if (isMagnetized && distSqr > dropOffRadiusSqr)
         {
-            isMagnetized = false; // Гравець втік! Кристал втрачає інтерес
-            baseY = transform.position.y; // Запам'ятовуємо нову висоту для зависання
+            isMagnetized = false;
+            baseY = transform.position.y;
         }
 
+        // 3. Політ до гравця
         if (isMagnetized)
         {
-            // Плавний розгін (Smooth Damping ефект)
             currentFlySpeed = Mathf.Lerp(currentFlySpeed, maxMagnetSpeed, Time.deltaTime * acceleration);
             Vector3 targetPos = player.position + Vector3.up * 1f;
 
             transform.position = Vector3.MoveTowards(transform.position, targetPos, currentFlySpeed * Time.deltaTime);
 
-            if (Vector3.Distance(transform.position, targetPos) < 0.5f)
+            if ((transform.position - targetPos).sqrMagnitude < 0.25f) // Менше ніж 0.5 метра
             {
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
+                // ФІКС АУДІО-ФРІЗУ: Дозволяємо звуку грати ТІЛЬКИ 1 раз за поточний кадр.
+                if (Time.frameCount != lastPlayFrame)
+                {
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
+                    lastPlayFrame = Time.frameCount;
+                }
+
                 playerController.GainXP(xpAmount);
                 Destroy(gameObject);
             }
             return;
         }
 
-        // Стандартне зависання, коли не магнітиться
+        // 4. Стандартне зависання
         transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime, Space.World);
         float newY = baseY + Mathf.Sin(Time.time * hoverSpeed) * hoverHeight;
         transform.position = new Vector3(transform.position.x, newY, transform.position.z);

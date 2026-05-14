@@ -4633,6 +4633,7 @@ GameObject:
   - component: {fileID: 4872463154758787814}
   - component: {fileID: 731573668071987223}
   - component: {fileID: 384163171106039637}
+  - component: {fileID: 1042523167120434495}
   m_Layer: 15
   m_Name: CampTree3
   m_TagString: Untagged
@@ -4791,6 +4792,19 @@ MonoBehaviour:
   maxDrops: 1
   hitEffect: {fileID: 1455699925694829984}
   stumpPrefab: {fileID: 0}
+--- !u!114 &1042523167120434495
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3014813734061652239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
+  targetObject: {fileID: 0}
 --- !u!1 &7878843924039084433
 GameObject:
   m_ObjectHideFlags: 0
