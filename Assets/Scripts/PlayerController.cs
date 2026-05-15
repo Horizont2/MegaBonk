@@ -472,6 +472,7 @@ public class PlayerController : MonoBehaviour
                 {
                     if (Input.GetMouseButtonDown(0))
                     {
+                        // Якщо ми НЕ цілимося гранатою — звичайна атака мечем
                         if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
                         {
                             lastAttackTime = Time.time;
@@ -482,6 +483,17 @@ public class PlayerController : MonoBehaviour
                             }
 
                             anim.SetTrigger("Attack");
+                        }
+                        // --- НОВЕ: Відміна кидка гранати ---
+                        else if (isAimingGrenade)
+                        {
+                            isAimingGrenade = false; // Вимикаємо режим прицілювання
+
+                            if (trajectoryLine != null)
+                                trajectoryLine.positionCount = 0; // Ховаємо лінію
+
+                            // Якщо хочеш, можна додати якийсь тихий звук відміни:
+                            // if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
                         }
                     }
 
@@ -538,7 +550,27 @@ public class PlayerController : MonoBehaviour
 
     private Vector3 GetThrowVelocity()
     {
+        // 1. Знаходимо точку куди дивиться мишка на площині землі (AAA прицілювання від камери)
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Plane groundPlane = new Plane(Vector3.up, transform.position);
         Vector3 aimDir = transform.forward;
+
+        if (groundPlane.Raycast(ray, out float enter))
+        {
+            Vector3 hitPoint = ray.GetPoint(enter);
+            aimDir = (hitPoint - throwPoint.position).normalized;
+            aimDir.y = 0; // Тільки горизонтальний напрямок
+            aimDir.Normalize();
+        }
+
+        // 2. Плавний поворот персонажа за прицілом під час замаху!
+        if (aimDir.sqrMagnitude > 0.01f)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(aimDir);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime * 2f);
+        }
+
+        // 3. Формуємо дугу кидка
         Vector3 throwDir = (aimDir + Vector3.up * upwardAngle).normalized;
         return throwDir * currentThrowForce;
     }
@@ -555,8 +587,16 @@ public class PlayerController : MonoBehaviour
         {
             float t = i * timeBetweenPoints;
             Vector3 point = startPosition + startVelocity * t + Physics.gravity * 0.5f * t * t;
+
+            // Обрізаємо лінію рівно там, де вона торкається землі
+            if (point.y < transform.position.y && i > 3)
+            {
+                trajectoryLine.positionCount = i + 1;
+                trajectoryLine.SetPosition(i, new Vector3(point.x, transform.position.y + 0.1f, point.z));
+                break;
+            }
+
             trajectoryLine.SetPosition(i, point);
-            if (point.y < 0f && i > 5) { trajectoryLine.positionCount = i + 1; break; }
         }
     }
 
@@ -642,7 +682,13 @@ public class PlayerController : MonoBehaviour
 
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
             Rigidbody rb = grenade.GetComponent<Rigidbody>();
-            if (rb != null) rb.linearVelocity = savedThrowVelocity;
+
+            if (rb != null)
+            {
+                rb.linearVelocity = savedThrowVelocity;
+                // ДОДАНО: Випадкове обертання гранати в польоті
+                rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
+            }
         }
     }
 

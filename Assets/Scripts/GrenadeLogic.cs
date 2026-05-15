@@ -24,6 +24,10 @@ public class GrenadeLogic : MonoBehaviour
     private MeshRenderer meshRenderer;
     private Color originalColor;
 
+    // Візуал радіусу
+    private LineRenderer aoeCircle;
+    private int circleSegments = 40;
+
     private void Start()
     {
         countdown = delay;
@@ -31,6 +35,22 @@ public class GrenadeLogic : MonoBehaviour
 
         meshRenderer = GetComponent<MeshRenderer>();
         if (meshRenderer != null) originalColor = meshRenderer.material.color;
+
+        CreateAoEVisualizer();
+    }
+
+    private void CreateAoEVisualizer()
+    {
+        // Створюємо індикатор радіусу на льоту
+        GameObject ringObj = new GameObject("AoE_Ring");
+        aoeCircle = ringObj.AddComponent<LineRenderer>();
+
+        // Використовуємо базовий матеріал (щоб не було рожевих квадратів)
+        aoeCircle.material = new Material(Shader.Find("Sprites/Default"));
+        aoeCircle.useWorldSpace = true;
+        aoeCircle.positionCount = circleSegments + 1;
+        aoeCircle.startWidth = 0.15f;
+        aoeCircle.endWidth = 0.15f;
     }
 
     private void Update()
@@ -39,16 +59,35 @@ public class GrenadeLogic : MonoBehaviour
 
         countdown -= Time.deltaTime;
 
+        // Блимання самої гранати
         if (meshRenderer != null)
         {
             float blinkRate = Mathf.Lerp(15f, 2f, countdown / delay);
-            meshRenderer.material.color = Color.Lerp(originalColor, Color.white, Mathf.PingPong(Time.time * blinkRate, 1f));
+            meshRenderer.material.color = Color.Lerp(originalColor, Color.red, Mathf.PingPong(Time.time * blinkRate, 1f));
         }
 
-        if (countdown <= 0f)
+        // Малювання і пульсація кола на землі
+        if (aoeCircle != null)
         {
-            Explode();
+            // Колір стає яскравішим і червонішим перед самим вибухом
+            Color ringColor = Color.Lerp(new Color(1f, 0.2f, 0f, 0.1f), new Color(1f, 0f, 0f, 0.8f), 1f - (countdown / delay));
+            aoeCircle.startColor = ringColor;
+            aoeCircle.endColor = ringColor;
+
+            float angle = 0f;
+            // Проектуємо коло чітко на землю під гранатою
+            Vector3 groundPos = new Vector3(transform.position.x, 0.1f, transform.position.z);
+
+            for (int i = 0; i <= circleSegments; i++)
+            {
+                float x = Mathf.Sin(Mathf.Deg2Rad * angle) * explosionRadius;
+                float z = Mathf.Cos(Mathf.Deg2Rad * angle) * explosionRadius;
+                aoeCircle.SetPosition(i, groundPos + new Vector3(x, 0, z));
+                angle += (360f / circleSegments);
+            }
         }
+
+        if (countdown <= 0f) Explode();
     }
 
     // НОВЕ: Миттєвий вибух при прямому влучанні у ворога!
@@ -64,6 +103,7 @@ public class GrenadeLogic : MonoBehaviour
     private void Explode()
     {
         hasExploded = true;
+        if (aoeCircle != null) Destroy(aoeCircle.gameObject);
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Explosion);
         if (explosionEffect != null) Instantiate(explosionEffect, transform.position, Quaternion.identity);
