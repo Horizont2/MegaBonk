@@ -33,7 +33,6 @@ public class Level1_QuestManager : MonoBehaviour
     private int totalSkeletonsW1 = 0;
     private int defeatedSkeletonsW1 = 0;
 
-    // Захист від подвійного запуску діалогу
     private bool isDialogueStarted = false;
 
     private void Awake()
@@ -43,19 +42,16 @@ public class Level1_QuestManager : MonoBehaviour
 
     private void Start()
     {
-        // --- ФІКС: Примусово ховаємо плашку місій на старті сцени ---
         if (objectiveUI != null)
         {
             CanvasGroup cg = objectiveUI.GetComponent<CanvasGroup>();
             if (cg != null) cg.alpha = 0f;
-            objectiveUI.animateAppearance = true; // Дозволяємо їй анімовано виїхати
+            objectiveUI.animateAppearance = true;
         }
-        // -------------------------------------------------------------
 
         if (subtitleText != null)
         {
             subtitleText.text = "";
-            // Скидаємо обмеження на кількість видимих символів на старті
             subtitleText.maxVisibleCharacters = 99999;
         }
 
@@ -70,7 +66,6 @@ public class Level1_QuestManager : MonoBehaviour
 
         Invoke("FindPlayer", 0.1f);
 
-        // ФІКС 1: Одразу в першому кадрі вмикаємо режим кіно, щоб камера не стрибала
         if (introDirector != null)
         {
             SetCinematicMode(true);
@@ -93,35 +88,23 @@ public class Level1_QuestManager : MonoBehaviour
     {
         if (introDirector != null)
         {
-            // Блокуємо гравця та UI
             GameObject pObj = GameObject.FindGameObjectWithTag("Player");
             if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = true;
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
-            yield return null; // Чекаємо один кадр, щоб таймлайн точно ініціалізувався
+            yield return null;
 
-            while (introDirector.state == PlayState.Playing)
-            {
-                yield return null;
-            }
+            while (introDirector.state == PlayState.Playing) yield return null;
 
-            // --- ПОВЕРНУТО ТА ПОКРАЩЕНО ФІКС КАМЕРИ ---
             CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
             if (cf != null)
             {
-                // Запам'ятовуємо, куди дивилася камера в останній кадр катсцени
                 Vector3 currentRot = Camera.main.transform.eulerAngles;
-
-                // Перевірка на "перекручені" кути (наприклад, 350 градусів замість -10)
                 float pitchX = currentRot.x;
                 if (pitchX > 180f) pitchX -= 360f;
-
-                // Передаємо ці кути звичайній камері, щоб не було різкого стрибка
                 cf.SyncRotation(currentRot.y, pitchX);
             }
-            // -----------------------------
 
-            // Повертаємо контроль після таймлайну
             if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
@@ -130,7 +113,6 @@ public class Level1_QuestManager : MonoBehaviour
             var brain = Camera.main.GetComponent<CinemachineBrain>();
             if (brain != null) brain.enabled = false;
 
-            // Викликаємо оновлення UI ТІЛЬКИ ТУТ, щоб плашка виїхала красиво
             UpdateObjectiveUI();
         }
         else
@@ -163,18 +145,53 @@ public class Level1_QuestManager : MonoBehaviour
         StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));
     }
 
+    // --- ФІКС: Правильна логіка просування місій ---
     public void AdvanceQuest()
     {
-        if (currentQuestStep > 0 && objectiveUI != null) objectiveUI.CompleteMission();
+        // 1. Позначаємо поточну місію як виконану (навіть нульову "Investigate the Outpost")
+        if (objectiveUI != null) objectiveUI.CompleteMission();
+
         currentQuestStep++;
 
         if (currentQuestStep == 1 && ResourceManager.Instance != null) startingWood = ResourceManager.Instance.runWood;
         else if (currentQuestStep == 2) StartCoroutine(TriggerAmbushWave1Routine());
         else if (currentQuestStep == 3) StartCoroutine(TriggerHordeAndFleeRoutine());
+
+        // 2. Запускаємо оновлення UI із затримкою, щоб гравець встиг побачити зелений напис (DONE)
+        StartCoroutine(DelayedUIUpdateRoutine());
     }
+
+    private IEnumerator DelayedUIUpdateRoutine()
+    {
+        yield return new WaitForSeconds(1.5f);
+        UpdateObjectiveUI();
+
+        // 3. Синхронізуємо прогрес після оновлення тексту
+        if (currentQuestStep == 1 && ResourceManager.Instance != null && objectiveUI != null)
+        {
+            int gatheredWood = ResourceManager.Instance.runWood - startingWood;
+            objectiveUI.UpdateProgress(gatheredWood, requiredWood);
+        }
+        else if (currentQuestStep == 2 && objectiveUI != null)
+        {
+            objectiveUI.UpdateProgress(defeatedSkeletonsW1, totalSkeletonsW1);
+        }
+    }
+    // ----------------------------------------------
 
     private void Update()
     {
+        if (ResourceManager.Instance != null)
+        {
+            int maxWoodAllowed = startingWood + 20;
+
+            if (ResourceManager.Instance.runWood > maxWoodAllowed)
+                ResourceManager.Instance.runWood = maxWoodAllowed;
+
+            if (ResourceManager.Instance.runStone > 0) ResourceManager.Instance.runStone = 0;
+            if (ResourceManager.Instance.runFood > 0) ResourceManager.Instance.runFood = 0;
+        }
+
         if (currentQuestStep == 1 && ResourceManager.Instance != null && objectiveUI != null)
         {
             int gatheredWood = ResourceManager.Instance.runWood - startingWood;
@@ -214,7 +231,7 @@ public class Level1_QuestManager : MonoBehaviour
         }
 
         Coroutine cameraFly = StartCoroutine(DroneCameraFlyAndTrack(spawnPos, 3.5f));
-        Coroutine riseAnim = StartCoroutine(RiseFromGroundAnim(skeletonsWave1.transform, 2.5f));
+        StartCoroutine(RiseFromGroundAnim(skeletonsWave1.transform, 2.5f));
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Watch out! They're crawling from the dirt!", 2f));
 
@@ -320,7 +337,6 @@ public class Level1_QuestManager : MonoBehaviour
         if (cf != null)
         {
             Vector3 currentRot = mainCam.transform.eulerAngles;
-            // Той самий захист від перекручених кутів
             float pitchX = currentRot.x;
             if (pitchX > 180f) pitchX -= 360f;
             cf.SyncRotation(currentRot.y, pitchX);
@@ -328,12 +344,10 @@ public class Level1_QuestManager : MonoBehaviour
         SetCinematicMode(false);
     }
 
-    // ФІКСОВАНА ТУТОРІАЛ-ПІДКАЗКА
     private IEnumerator ShowTutorialHint(string text, float duration)
     {
         if (subtitleText == null) yield break;
 
-        // Відключаємо обмеження, щоб підказка показалася повністю відразу
         subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = $"<color=#88CCFF>{text}</color>";
 
@@ -341,25 +355,15 @@ public class Level1_QuestManager : MonoBehaviour
         subtitleText.text = "";
     }
 
-    // ФІКСОВАНИЙ РОЗУМНИЙ TYPEWRITER
     private IEnumerator ShowSubtitleTypewriter(string text, float stayDuration)
     {
         if (subtitleText == null) yield break;
 
-        // 1. Одразу передаємо весь текст. Це змусить TextMeshPro розрахувати 
-        // фінальні розміри, перенесення на нові рядки та центрування.
         subtitleText.text = text;
-
-        // 2. Примусово оновлюємо сітку (Mesh) тексту в цьому ж кадрі, 
-        // щоб отримати точну кількість символів.
         subtitleText.ForceMeshUpdate();
         int totalCharacters = subtitleText.textInfo.characterCount;
-
-        // 3. Робимо всі символи "невидимими"
         subtitleText.maxVisibleCharacters = 0;
 
-        // 4. Плавно збільшуємо кількість видимих символів. 
-        // Оскільки фінальний макет вже прорахований, текст не буде скакати!
         for (int i = 0; i <= totalCharacters; i++)
         {
             subtitleText.maxVisibleCharacters = i;
@@ -368,8 +372,6 @@ public class Level1_QuestManager : MonoBehaviour
 
         yield return new WaitForSeconds(stayDuration);
         subtitleText.text = "";
-
-        // 5. Повертаємо параметр у стандартний стан для майбутніх текстів
         subtitleText.maxVisibleCharacters = 99999;
     }
 
@@ -401,6 +403,33 @@ public class Level1_QuestManager : MonoBehaviour
             case 1: objectiveUI.Setup("Stranger's Request", "Gather Wood", 0, requiredWood); break;
             case 2: objectiveUI.Setup("Ambush!", "Survive the Skeletons", 0, totalSkeletonsW1); break;
             case 3: objectiveUI.Setup("Escape!", "REACH THE HORSE BEFORE THEY KILL YOU!", 0, 1); break;
+        }
+    }
+
+    public void TriggerGameOver()
+    {
+        StartCoroutine(TutorialGameOverRoutine());
+    }
+
+    private IEnumerator TutorialGameOverRoutine()
+    {
+        if (subtitleText != null)
+        {
+            subtitleText.maxVisibleCharacters = 99999;
+            subtitleText.text = "<color=#8B0000>YOU HAVE FALLEN...</color>";
+        }
+
+        yield return new WaitForSeconds(2.5f);
+
+        if (subtitleText != null) subtitleText.text = "";
+
+        if (GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
+        }
+        else
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene("Lvl_1");
         }
     }
 }

@@ -152,6 +152,10 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         isDead = false;
+
+        // --- ФІКС: Автоматичне підключення UI ---
+        ReconnectUI();
+
         if (!isCampMode) ApplyMetaUpgrades();
         currentHealth = maxHealth;
         visualXP = currentXP;
@@ -163,6 +167,45 @@ public class PlayerController : MonoBehaviour
         if (weaponTrail != null) weaponTrail.emitting = false;
 
         StartCoroutine(SpawnSafely());
+    }
+
+    // МАГІЯ ПОШУКУ UI
+    // МАГІЯ ПОШУКУ UI (СУПЕР-РОЗУМНА ВЕРСІЯ)
+    private void ReconnectUI()
+    {
+        if (hpFill != null) return; // Якщо посилання вже є, нічого не робимо
+
+        // 1. Шукаємо ВСІ картинки на сцені (і в локальних Canvas, і в глобальному HUD)
+        Image[] images = FindObjectsByType<Image>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Image img in images)
+        {
+            string n = img.name.ToLower();
+            string p = img.transform.parent != null ? img.transform.parent.name.ToLower() : "";
+
+            // Перевіряємо, чи є маркер "hp", "xp" або "stamina" в імені самої картинки АБО в імені її батька
+            bool isHP = n.Contains("hp") || p.Contains("hp");
+            bool isXP = n.Contains("xp") || p.Contains("xp");
+            bool isStamina = n.Contains("stamina") || n.Contains("dash") || p.Contains("stamina") || p.Contains("dash");
+
+            if (isHP && n.Contains("fill") && !n.Contains("catchup")) hpFill = img;
+            else if (isHP && n.Contains("catchup")) hpCatchupFill = img;
+            else if (isXP && n.Contains("fill")) xpFill = img;
+            else if (isStamina && n.Contains("fill")) dashStaminaFill = img;
+        }
+
+        // 2. Шукаємо ВСІ тексти
+        TextMeshProUGUI[] texts = FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (TextMeshProUGUI txt in texts)
+        {
+            string n = txt.name.ToLower();
+            string p = txt.transform.parent != null ? txt.transform.parent.name.ToLower() : "";
+
+            bool isHP = n.Contains("hp") || p.Contains("hp");
+
+            if (isHP && (n.Contains("text") || n.Contains("val"))) hpText = txt;
+            else if (n.Contains("lvl") || n.Contains("level")) levelText = txt;
+            else if (n.Contains("crystal") || n.Contains("diamond")) crystalText = txt;
+        }
     }
 
     private System.Collections.IEnumerator SpawnSafely()
@@ -284,7 +327,6 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        // --- ФІКС: Плавне, але швидке зменшення та заповнення стаміни Dash ---
         if (dashStaminaFill != null)
         {
             float targetDashProgress = Mathf.Clamp01((Time.time - lastDashTime) / dashCooldown);
@@ -292,6 +334,10 @@ public class PlayerController : MonoBehaviour
         }
 
         float targetHpFill = currentHealth / maxHealth;
+
+        // --- ФІКС: Жорстко і постійно синхронізуємо смужку ХП! ---
+        if (hpFill != null) hpFill.fillAmount = targetHpFill;
+
         if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
         {
             hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.deltaTime * uiLerpSpeed);
@@ -430,13 +476,10 @@ public class PlayerController : MonoBehaviour
                         {
                             lastAttackTime = Time.time;
 
-                            // --- ФІКС: Використовуємо вже існуючу змінну camForward ---
                             if (camForward.sqrMagnitude > 0.01f)
                             {
-                                // Миттєво повертаємо персонажа
                                 transform.rotation = Quaternion.LookRotation(camForward);
                             }
-                            // -----------------------------------------------------------
 
                             anim.SetTrigger("Attack");
                         }
@@ -663,20 +706,18 @@ public class PlayerController : MonoBehaviour
         string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
         GameManager gm = FindFirstObjectByType<GameManager>();
 
-        if (gm != null)
+        if (Level1_QuestManager.Instance != null)
+        {
+            Level1_QuestManager.Instance.TriggerGameOver();
+        }
+        else if (gm != null)
         {
             gm.TriggerGameOver();
         }
         else if (GlobalHUD.Instance != null)
         {
-            if (currentSceneName == "Lvl_1")
-            {
-                GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
-            }
-            else
-            {
-                GlobalHUD.Instance.FadeAndLoadScene("CampScene");
-            }
+            if (currentSceneName == "Lvl_1") GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
+            else GlobalHUD.Instance.FadeAndLoadScene("CampScene");
         }
 
         gameObject.SetActive(false);

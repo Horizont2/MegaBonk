@@ -10,10 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9ba1d0e895a576047b59f0e41baf8fff, type: 3}
-  m_Name: Wep_Sword_lvl2
+  m_Name: Wep_Axe_lvl2
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponID: 1
   weaponName: Barbarian Axe
+  category: 1
+  icon: {fileID: 21300000, guid: 8ccdbeec05403e6488b87a47c0b6adb4, type: 3}
+  description: A crude but brutally effective weapon favored by the wild clans of
+    the North. Perfect for aggressive, sweeping strikes.
   price: 300
   shopPrefab: {fileID: 7292583777197831632, guid: 264c445fd8372214891a5e34393d63be, type: 3}
   inGamePrefab: {fileID: 4722655034226915781, guid: 8528f67867808024094886c081baccc0, type: 3}

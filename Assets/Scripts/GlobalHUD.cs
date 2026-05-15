@@ -64,8 +64,7 @@ public class GlobalHUD : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            ShopManager shop = FindFirstObjectByType<ShopManager>();
-            if (shop != null && shop.IsInspecting()) { shop.StopInspect(); return; }
+            // --- ФІКС: Видалено перевірку ShopManager.IsInspecting(), яка викликала помилку ---
 
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy) { SettingsUI.Instance.CloseSettings(); return; }
 
@@ -97,7 +96,6 @@ public class GlobalHUD : MonoBehaviour
             {
                 if (panel != null)
                 {
-                    // --- ФІКС: Приховуємо Рюкзак та Табірні місії на 1-му рівні ---
                     if (isTutorial && (panel.name == "Resources" || panel.name == "MissionUIParent"))
                     {
                         panel.SetActive(false);
@@ -110,7 +108,6 @@ public class GlobalHUD : MonoBehaviour
             }
         }
 
-        // Надійний бекап: якщо ти забув додати їх в масив gameplayPanels, ми все одно їх сховаємо
         if (isTutorial)
         {
             Transform res = transform.Find("Resources");
@@ -166,7 +163,6 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // --- ІНШІ МЕТОДИ (БЕЗ ЗМІН) ---
     public void FadeAndLoadScene(string sceneName)
     {
         if (isPaused) TogglePause();
