@@ -52,26 +52,20 @@ public class SettingsUI : MonoBehaviour
             if (panelCanvasGroup != null) panelCanvasGroup.alpha = 0f;
         }
 
-        // Підписки на слайдери
         if (masterSlider) masterSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
         if (musicSlider) musicSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
         if (sfxSlider) sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
 
-        // Підписки на тоггли
         if (damagePopupsToggle) damagePopupsToggle.onValueChanged.AddListener(OnDamagePopupsChanged);
         if (screenShakeToggle) screenShakeToggle.onValueChanged.AddListener(OnScreenShakeChanged);
         if (limitFPSToggle) limitFPSToggle.onValueChanged.AddListener(OnFPSLimitChanged);
         if (showFPSToggle) showFPSToggle.onValueChanged.AddListener(OnShowFPSChanged);
 
-        // Авто-аніматори кнопок
         if (closeButton != null) closeButton.gameObject.AddComponent<AutoButtonAnimator>().Setup(closeButtonText, true);
 
         if (saveButton != null)
         {
             saveButton.gameObject.AddComponent<AutoButtonAnimator>().Setup(null, false);
-
-            // ФІКС: Жорстко прив'язуємо кнопку збереження ТІЛЬКИ до закриття панелі
-            // Це ігнорує будь-які неправильні налаштування в Інспекторі Unity
             saveButton.onClick.RemoveAllListeners();
             saveButton.onClick.AddListener(CloseSettings);
         }
@@ -110,24 +104,20 @@ public class SettingsUI : MonoBehaviour
         settingsPanel.SetActive(true);
         settingsPanel.transform.SetAsLastSibling();
 
-        // Завантаження гучності
         if (masterSlider) masterSlider.value = PlayerPrefs.GetFloat("Settings_MasterVol", 1f);
         if (musicSlider) musicSlider.value = PlayerPrefs.GetFloat("Settings_MusicVol", 1f);
         if (sfxSlider) sfxSlider.value = PlayerPrefs.GetFloat("Settings_SFXVol", 1f);
 
-        // Завантаження тогглів
         if (damagePopupsToggle) damagePopupsToggle.isOn = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
         if (screenShakeToggle) screenShakeToggle.isOn = PlayerPrefs.GetInt("Settings_ScreenShake", 1) == 1;
         if (limitFPSToggle) limitFPSToggle.isOn = PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1;
         if (showFPSToggle) showFPSToggle.isOn = PlayerPrefs.GetInt("Settings_ShowFPS", 0) == 1;
 
-        // Миттєве виставлення стану галочок
         ForceCheckmarkState(damageCheckmark, damagePopupsToggle.isOn);
         ForceCheckmarkState(screenShakeCheckmark, screenShakeToggle.isOn);
         ForceCheckmarkState(fpsLimitCheckmark, limitFPSToggle.isOn);
         ForceCheckmarkState(showFPSCheckmark, showFPSToggle.isOn);
 
-        // ФІКС: Кнопка завжди тільки зберігає і закриває
         if (saveButton != null)
         {
             TextMeshProUGUI btnText = saveButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -138,12 +128,40 @@ public class SettingsUI : MonoBehaviour
         panelAnimCoroutine = StartCoroutine(AnimatePanelIn());
     }
 
-    private void OnShowFPSChanged(bool isOn)
+    // --- ФІКС: Примусове збереження всіх даних під час закриття ---
+    public void CloseSettings()
     {
-        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
-        PlayerPrefs.SetInt("Settings_ShowFPS", isOn ? 1 : 0);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        if (FPSDisplay.Instance != null) FPSDisplay.Instance.UpdateVisibility();
+        // 1. Зберігаємо всі налаштування у пам'ять
+        if (masterSlider) PlayerPrefs.SetFloat("Settings_MasterVol", masterSlider.value);
+        if (musicSlider) PlayerPrefs.SetFloat("Settings_MusicVol", musicSlider.value);
+        if (sfxSlider) PlayerPrefs.SetFloat("Settings_SFXVol", sfxSlider.value);
+
+        if (damagePopupsToggle) PlayerPrefs.SetInt("Settings_DamagePopups", damagePopupsToggle.isOn ? 1 : 0);
+        if (screenShakeToggle) PlayerPrefs.SetInt("Settings_ScreenShake", screenShakeToggle.isOn ? 1 : 0);
+        if (limitFPSToggle) PlayerPrefs.SetInt("Settings_FPSLimit", limitFPSToggle.isOn ? 1 : 0);
+        if (showFPSToggle) PlayerPrefs.SetInt("Settings_ShowFPS", showFPSToggle.isOn ? 1 : 0);
+
+        PlayerPrefs.Save();
+
+        // 2. Одразу застосовуємо FPS
+        Application.targetFrameRate = (limitFPSToggle != null && limitFPSToggle.isOn) ? 60 : -1;
+
+        // 3. Знаходимо скрипт FPS і змушуємо його оновитися
+        if (FPSDisplay.Instance != null)
+        {
+            FPSDisplay.Instance.UpdateVisibility();
+        }
+        else
+        {
+            // Якщо Instance злетів, шукаємо об'єкт примусово по всій сцені
+            FPSDisplay fps = FindFirstObjectByType<FPSDisplay>();
+            if (fps != null) fps.UpdateVisibility();
+        }
+
+        if (panelAnimCoroutine != null) StopCoroutine(panelAnimCoroutine);
+        panelAnimCoroutine = StartCoroutine(AnimatePanelOut());
     }
 
     private IEnumerator AnimatePanelIn()
@@ -163,15 +181,6 @@ public class SettingsUI : MonoBehaviour
         }
         panelCanvasGroup.alpha = 1f;
         panelRect.localScale = Vector3.one;
-    }
-
-    public void CloseSettings()
-    {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-        PlayerPrefs.Save();
-
-        if (panelAnimCoroutine != null) StopCoroutine(panelAnimCoroutine);
-        panelAnimCoroutine = StartCoroutine(AnimatePanelOut());
     }
 
     private IEnumerator AnimatePanelOut()
@@ -207,15 +216,22 @@ public class SettingsUI : MonoBehaviour
         checkmark.color = c;
     }
 
-    // Методи гучності
     private void OnMasterVolumeChanged(float value) { if (AudioManager.Instance != null) AudioManager.Instance.SetMasterVolume(value); }
     private void OnMusicVolumeChanged(float value) { if (AudioManager.Instance != null) AudioManager.Instance.SetMusicVolume(value); }
     private void OnSFXVolumeChanged(float value) { if (AudioManager.Instance != null) AudioManager.Instance.SetSFXVolume(value); }
 
-    // Методи геймплею
-    private void OnDamagePopupsChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); PlayerPrefs.SetInt("Settings_DamagePopups", isOn ? 1 : 0); }
-    private void OnScreenShakeChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); PlayerPrefs.SetInt("Settings_ScreenShake", isOn ? 1 : 0); }
-    private void OnFPSLimitChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); PlayerPrefs.SetInt("Settings_FPSLimit", isOn ? 1 : 0); Application.targetFrameRate = isOn ? 60 : -1; }
+    private void OnDamagePopupsChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); }
+    private void OnScreenShakeChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); }
+    private void OnFPSLimitChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); Application.targetFrameRate = isOn ? 60 : -1; }
+
+    private void OnShowFPSChanged(bool isOn)
+    {
+        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+
+        // Миттєве оновлення FPS при кліку на галочку
+        PlayerPrefs.SetInt("Settings_ShowFPS", isOn ? 1 : 0);
+        if (FPSDisplay.Instance != null) FPSDisplay.Instance.UpdateVisibility();
+    }
 }
 
 public class AutoButtonAnimator : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler

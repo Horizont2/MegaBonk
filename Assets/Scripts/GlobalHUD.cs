@@ -64,35 +64,18 @@ public class GlobalHUD : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            // 0. ОГЛЯД ЗБРОЇ В МАГАЗИНІ
             ShopManager shop = FindFirstObjectByType<ShopManager>();
-            if (shop != null && shop.IsInspecting())
-            {
-                shop.StopInspect();
-                return;
-            }
+            if (shop != null && shop.IsInspecting()) { shop.StopInspect(); return; }
 
-            // 1. НАЛАШТУВАННЯ
-            if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
-            {
-                SettingsUI.Instance.CloseSettings();
-                return;
-            }
+            if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy) { SettingsUI.Instance.CloseSettings(); return; }
 
-            // 2. ДОШКА МІСІЙ
             NoticeBoardManager noticeBoard = FindFirstObjectByType<NoticeBoardManager>();
-            if (noticeBoard != null && noticeBoard.isBoardOpen)
-            {
-                noticeBoard.CloseBoard();
-                return;
-            }
+            if (noticeBoard != null && noticeBoard.isBoardOpen) { noticeBoard.CloseBoard(); return; }
 
-            // 3. МАПА ТА ПАНЕЛІ
             if (MapTableInteract.IsMapActive) return;
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
             if (mapPanel != null && mapPanel.IsPanelOpen()) return;
 
-            // 4. ПАУЗА (якщо ми в ігрових сценах)
             string sceneName = SceneManager.GetActiveScene().name;
             if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene" || sceneName == "Lvl_1")
             {
@@ -105,14 +88,36 @@ public class GlobalHUD : MonoBehaviour
     {
         StartCoroutine(SyncCameraAndVolumeRoutine());
 
-        // Визначаємо, чи показувати HUD (не показуємо в Меню)
+        bool isTutorial = (scene.name == "Lvl_1");
         bool showGameplayUI = (scene.name != "Menu" && scene.name != "ShopScene");
+
         if (gameplayPanels != null)
         {
             foreach (GameObject panel in gameplayPanels)
             {
-                if (panel != null) panel.SetActive(showGameplayUI);
+                if (panel != null)
+                {
+                    // --- ФІКС: Приховуємо Рюкзак та Табірні місії на 1-му рівні ---
+                    if (isTutorial && (panel.name == "Resources" || panel.name == "MissionUIParent"))
+                    {
+                        panel.SetActive(false);
+                    }
+                    else
+                    {
+                        panel.SetActive(showGameplayUI);
+                    }
+                }
             }
+        }
+
+        // Надійний бекап: якщо ти забув додати їх в масив gameplayPanels, ми все одно їх сховаємо
+        if (isTutorial)
+        {
+            Transform res = transform.Find("Resources");
+            if (res != null) res.gameObject.SetActive(false);
+
+            Transform campMissions = transform.Find("MissionUIParent");
+            if (campMissions != null) campMissions.gameObject.SetActive(false);
         }
 
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
@@ -146,7 +151,6 @@ public class GlobalHUD : MonoBehaviour
             }
         }
 
-        // Пошук ефекту розмиття (Depth of Field)
         Volume[] allVolumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
         foreach (Volume v in allVolumes)
         {
@@ -162,29 +166,18 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // --- СИСТЕМА ЗАВАНТАЖЕННЯ ---
+    // --- ІНШІ МЕТОДИ (БЕЗ ЗМІН) ---
     public void FadeAndLoadScene(string sceneName)
     {
         if (isPaused) TogglePause();
-
-        // Викликаємо новий незалежний LoadingManager
-        if (LoadingManager.Instance != null)
-        {
-            LoadingManager.Instance.LoadScene(sceneName);
-        }
-        else
-        {
-            // Якщо менеджера немає (напр. для тестів), вантажимо звичайно
-            SceneManager.LoadScene(sceneName);
-        }
+        if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(sceneName);
+        else SceneManager.LoadScene(sceneName);
     }
 
-    // --- ВЗАЄМОДІЯ (ПРОМПТИ) ---
     public void ShowPrompt(string message)
     {
         if (promptFadeCoroutine != null) StopCoroutine(promptFadeCoroutine);
         if (promptTypingCoroutine != null) StopCoroutine(promptTypingCoroutine);
-
         promptFadeCoroutine = StartCoroutine(FadeCanvasGroup(1f));
         promptTypingCoroutine = StartCoroutine(TypeTextRoutine(message, promptText));
     }
@@ -193,7 +186,6 @@ public class GlobalHUD : MonoBehaviour
     {
         if (promptFadeCoroutine != null) StopCoroutine(promptFadeCoroutine);
         if (promptTypingCoroutine != null) StopCoroutine(promptTypingCoroutine);
-
         promptFadeCoroutine = StartCoroutine(FadeCanvasGroup(0f));
     }
 
@@ -215,7 +207,6 @@ public class GlobalHUD : MonoBehaviour
         textTarget.ForceMeshUpdate();
         int totalChars = textTarget.textInfo.characterCount;
         textTarget.maxVisibleCharacters = 0;
-
         for (int i = 0; i <= totalChars; i++)
         {
             textTarget.maxVisibleCharacters = i;
@@ -224,20 +215,13 @@ public class GlobalHUD : MonoBehaviour
         textTarget.maxVisibleCharacters = 99999;
     }
 
-    // --- МЕНЮ ПАУЗИ ---
     public void TogglePause()
     {
         if (pausePanelGroup == null) return;
-
-        // Закриваємо налаштування, якщо вони були відкриті поверх паузи
-        if (isPaused && SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
-        {
-            SettingsUI.Instance.CloseSettings();
-        }
+        if (isPaused && SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy) { SettingsUI.Instance.CloseSettings(); }
 
         isPaused = !isPaused;
         Time.timeScale = isPaused ? 0f : 1f;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         if (dofEffect != null)
@@ -246,25 +230,12 @@ public class GlobalHUD : MonoBehaviour
             dofEffect.active = isShop || isPaused;
         }
 
-        if (isPaused)
-        {
-            ResetGiveUpState();
-            StartCoroutine(ShowMenuRoutine());
-        }
+        if (isPaused) { ResetGiveUpState(); StartCoroutine(ShowMenuRoutine()); }
         else StartCoroutine(HideMenuRoutine());
 
-        // Логіка курсора
         string currentScene = SceneManager.GetActiveScene().name;
-        if (currentScene == "ShopScene" || currentScene == "Menu")
-        {
-            Cursor.visible = true;
-            Cursor.lockState = CursorLockMode.None;
-        }
-        else
-        {
-            Cursor.visible = isPaused;
-            Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked;
-        }
+        if (currentScene == "ShopScene" || currentScene == "Menu") { Cursor.visible = true; Cursor.lockState = CursorLockMode.None; }
+        else { Cursor.visible = isPaused; Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked; }
     }
 
     private IEnumerator ShowMenuRoutine()
@@ -272,28 +243,17 @@ public class GlobalHUD : MonoBehaviour
         pausePanelGroup.gameObject.SetActive(true);
         pausePanelGroup.blocksRaycasts = true;
         pausePanelGroup.interactable = true;
-
         bool inGame = SceneManager.GetActiveScene().name == "GameScene";
         if (giveUpButtonGroup != null) giveUpButtonGroup.gameObject.SetActive(inGame);
-
         foreach (var btn in pauseButtons) if (btn != null) btn.GetComponent<RectTransform>().localScale = Vector3.zero;
 
         float t = 0;
-        while (t < 1)
-        {
-            t += Time.unscaledDeltaTime * 6f;
-            pausePanelGroup.alpha = Mathf.Lerp(0, 1, t);
-            yield return null;
-        }
+        while (t < 1) { t += Time.unscaledDeltaTime * 6f; pausePanelGroup.alpha = Mathf.Lerp(0, 1, t); yield return null; }
         pausePanelGroup.alpha = 1f;
 
         foreach (var btn in pauseButtons)
         {
-            if (btn != null && btn.activeSelf)
-            {
-                StartCoroutine(AnimateButtonIn(btn.GetComponent<RectTransform>()));
-                yield return new WaitForSecondsRealtime(buttonDelay);
-            }
+            if (btn != null && btn.activeSelf) { StartCoroutine(AnimateButtonIn(btn.GetComponent<RectTransform>())); yield return new WaitForSecondsRealtime(buttonDelay); }
         }
     }
 
@@ -301,13 +261,7 @@ public class GlobalHUD : MonoBehaviour
     {
         Vector3 targetScale = Vector3.one;
         float t = 0;
-        while (t < 1)
-        {
-            t += Time.unscaledDeltaTime * 5f;
-            float s = Mathf.Sin(t * Mathf.PI * 0.5f + 0.2f) * 1.15f;
-            btn.localScale = new Vector3(s, s, s);
-            yield return null;
-        }
+        while (t < 1) { t += Time.unscaledDeltaTime * 5f; float s = Mathf.Sin(t * Mathf.PI * 0.5f + 0.2f) * 1.15f; btn.localScale = new Vector3(s, s, s); yield return null; }
         btn.localScale = targetScale;
     }
 
@@ -315,14 +269,8 @@ public class GlobalHUD : MonoBehaviour
     {
         pausePanelGroup.interactable = false;
         pausePanelGroup.blocksRaycasts = false;
-
         float t = pausePanelGroup.alpha;
-        while (t > 0)
-        {
-            t -= Time.unscaledDeltaTime * 10f;
-            pausePanelGroup.alpha = t;
-            yield return null;
-        }
+        while (t > 0) { t -= Time.unscaledDeltaTime * 10f; pausePanelGroup.alpha = t; yield return null; }
         pausePanelGroup.alpha = 0f;
         pausePanelGroup.gameObject.SetActive(false);
     }
@@ -330,36 +278,18 @@ public class GlobalHUD : MonoBehaviour
     public void OnGiveUpClicked()
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
         string currentScene = SceneManager.GetActiveScene().name;
 
         if (!isConfirmingGiveUp)
         {
             isConfirmingGiveUp = true;
-            if (giveUpText != null)
-                giveUpText.text = (currentScene == "Lvl_1") ? "Skip Tutorial?" : "You sure?\nAll journey progress will be lost";
-
-            foreach (var btn in pauseButtonGroups)
-            {
-                if (btn != null && btn != giveUpButtonGroup)
-                {
-                    btn.alpha = 0.3f;
-                    btn.interactable = false;
-                }
-            }
+            if (giveUpText != null) giveUpText.text = (currentScene == "Lvl_1") ? "Skip Tutorial?" : "You sure?\nAll journey progress will be lost";
+            foreach (var btn in pauseButtonGroups) { if (btn != null && btn != giveUpButtonGroup) { btn.alpha = 0.3f; btn.interactable = false; } }
         }
         else
         {
-            // Підтвердження виходу
-            if (currentScene == "Lvl_1")
-            {
-                FadeAndLoadScene("Menu");
-            }
-            else
-            {
-                if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
-                FadeAndLoadScene("CampScene");
-            }
+            if (currentScene == "Lvl_1") FadeAndLoadScene("Menu");
+            else { if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory(); FadeAndLoadScene("CampScene"); }
         }
     }
 
@@ -367,65 +297,28 @@ public class GlobalHUD : MonoBehaviour
     {
         isConfirmingGiveUp = false;
         string currentScene = SceneManager.GetActiveScene().name;
-        if (giveUpText != null)
-            giveUpText.text = (currentScene == "Lvl_1") ? "Back to Menu" : "Give Up";
-
-        foreach (var btn in pauseButtonGroups)
-        {
-            if (btn != null) { btn.alpha = 1f; btn.interactable = true; }
-        }
+        if (giveUpText != null) giveUpText.text = (currentScene == "Lvl_1") ? "Back to Menu" : "Give Up";
+        foreach (var btn in pauseButtonGroups) { if (btn != null) { btn.alpha = 1f; btn.interactable = true; } }
     }
 
-    // --- ЦІЛІ ТА ПОВІДОМЛЕННЯ ---
-    public void SetLevelObjective(string message)
-    {
-        if (objectiveText != null) objectiveText.text = message;
-        if (objectivePanelGroup != null) objectivePanelGroup.alpha = 1f;
-    }
-
-    public void HideLevelObjective()
-    {
-        if (objectivePanelGroup != null && objectivePanelGroup.alpha > 0)
-        {
-            StartCoroutine(HideObjectiveRoutine());
-        }
-    }
+    public void SetLevelObjective(string message) { if (objectiveText != null) objectiveText.text = message; if (objectivePanelGroup != null) objectivePanelGroup.alpha = 1f; }
+    public void HideLevelObjective() { if (objectivePanelGroup != null && objectivePanelGroup.alpha > 0) StartCoroutine(HideObjectiveRoutine()); }
 
     private IEnumerator HideObjectiveRoutine()
     {
         RectTransform rect = objectivePanelGroup.GetComponent<RectTransform>();
         Vector2 startPos = rect.anchoredPosition;
-
         float t = 0;
-        while (t < 1f)
-        {
-            t += Time.deltaTime * 6f;
-            rect.anchoredPosition = Vector2.Lerp(startPos, startPos + new Vector2(30f, 0), Mathf.Sin(t * Mathf.PI * 0.5f));
-            yield return null;
-        }
-
+        while (t < 1f) { t += Time.deltaTime * 6f; rect.anchoredPosition = Vector2.Lerp(startPos, startPos + new Vector2(30f, 0), Mathf.Sin(t * Mathf.PI * 0.5f)); yield return null; }
         t = 0;
         Vector2 midPos = rect.anchoredPosition;
-        while (t < 1f)
-        {
-            t += Time.deltaTime * 3f;
-            rect.anchoredPosition = Vector2.Lerp(midPos, midPos + new Vector2(-600f, 0), t * t * t);
-            objectivePanelGroup.alpha = 1f - t;
-            yield return null;
-        }
-
+        while (t < 1f) { t += Time.deltaTime * 3f; rect.anchoredPosition = Vector2.Lerp(midPos, midPos + new Vector2(-600f, 0), t * t * t); objectivePanelGroup.alpha = 1f - t; yield return null; }
         objectivePanelGroup.alpha = 0f;
         rect.anchoredPosition = startPos;
     }
 
     public void SetGameplayPanelsActive(bool active)
     {
-        if (gameplayPanels != null)
-        {
-            foreach (GameObject panel in gameplayPanels)
-            {
-                if (panel != null) panel.SetActive(active);
-            }
-        }
+        if (gameplayPanels != null) { foreach (GameObject panel in gameplayPanels) { if (panel != null) panel.SetActive(active); } }
     }
 }

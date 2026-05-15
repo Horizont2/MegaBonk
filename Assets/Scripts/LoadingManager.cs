@@ -94,19 +94,33 @@ public class LoadingManager : MonoBehaviour
         while (!asyncLoad.isDone) yield return null;
 
         // --- ОЧІКУВАННЯ ГЕНЕРАЦІЇ СВІТУ ---
-        if (loadingText != null) loadingText.text = "GENERATING WORLD...";
+        // 3. Активуємо сцену
+        asyncLoad.allowSceneActivation = true;
+        while (!asyncLoad.isDone) yield return null;
 
-        float genProgress = 0f;
+        // --- ФІКС: Перевіряємо, чи є в цій сцені генератор світу ---
+        WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
 
-        // Повертаємо пріоритет, щоб генерація пройшла максимально швидко
-        Application.backgroundLoadingPriority = ThreadPriority.Normal;
-
-        // Цикл чекає, поки WorldGenerator.cs змінить IsGenerationDone на true
-        while (!WorldGenerator.IsGenerationDone)
+        if (worldGen != null)
         {
-            genProgress = Mathf.MoveTowards(genProgress, 1f, Time.unscaledDeltaTime * 0.2f);
-            if (loadingSlider != null) loadingSlider.value = 0.5f + (genProgress * 0.45f); // Друга половина прогресу
-            yield return null;
+            if (loadingText != null) loadingText.text = "GENERATING WORLD...";
+            float genProgress = 0f;
+
+            Application.backgroundLoadingPriority = ThreadPriority.Normal;
+
+            // Цикл чекає, поки WorldGenerator.cs змінить IsGenerationDone на true
+            while (!WorldGenerator.IsGenerationDone)
+            {
+                genProgress = Mathf.MoveTowards(genProgress, 1f, Time.unscaledDeltaTime * 0.2f);
+                if (loadingSlider != null) loadingSlider.value = 0.5f + (genProgress * 0.45f);
+                yield return null;
+            }
+        }
+        else
+        {
+            // Якщо генератора немає (наприклад, сюжетний Lvl_1 або Магазин),
+            // просто повертаємо нормальний пріоритет процесору
+            Application.backgroundLoadingPriority = ThreadPriority.Normal;
         }
 
         if (loadingSlider != null) loadingSlider.value = 1f;
