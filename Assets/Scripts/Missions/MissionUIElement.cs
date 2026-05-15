@@ -22,9 +22,16 @@ public class MissionUIElement : MonoBehaviour
 
     private string baseDescription = "";
 
+    // Кешування позиції для безпечної анімації
+    private Vector3 originalPos;
+    private bool isPosCached = false;
+
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
+
+        originalPos = transform.localPosition;
+        isPosCached = true;
 
         if (animateAppearance)
         {
@@ -45,7 +52,7 @@ public class MissionUIElement : MonoBehaviour
         if (animateAppearance)
         {
             StartCoroutine(AppearRoutine());
-            animateAppearance = false;
+            animateAppearance = false; // Скидаємо, щоб наступні оновлення не викликали виїзд знову
         }
         else
         {
@@ -55,16 +62,23 @@ public class MissionUIElement : MonoBehaviour
 
     private IEnumerator AppearRoutine()
     {
+        if (!isPosCached)
+        {
+            originalPos = transform.localPosition;
+            isPosCached = true;
+        }
+
         float t = 0;
-        Vector3 startPos = transform.localPosition + new Vector3(300f, 0, 0);
-        Vector3 targetPos = transform.localPosition;
+        // ФІКС: Віднімаємо 300 по осі X, щоб плашка виїжджала з-за лівого краю екрана
+        Vector3 startPos = originalPos + new Vector3(-300f, 0, 0);
+        Vector3 targetPos = originalPos;
 
         while (t < 1)
         {
             t += Time.deltaTime / animationDuration;
             float curve = Mathf.SmoothStep(0, 1, t);
 
-            canvasGroup.alpha = curve;
+            if (canvasGroup != null) canvasGroup.alpha = curve;
             transform.localPosition = Vector3.Lerp(startPos, targetPos, curve);
             yield return null;
         }
@@ -101,13 +115,11 @@ public class MissionUIElement : MonoBehaviour
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
         if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>(DONE)</color>";
 
-        // Відтепер ніякого canvasGroup.alpha = 0.6f;
         if (canvasGroup != null) canvasGroup.alpha = 1f;
     }
 
     private IEnumerator CompleteAnimationRoutine()
     {
-        // Залишаємо лише легкий спалах фону при завершенні місії
         if (backgroundImage != null)
         {
             Color originalColor = backgroundImage.color;

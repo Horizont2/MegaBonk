@@ -26,12 +26,22 @@ public class XpCrystal : MonoBehaviour
     private float currentFlySpeed = 0f;
     private float baseY;
 
-    // --- ОПТИМІЗАЦІЯ ---
-    private static int lastPlayFrame = -1; // Трекер для звуку
+    // --- СУПЕР ОПТИМІЗАЦІЯ ---
+    private static float lastPlayTime = -1f; // Трекер звуку по реальному часу
     private float pickupRadiusSqr;
     private float dropOffRadiusSqr;
 
-    private void Awake() { /* Залишай тут свій код для ігнорування колізій, якщо він там був */ }
+    // Кешуємо компоненти, щоб не шукати їх під час гри
+    private Collider col;
+    private Rigidbody rb;
+    private Renderer[] renderers;
+
+    private void Awake()
+    {
+        col = GetComponent<Collider>();
+        rb = GetComponent<Rigidbody>();
+        renderers = GetComponentsInChildren<Renderer>(); // Знаходимо всі меші кристала
+    }
 
     private void Start()
     {
@@ -41,7 +51,6 @@ public class XpCrystal : MonoBehaviour
             player = p.transform;
             playerController = p.GetComponent<PlayerController>();
 
-            // Рахуємо квадрати дистанцій один раз при старті, а не кожен кадр
             pickupRadiusSqr = playerController.pickupRadius * playerController.pickupRadius;
             dropOffRadiusSqr = (playerController.pickupRadius * dropOffMultiplier) * (playerController.pickupRadius * dropOffMultiplier);
         }
@@ -55,13 +64,11 @@ public class XpCrystal : MonoBehaviour
 
     private void Update()
     {
-        // 1. Анімація появи
         if (isPopping)
         {
             transform.position = Vector3.MoveTowards(transform.position, popTarget, popSpeed * Time.deltaTime);
             transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime, Space.World);
 
-            // Оптимізована перевірка дистанції
             if ((transform.position - popTarget).sqrMagnitude < 0.01f)
             {
                 isPopping = false;
@@ -72,21 +79,28 @@ public class XpCrystal : MonoBehaviour
 
         if (player == null || playerController == null) return;
 
-        // 2. Логіка розумного магніту (ВИКОРИСТОВУЄМО SQR MAGNITUDE)
         float distSqr = (transform.position - player.position).sqrMagnitude;
 
         if (!isMagnetized && distSqr <= pickupRadiusSqr)
         {
             isMagnetized = true;
             currentFlySpeed = 0f;
+
+            // ФІКС ФІЗИКИ: Вимикаємо колайдер і Rigidbody!
+            // Тепер кристал "прозорий" для фізичного рушія і не створює лагів при вльоті в гравця.
+            if (col != null) col.enabled = false;
+            if (rb != null) rb.isKinematic = true;
         }
         else if (isMagnetized && distSqr > dropOffRadiusSqr)
         {
             isMagnetized = false;
             baseY = transform.position.y;
+
+            // Якщо гравець втік, повертаємо колізію назад
+            if (col != null) col.enabled = true;
+            if (rb != null) rb.isKinematic = false;
         }
 
-        // 3. Політ до гравця
         if (isMagnetized)
         {
             currentFlySpeed = Mathf.Lerp(currentFlySpeed, maxMagnetSpeed, Time.deltaTime * acceleration);
@@ -94,22 +108,27 @@ public class XpCrystal : MonoBehaviour
 
             transform.position = Vector3.MoveTowards(transform.position, targetPos, currentFlySpeed * Time.deltaTime);
 
-            if ((transform.position - targetPos).sqrMagnitude < 0.25f) // Менше ніж 0.5 метра
+            if ((transform.position - targetPos).sqrMagnitude < 0.25f) // Коли кристал торкнувся гравця
             {
-                // ФІКС АУДІО-ФРІЗУ: Дозволяємо звуку грати ТІЛЬКИ 1 раз за поточний кадр.
-                if (Time.frameCount != lastPlayFrame)
+                // ФІКС АУДІО: Захист 0.05 секунд реального часу, щоб звуки не "нашаровувались"
+                if (Time.time - lastPlayTime > 0.05f)
                 {
                     if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
-                    lastPlayFrame = Time.frameCount;
+                    lastPlayTime = Time.time;
                 }
 
                 playerController.GainXP(xpAmount);
-                Destroy(gameObject);
+
+                // ФІКС GC (Garbage Collector): 
+                // Замість миттєвого знищення, просто робимо об'єкт невидимим і вимикаємо цей скрипт.
+                // А саме видалення з пам'яті (Destroy) відкладаємо на випадковий час.
+                foreach (Renderer r in renderers) if (r != null) r.enabled = false;
+                this.enabled = false;
+                Destroy(gameObject, Random.Range(0.5f, 2f));
             }
             return;
         }
 
-        // 4. Стандартне зависання
         transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime, Space.World);
         float newY = baseY + Mathf.Sin(Time.time * hoverSpeed) * hoverHeight;
         transform.position = new Vector3(transform.position.x, newY, transform.position.z);

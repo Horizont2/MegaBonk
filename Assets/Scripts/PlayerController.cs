@@ -429,6 +429,15 @@ public class PlayerController : MonoBehaviour
                         if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
                         {
                             lastAttackTime = Time.time;
+
+                            // --- ФІКС: Використовуємо вже існуючу змінну camForward ---
+                            if (camForward.sqrMagnitude > 0.01f)
+                            {
+                                // Миттєво повертаємо персонажа
+                                transform.rotation = Quaternion.LookRotation(camForward);
+                            }
+                            // -----------------------------------------------------------
+
                             anim.SetTrigger("Attack");
                         }
                     }

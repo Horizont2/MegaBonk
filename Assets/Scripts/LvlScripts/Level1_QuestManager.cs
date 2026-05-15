@@ -43,6 +43,15 @@ public class Level1_QuestManager : MonoBehaviour
 
     private void Start()
     {
+        // --- ФІКС: Примусово ховаємо плашку місій на старті сцени ---
+        if (objectiveUI != null)
+        {
+            CanvasGroup cg = objectiveUI.GetComponent<CanvasGroup>();
+            if (cg != null) cg.alpha = 0f;
+            objectiveUI.animateAppearance = true; // Дозволяємо їй анімовано виїхати
+        }
+        // -------------------------------------------------------------
+
         if (subtitleText != null)
         {
             subtitleText.text = "";
