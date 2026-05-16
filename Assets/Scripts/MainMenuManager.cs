@@ -19,6 +19,8 @@ public class MainMenuManager : MonoBehaviour
     public GameObject[] weaponPrefabs;
     public Transform heroSpawnPoint;
 
+    public RuntimeAnimatorController menuAnimatorController;
+
     private void Start()
     {
         Cursor.visible = true;
@@ -51,25 +53,30 @@ public class MainMenuManager : MonoBehaviour
     private void SpawnSelectedHero()
     {
         int selectedHeroID = PlayerPrefs.GetInt("SelectedHeroID", 0);
-        int selectedWeaponID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
 
         if (heroPrefabs != null && selectedHeroID >= 0 && selectedHeroID < heroPrefabs.Length && heroPrefabs[selectedHeroID] != null)
         {
             GameObject currentVisual = Instantiate(heroPrefabs[selectedHeroID], heroSpawnPoint.position, heroSpawnPoint.rotation);
-            currentVisual.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
+
+            // ФІКС: Спавнимо героя у розмірі 0.5 по всьому скейлу
+            currentVisual.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
 
             Animator anim = currentVisual.GetComponent<Animator>();
             if (anim != null)
             {
-                anim.SetBool("IsGrounded", true);
-                anim.SetFloat("Speed", 0f);
+                if (menuAnimatorController != null)
+                {
+                    anim.runtimeAnimatorController = menuAnimatorController;
+                }
+                else
+                {
+                    anim.SetBool("IsGrounded", true);
+                    anim.SetFloat("Speed", 0f);
+                }
             }
 
-            Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
-            if (socket != null && weaponPrefabs != null && selectedWeaponID >= 0 && selectedWeaponID < weaponPrefabs.Length && weaponPrefabs[selectedWeaponID] != null)
-            {
-                Instantiate(weaponPrefabs[selectedWeaponID], socket.position, socket.rotation, socket);
-            }
+            // ФІКС: Повністю видалено блок спавну зброї (socket та weaponPrefabs), 
+            // щоб у меню персонаж лежав без спорядження в руках
         }
     }
 

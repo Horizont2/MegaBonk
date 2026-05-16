@@ -296,7 +296,7 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_IsOn: 1
+  m_IsOn: 0
 --- !u!1 &943538830859888189
 GameObject:
   m_ObjectHideFlags: 0
@@ -1401,7 +1401,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2323917420071907829}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1409,7 +1409,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -118.10999, y: 0.17017}
+  m_AnchoredPosition: {x: -127.1, y: 0.1}
   m_SizeDelta: {x: 25.226, y: 10.339}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8755719322939319113
@@ -1524,8 +1524,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37fdaef50b466b94f9f95fec00eff3c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourcePopup
-  displayTime: 2
-  floatSpeed: 30
+  displayTime: 1.5
+  floatSpeed: 20
 --- !u!1 &2492669386868346222
 GameObject:
   m_ObjectHideFlags: 0
@@ -2497,7 +2497,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -118.11, y: 0.000012219}
+  m_AnchoredPosition: {x: -127.09999, y: -0.070117176}
   m_SizeDelta: {x: 25.226, y: 10.339}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4871990791189905761
@@ -2612,8 +2612,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37fdaef50b466b94f9f95fec00eff3c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourcePopup
-  displayTime: 2
-  floatSpeed: 30
+  displayTime: 1.5
+  floatSpeed: 20
 --- !u!1 &3123995045897254263
 GameObject:
   m_ObjectHideFlags: 0
@@ -8056,7 +8056,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -118.11, y: -0.16949}
+  m_AnchoredPosition: {x: -127.09999, y: -0.23961939}
   m_SizeDelta: {x: 25.226, y: 10.339}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2554038786244071847
@@ -8171,8 +8171,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37fdaef50b466b94f9f95fec00eff3c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourcePopup
-  displayTime: 2
-  floatSpeed: 30
+  displayTime: 1.5
+  floatSpeed: 20
 --- !u!1 &8610611607731817149
 GameObject:
   m_ObjectHideFlags: 0
@@ -8675,7 +8675,7 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_IsOn: 1
+  m_IsOn: 0
 --- !u!1 &9123288176305601349
 GameObject:
   m_ObjectHideFlags: 0
