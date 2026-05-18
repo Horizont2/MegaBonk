@@ -64,8 +64,6 @@ public class GlobalHUD : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            // --- ФІКС: Видалено перевірку ShopManager.IsInspecting(), яка викликала помилку ---
-
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy) { SettingsUI.Instance.CloseSettings(); return; }
 
             NoticeBoardManager noticeBoard = FindFirstObjectByType<NoticeBoardManager>();
@@ -239,8 +237,21 @@ public class GlobalHUD : MonoBehaviour
         pausePanelGroup.gameObject.SetActive(true);
         pausePanelGroup.blocksRaycasts = true;
         pausePanelGroup.interactable = true;
-        bool inGame = SceneManager.GetActiveScene().name == "GameScene";
-        if (giveUpButtonGroup != null) giveUpButtonGroup.gameObject.SetActive(inGame);
+
+        string currentScene = SceneManager.GetActiveScene().name;
+
+        // Кнопка видима ЗАВЖДИ
+        if (giveUpButtonGroup != null)
+        {
+            giveUpButtonGroup.gameObject.SetActive(true);
+
+            // Задаємо текст залежно від сцени
+            if (giveUpText != null)
+            {
+                giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
+            }
+        }
+
         foreach (var btn in pauseButtons) if (btn != null) btn.GetComponent<RectTransform>().localScale = Vector3.zero;
 
         float t = 0;
@@ -279,13 +290,35 @@ public class GlobalHUD : MonoBehaviour
         if (!isConfirmingGiveUp)
         {
             isConfirmingGiveUp = true;
-            if (giveUpText != null) giveUpText.text = (currentScene == "Lvl_1") ? "Skip Tutorial?" : "You sure?\nAll journey progress will be lost";
-            foreach (var btn in pauseButtonGroups) { if (btn != null && btn != giveUpButtonGroup) { btn.alpha = 0.3f; btn.interactable = false; } }
+
+            // Змінюємо текст підтвердження ПРЯМО НА ЦІЙ КНОПЦІ
+            if (giveUpText != null)
+            {
+                giveUpText.text = (currentScene == "GameScene") ? "You sure?\nAll journey progress will be lost" : "Are you sure?";
+            }
+
+            // Затемнюємо інші кнопки
+            foreach (var btn in pauseButtonGroups)
+            {
+                if (btn != null && btn != giveUpButtonGroup)
+                {
+                    btn.alpha = 0.3f;
+                    btn.interactable = false;
+                }
+            }
         }
         else
         {
-            if (currentScene == "Lvl_1") FadeAndLoadScene("Menu");
-            else { if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory(); FadeAndLoadScene("CampScene"); }
+            // Виконуємо перехід
+            if (currentScene == "GameScene")
+            {
+                if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
+                FadeAndLoadScene("CampScene");
+            }
+            else
+            {
+                FadeAndLoadScene("Menu");
+            }
         }
     }
 
@@ -293,8 +326,22 @@ public class GlobalHUD : MonoBehaviour
     {
         isConfirmingGiveUp = false;
         string currentScene = SceneManager.GetActiveScene().name;
-        if (giveUpText != null) giveUpText.text = (currentScene == "Lvl_1") ? "Back to Menu" : "Give Up";
-        foreach (var btn in pauseButtonGroups) { if (btn != null) { btn.alpha = 1f; btn.interactable = true; } }
+
+        // Відновлюємо початковий текст
+        if (giveUpText != null)
+        {
+            giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
+        }
+
+        // Повертаємо кнопкам видимість
+        foreach (var btn in pauseButtonGroups)
+        {
+            if (btn != null)
+            {
+                btn.alpha = 1f;
+                btn.interactable = true;
+            }
+        }
     }
 
     public void SetLevelObjective(string message) { if (objectiveText != null) objectiveText.text = message; if (objectivePanelGroup != null) objectivePanelGroup.alpha = 1f; }
