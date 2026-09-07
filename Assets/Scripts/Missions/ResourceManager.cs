@@ -250,6 +250,7 @@ public class ResourceManager : MonoBehaviour
         diamonds -= cost;
         if (diamonds < 0) diamonds = 0;
         ShowResourceToast(-cost, "Diamonds", new Color(0.7f, 0.85f, 1f));
+        PlaySpendSound();
         SaveStash();
         UpdateUI();
     }
@@ -274,8 +275,29 @@ public class ResourceManager : MonoBehaviour
         if (costStone > 0) ShowResourceToast(-costStone, "Stone", new Color(0.8f, 0.8f, 0.85f));
         if (costFood > 0)  ShowResourceToast(-costFood,  "Food",  new Color(0.7f, 0.95f, 0.5f));
 
+        if (costWood > 0 || costStone > 0 || costFood > 0) PlaySpendSound();
         SaveStash();
         UpdateUI();
+    }
+
+    // The spend sound belongs HERE, not at each call site.
+    //
+    // Every purchase in the game funnels through these two methods, but the sound
+    // was played by hand wherever someone remembered — the barracks rows and the
+    // shop had it, camp building upgrades had it, and region upgrades, barracks
+    // building upgrades and everything added later did not. Playing it at the
+    // choke point means no future spend can be silent by omission.
+    //
+    // De-duplicated within a frame so a purchase that spends wood, stone and food
+    // — or a call site that still plays its own — makes one sound rather than a
+    // stack of them.
+    private static int s_lastSpendFrame = -1;
+
+    private void PlaySpendSound()
+    {
+        if (Time.frameCount == s_lastSpendFrame) return;
+        s_lastSpendFrame = Time.frameCount;
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Purchase);
     }
 
     public void EvacuateRunToStash()

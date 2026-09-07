@@ -327,9 +327,23 @@ public class MapPanelUI : MonoBehaviour
 
     private void OnUpgradeButtonClicked()
     {
+        if (currentRegion == null || ResourceManager.Instance == null) { CancelUpgradeConfirm(); return; }
+
         int currentLevel = PlayerPrefs.GetInt("RegionLevel_" + currentRegion.regionID, 1);
 
-        if (currentLevel < 5 && ResourceManager.Instance != null)
+        // Already maxed, or the region simply has fewer levels authored than the
+        // five the array is sized for. Indexing past the end threw, the click
+        // handler died on the exception, and the panel sat in its confirm state
+        // doing nothing — which is the upgrade "hanging".
+        int levels = currentRegion.upgradeLevels != null ? currentRegion.upgradeLevels.Length : 0;
+        if (currentLevel >= 5 || currentLevel >= levels)
+        {
+            if (currentLevel < 5)
+                Debug.LogWarning($"[MapPanelUI] '{currentRegion.regionName}' has only {levels} upgrade level(s) authored but is at level {currentLevel} — nothing to upgrade to.");
+            CancelUpgradeConfirm();
+            return;
+        }
+
         {
             RegionLevelData nextLevelData = currentRegion.upgradeLevels[currentLevel];
 
@@ -370,9 +384,26 @@ public class MapPanelUI : MonoBehaviour
             }
             else
             {
+                // Cannot afford it. Without dropping out of the confirm state the
+                // button stayed on CONFIRM and the action button stayed disabled
+                // forever, so the panel was stuck with nothing but an error beep.
                 if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
+                CancelUpgradeConfirm();
             }
         }
+    }
+
+    // Leave the confirm state and put the panel back the way it was. Called from
+    // every path that cannot complete an upgrade, and when the panel repopulates.
+    private void CancelUpgradeConfirm()
+    {
+        if (!isConfirmingUpgrade) return;
+        isConfirmingUpgrade = false;
+        ToggleUpgradeFocus(false);
+        if (actionButton != null) actionButton.interactable = true;
+        // PopulateData dereferences currentRegion, and one caller reaches here
+        // precisely because it is null.
+        if (currentRegion != null) PopulateData();
     }
 
     private void ToggleUpgradeFocus(bool isFocused)
