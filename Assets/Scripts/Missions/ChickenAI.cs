@@ -32,7 +32,7 @@ public class ChickenAI : AnimalAI
         {
             nextIdleCluckTime = Time.time + Random.Range(8f, 16f);
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX(AudioID.Animal_Chicken);
+                AudioManager.Instance.PlaySFX3DAttached(AudioID.Animal_Chicken, transform);
         }
 
         if (stateTimer >= Random.Range(minStateTime, maxStateTime))
@@ -59,7 +59,7 @@ public class ChickenAI : AnimalAI
             isPanicking = true;
             agent.speed = panicSpeed;
             if (featherParticles != null) featherParticles.Play();
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Animal_Chicken);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3DAttached(AudioID.Animal_Chicken, transform);
         }
 
         panicTimer += Time.deltaTime;

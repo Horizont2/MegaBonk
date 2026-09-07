@@ -53,6 +53,22 @@ public class DayNightCycle : MonoBehaviour
     public ParticleSystem snowVFX;
     public ParticleSystem dustVFX;
 
+    [Header("Winter biome")]
+    [Tooltip("Winter needs its own light, or it is just a summer scene painted white. Applies only when the region biome is Winter.")]
+    public bool winterLighting = true;
+    [Tooltip("Highest the sun is allowed to climb in winter, in degrees. A winter sun stays low even at noon — that long raking light is most of what makes a winter landscape read as one.")]
+    [Range(15f, 90f)] public float winterMaxSunElevation = 34f;
+    [Tooltip("Winter sunlight is colder than any gradient authored for summer.")]
+    public Color winterSunTint = new Color(0.74f, 0.83f, 1f);
+    [Range(0f, 1f)] public float winterSunTintBlend = 0.55f;
+    [Tooltip("Snow reflects the moon, so a real winter night is BRIGHTER than a summer one — the opposite of what it was doing. This is added to the night ambient lift in winter.")]
+    public float winterNightAmbientBonus = 0.10f;
+    public Color winterNightTint = new Color(0.62f, 0.74f, 1f);
+    [Tooltip("Cold haze. Winter reads through depth — near snow bright, far snow dissolving — and that needs more fog than summer.")]
+    [Range(1f, 3f)] public float winterFogMultiplier = 1.5f;
+
+    private bool IsWinter => winterLighting && currentBiome == 2;
+
     [Header("Night readability")]
     [Tooltip("How much of the light a storm leaves at MIDDAY. 0.2 = a dark, heavy storm.")]
     [Range(0.05f, 1f)] public float stormDimAtDay = 0.2f;
@@ -70,6 +86,7 @@ public class DayNightCycle : MonoBehaviour
     private float weatherBlend = 0f;
     private float weatherTimer = 0f;
     private int currentBiome = 0;
+    private float _baseFogDensity = -1f;
     private Coroutine lightningCoroutine;
 
     private enum SkyboxType { None, Day, Night, Storm }
@@ -199,8 +216,26 @@ public class DayNightCycle : MonoBehaviour
 
         if (sunLight != null)
         {
-            sunLight.transform.localRotation = Quaternion.Euler(sunAngle, 170f, 0f);
-            sunLight.color = sunColor.Evaluate(timePercent);
+            // WINTER SUN: keep it low. Compressing the arc rather than clamping
+            // it keeps the sunrise and sunset moving, so the day still reads as
+            // passing — it simply never gets overhead.
+            float shownAngle = sunAngle;
+            if (IsWinter && sunAngle > 0f && sunAngle < 180f)
+            {
+                // The day arc runs 0 (sunrise) -> 90 (noon) -> 180 (sunset).
+                // Reshape it so noon peaks at winterMaxSunElevation while sunrise
+                // and sunset stay put: the day still passes, the sun simply never
+                // climbs overhead. Night is left alone.
+                float t = sunAngle / 180f;                      // 0..1 across the day
+                float elev = Mathf.Sin(t * Mathf.PI) * winterMaxSunElevation;
+                shownAngle = (t < 0.5f) ? elev : 180f - elev;
+            }
+
+            sunLight.transform.localRotation = Quaternion.Euler(shownAngle, 170f, 0f);
+
+            Color sunCol = sunColor.Evaluate(timePercent);
+            if (IsWinter) sunCol = Color.Lerp(sunCol, winterSunTint, winterSunTintBlend);
+            sunLight.color = sunCol;
             float baseIntensity = sunIntensity.Evaluate(timePercent);
 
             // A storm should dim DAYLIGHT. Taking 80% away at night removes the
@@ -242,6 +277,20 @@ public class DayNightCycle : MonoBehaviour
         Color stormFog = fogColorStorm.Evaluate(timePercent);
         RenderSettings.fogColor = Color.Lerp(clearFog, stormFog, weatherBlend);
 
+        // Winter reads through DEPTH — near snow bright, far snow dissolving into
+        // haze. Without the extra fog every distance looks the same and the
+        // landscape flattens.
+        if (IsWinter)
+        {
+            if (_baseFogDensity < 0f) _baseFogDensity = RenderSettings.fogDensity;
+            RenderSettings.fogDensity = _baseFogDensity * winterFogMultiplier;
+            RenderSettings.fogColor = Color.Lerp(RenderSettings.fogColor, winterNightTint, 0.25f);
+        }
+        else if (_baseFogDensity >= 0f)
+        {
+            RenderSettings.fogDensity = _baseFogDensity;
+        }
+
         float dayMultiplier = Mathf.Clamp01(Mathf.Sin(timePercent * Mathf.PI * 2f));
         Color skyColorDay = new Color(0.88f, 0.68f, 0.81f);
         Color equatorColorDay = new Color(0.53f, 0.45f, 0.61f);
@@ -255,6 +304,16 @@ public class DayNightCycle : MonoBehaviour
         // silhouettes and ground readable after dark.
         float nightLift = nightAmbientBoost * (1f - dayMultiplier);
         Color lift = new Color(nightLift, nightLift, nightLift * 1.25f);   // cooler, so it reads as moonlight
+
+        // WINTER NIGHT: snow throws the moon back at the sky, so a winter night
+        // is BRIGHTER and bluer than a summer one — which is the opposite of what
+        // it was doing. This is the cheapest thing in the whole pass and it is
+        // most of why the winter biome looked poor after dark.
+        if (IsWinter)
+        {
+            float w = winterNightAmbientBonus * (1f - dayMultiplier);
+            lift += winterNightTint * w;
+        }
 
         RenderSettings.ambientSkyColor = Color.Lerp(Color.Lerp(skyColorNight, skyColorDay, dayMultiplier), new Color(0.2f, 0.22f, 0.27f), weatherBlend) + lift;
         RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier), new Color(0.15f, 0.18f, 0.22f), weatherBlend) + lift;
