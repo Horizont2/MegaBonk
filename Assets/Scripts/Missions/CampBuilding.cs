@@ -208,6 +208,13 @@ public class CampBuilding : MonoBehaviour
             PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
             PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 0);
             PlayerPrefs.Save();
+
+            // Nothing in the project ever reported BuildStructures progress, so
+            // any "build / expand the camp" mission could be completed in the
+            // world and still never tick. This is the only place a build
+            // actually finishes.
+            if (MissionManager.Instance != null)
+                MissionManager.Instance.AddProgress(MissionType.BuildStructures, 1);
         }
 
         SetupVisualsForCurrentLevel();

@@ -152,13 +152,33 @@ public class NoticeBoardManager : MonoBehaviour
         if (interactionRune == null) return;
 
         bool isFirstTime = PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0;
-        bool hasMissions = paperLayoutGroup.childCount > 0;
+        // Papers are NOT removed when accepted — MissionPaperUI only disables the
+        // accept button — so childCount stays above zero forever and the rune
+        // hung over the board with nothing left to take. What matters is whether
+        // anything is still ACCEPTABLE.
+        bool hasMissions = CountAcceptablePapers() > 0;
 
         // ���� ������� Ҳ���� ����:
         // 1. �� ����� ��� (������� �� �� �������� � ������)
         // ��� 2. �� ����� � ��
         // � ��� ����� ����� ����� �������.
         interactionRune.SetActive((isFirstTime || hasMissions) && !isBoardOpen);
+    }
+
+    private int CountAcceptablePapers()
+    {
+        if (paperLayoutGroup == null) return 0;
+        int n = 0;
+        foreach (Transform child in paperLayoutGroup)
+        {
+            if (child == null || !child.gameObject.activeSelf) continue;
+            var paper = child.GetComponent<MissionPaperUI>();
+            // No component: treat it as a real, takeable paper rather than
+            // silently ignoring it.
+            if (paper == null) { n++; continue; }
+            if (paper.acceptButton == null || paper.acceptButton.interactable) n++;
+        }
+        return n;
     }
 
     private void CheckAndGenerateMissions()
@@ -304,7 +324,7 @@ public class NoticeBoardManager : MonoBehaviour
     private System.Collections.IEnumerator CheckEmptyRoutine()
     {
         yield return new WaitForEndOfFrame();
-        int paperCount = paperLayoutGroup.childCount;
+        int paperCount = CountAcceptablePapers();
         if (emptyBoardMessage != null) emptyBoardMessage.gameObject.SetActive(paperCount == 0);
 
         // ��������� ���� ������, ���� ������� ������ ���
