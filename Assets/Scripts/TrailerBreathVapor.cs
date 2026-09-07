@@ -101,7 +101,7 @@ public class TrailerBreathVapor : MonoBehaviour
 
         // The snowflake texture doubles as a soft round puff; without a texture
         // the quad shows as a hard square.
-        var tex = Resources.Load<Texture2D>("Shaders/T_Snowflake");
+        var tex = Resources.Load<Texture2D>("VFX/T_Snowflake");
         if (tex != null)
         {
             if (s_vaporMat.HasProperty("_BaseMap")) s_vaporMat.SetTexture("_BaseMap", tex);

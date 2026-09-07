@@ -66,6 +66,8 @@ public class DayNightCycle : MonoBehaviour
     public Color winterNightTint = new Color(0.62f, 0.74f, 1f);
     [Tooltip("Cold haze. Winter reads through depth — near snow bright, far snow dissolving — and that needs more fog than summer.")]
     [Range(1f, 3f)] public float winterFogMultiplier = 1.5f;
+    [Tooltip("Low snow blowing along the ground. Falling snow says it is snowing; snow DRIVEN across the surface says it is cold and open — and without something moving at ground level the landscape sits perfectly still however much falls from the sky.")]
+    public bool winterGroundDrift = true;
 
     private bool IsWinter => winterLighting && currentBiome == 2;
 
@@ -124,6 +126,12 @@ public class DayNightCycle : MonoBehaviour
         }
 
         currentBiome = PlayerPrefs.GetInt("RegionBiomeType", 0);
+
+        if (winterLighting && winterGroundDrift && currentBiome == 2)
+        {
+            WinterGroundDrift.Create(null);
+            Debug.Log("[DayNightCycle] Winter biome — ground drift enabled.");
+        }
         string currentScene = SceneManager.GetActiveScene().name;
 
         if (currentScene != "Lvl_1" && PlayerPrefs.HasKey("SavedTimeOfDay"))
