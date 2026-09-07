@@ -37,12 +37,17 @@ Shader "Hollow/UI_VolumetricFog"
 
         // These TINT the vertex colour rather than replace it. RegionUI drives
         // the storm's colour and pulse through Image.color per region, and that
-        // authored look has to survive -- so thin fog lifts it and thick fog
-        // deepens it, instead of a flat colour painted over the top.
-        _ThinColor  ("Thin Tint", Color) = (0.85, 0.90, 1.00, 1)
-        _ThickColor ("Thick Tint", Color) = (0.55, 0.60, 0.80, 1)
-        _ThinBoost  ("Thin Brightness", Range(0, 4)) = 2.2
-        _ThickBoost ("Thick Brightness", Range(0, 2)) = 0.85
+        // authored look has to survive.
+        //
+        // Both brightnesses stay at or below 1, so density only ever DARKENS.
+        // RegionUI only recolours forest regions; every other biome keeps
+        // whatever rgb the scene authored, which is white -- so any multiplier
+        // above 1 blows those regions out to a hard black-and-white pattern
+        // instead of fog.
+        _ThinColor  ("Thin Tint", Color) = (1.00, 1.00, 1.00, 1)
+        _ThickColor ("Thick Tint", Color) = (0.70, 0.74, 0.88, 1)
+        _ThinBoost  ("Thin Brightness", Range(0, 1)) = 1.0
+        _ThickBoost ("Thick Brightness", Range(0, 1)) = 0.55
 
         _Scale1 ("Layer 1 Scale", Float) = 3.0
         _Scale2 ("Layer 2 Scale", Float) = 6.5
@@ -52,13 +57,17 @@ Shader "Hollow/UI_VolumetricFog"
         _Speed2 ("Layer 2 Speed", Vector) = (-0.031, 0.024, 0, 0)
         _Speed3 ("Warp Speed", Vector) = (0.008, -0.015, 0, 0)
 
-        _WarpStrength ("Domain Warp", Range(0, 1.5)) = 0.55
-        _Density ("Density", Range(0, 3)) = 1.15
-        _Erode ("Erosion", Range(0, 1)) = 0.40
-        _Softness ("Edge Softness", Range(0.01, 1)) = 0.45
-        _Parallax ("Parallax", Range(0, 1)) = 0.15
+        _WarpStrength ("Domain Warp", Range(0, 1.5)) = 0.45
+        _Density ("Density", Range(0, 3)) = 1.0
+        // Erosion above the density's mean and a wide softness together keep the
+        // fog a wash rather than a stencil. This map is a hand-drawn parchment
+        // illustration -- hard-edged photographic smoke fights the art, and
+        // burying the linework defeats the point of drawing it.
+        _Erode ("Erosion", Range(0, 1)) = 0.52
+        _Softness ("Edge Softness", Range(0.01, 1)) = 0.70
+        _Parallax ("Parallax", Range(0, 1)) = 0.12
         _EdgeFade ("Border Fade", Range(0, 1)) = 0.12
-        _Opacity ("Opacity", Range(0, 2)) = 1.0
+        _Opacity ("Opacity", Range(0, 2)) = 0.85
 
         // Canvas plumbing, so this stays a drop-in replacement for the graph.
         _StencilComp ("Stencil Comparison", Float) = 8
