@@ -21,7 +21,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: MAT_FlowingFog
-  m_Shader: {fileID: -6465566751694194690, guid: 1441841bf3e0d3d44b608cd40ffb8f49, type: 3}
+  m_Shader: {fileID: 4800000, guid: acd4fecb1c9f4e3283a7e8f151dbf517, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -59,14 +59,31 @@ Material:
     m_Ints: []
     m_Floats:
     - _ColorMask: 15
+    - _Density: 1.15
+    - _EdgeFade: 0.12
+    - _Erode: 0.4
+    - _Opacity: 1
+    - _Parallax: 0.15
+    - _Scale1: 3
+    - _Scale2: 6.5
+    - _Scale3: 1.6
+    - _Softness: 0.45
     - _Stencil: 0
+    - _ThickBoost: 0.85
+    - _ThinBoost: 2.2
     - _StencilComp: 8
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
     - _UseUIAlphaClip: 0
+    - _WarpStrength: 0.55
     m_Colors:
     - White: {r: 1, g: 1, b: 1, a: 1}
     - _ScrollSpeed: {r: 0.05, g: 0.05, b: 0, a: 0}
+    - _Speed1: {r: 0.02, g: 0.012, b: 0, a: 0}
+    - _Speed2: {r: -0.031, g: 0.024, b: 0, a: 0}
+    - _Speed3: {r: 0.008, g: -0.015, b: 0, a: 0}
+    - _ThickColor: {r: 0.55, g: 0.6, b: 0.8, a: 1}
+    - _ThinColor: {r: 0.85, g: 0.9, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
