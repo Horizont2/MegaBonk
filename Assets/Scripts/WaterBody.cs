@@ -66,4 +66,49 @@ public class WaterBody : MonoBehaviour
         w.surfaceOffset = offset;
         return w;
     }
+
+    // Find water nobody registered.
+    //
+    // Only the generated plane and a location's own lake are registered
+    // explicitly. Any lake placed by hand in a scene has no WaterBody at all, so
+    // TrySurfaceAt returns nothing, the swim state never engages, and the player
+    // walks to the bottom exactly as if the water were not there. Rather than
+    // require every lake to be tagged by hand, recognise water by its material.
+    private static readonly string[] WaterWords = { "water", "lake", "river", "ocean", "sea", "pond" };
+
+    public static int AutoRegisterSceneWater()
+    {
+        int added = 0;
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (r == null || r is ParticleSystemRenderer) continue;
+            if (r.GetComponent<WaterBody>() != null) continue;
+
+            if (!LooksLikeWater(r)) continue;
+            Attach(r.gameObject);
+            added++;
+        }
+        if (added > 0) Debug.Log($"[Water] Auto-registered {added} unmarked water surface(s) — without this the player walks along the bottom instead of swimming.");
+        return added;
+    }
+
+    private static bool LooksLikeWater(Renderer r)
+    {
+        if (Matches(r.gameObject.name)) return true;
+        foreach (var m in r.sharedMaterials)
+        {
+            if (m == null) continue;
+            if (Matches(m.name)) return true;
+            if (m.shader != null && Matches(m.shader.name)) return true;
+        }
+        return false;
+    }
+
+    private static bool Matches(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return false;
+        string n = s.ToLowerInvariant();
+        foreach (var w in WaterWords) if (n.Contains(w)) return true;
+        return false;
+    }
 }

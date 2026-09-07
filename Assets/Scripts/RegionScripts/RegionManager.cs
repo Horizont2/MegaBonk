@@ -159,13 +159,21 @@ public class RegionManager : MonoBehaviour
         // next totem's F prompt starts responding again.
         RegionTotem.AnyActivatingRightNow = false;
 
-        if (currentTotemIndex < totems.Count)
+        // Drop destroyed entries first: a null in the list makes the predicate
+        // below throw, and the region then never finishes at all.
+        totems.RemoveAll(t => t == null);
+
+        // Decide on what is actually LEFT, not on an index against the list
+        // length. Those two disagree the moment the list holds a totem that was
+        // already purified, destroyed, or added as an extra capture point — and
+        // when they disagreed, this branch was taken, no next totem was found,
+        // and the method simply returned: region complete, nothing happens, the
+        // player stranded in a cleansed region with no way back to camp.
+        RegionTotem nextTotem = totems.Find(t => !t.isPurified && t != purifiedTotem);
+
+        if (nextTotem != null)
         {
-            RegionTotem nextTotem = totems.Find(t => !t.isPurified && t != purifiedTotem);
-            if (nextTotem != null)
-            {
-                StartCoroutine(TransferCorruptionRoutine(purifiedTotem.transform.position, nextTotem));
-            }
+            StartCoroutine(TransferCorruptionRoutine(purifiedTotem.transform.position, nextTotem));
         }
         else
         {

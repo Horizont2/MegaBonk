@@ -519,8 +519,15 @@ public class BarracksUpgradePanel : MonoBehaviour
         PlayerPrefs.Save();
 
         hostBuilding.StartDustEffect();
+
+        // Camp_BuildStart is authored as a LOOPING construction bed — CampBuilding
+        // always starts it with PlayLoopingSFX3D and holds a handle so it can stop
+        // it again. Firing it here as a fire-and-forget one-shot meant nothing
+        // ever stopped it, so the hammering carried on for the rest of the
+        // session. The building owns that loop for the whole build; the panel
+        // just plays the one-shot that marks the order being placed.
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX3D(AudioID.Camp_BuildStart, hostBuilding.transform.position);
+            AudioManager.Instance.PlaySFX3D(AudioID.Camp_CollectItem, hostBuilding.transform.position);
 
         if (GlobalHUD.Instance != null)
             GlobalHUD.Instance.StartTrackingUpgrade(hostBuilding.buildingID, hostBuilding.buildingName,

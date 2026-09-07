@@ -184,6 +184,14 @@ public class PlayerController : MonoBehaviour, IDamageable
     // to the bottom and walking there.
     [HideInInspector] public float swimVerticalVelocity = 0f;
 
+    // Drop whatever downward speed gravity has built up. Called the moment the
+    // player enters water: without it he arrives carrying a fall, sinks to the
+    // bottom, and only then floats back up.
+    public void CancelFallVelocity()
+    {
+        if (velocity.y < 0f) velocity.y = 0f;
+    }
+
     // Optional: if the animator declares an "InWater" bool, drive it too, so a
     // dedicated swim state can be authored later without another code change.
     private void SetAnimBoolIfPresent(string param, bool value)

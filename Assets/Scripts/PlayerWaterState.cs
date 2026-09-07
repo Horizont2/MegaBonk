@@ -43,6 +43,15 @@ public class PlayerWaterState : MonoBehaviour
     private Vector3 _visualBaseLocalPos;
     private Quaternion _visualBaseLocalRot;
     private bool _visualCached;
+    private bool _wasSubmerged;
+
+    private void Start()
+    {
+        // Any lake placed by hand carries no WaterBody, so nothing detects it and
+        // the player simply walks to the bottom. Register whatever the scene has
+        // before the first check.
+        WaterBody.AutoRegisterSceneWater();
+    }
 
     private void Awake()
     {
@@ -77,6 +86,14 @@ public class PlayerWaterState : MonoBehaviour
         // doesn't strobe between the two states.
         bool want = overWater && (isSubmerged ? submersion > surfaceThreshold : submersion >= submergeThreshold);
         isSubmerged = want;
+
+        // ENTERING: kill the plunge. Walking off a shelf into deep water builds
+        // a large downward velocity before the swim state engages, and buoyancy
+        // then has to spend a second undoing it — which is the sink to the
+        // bottom, followed by a slow crawl back up.
+        if (isSubmerged && !_wasSubmerged && _player != null && _player.swimVerticalVelocity <= 0f)
+            _player.CancelFallVelocity();
+        _wasSubmerged = isSubmerged;
 
         if (_player != null)
         {
