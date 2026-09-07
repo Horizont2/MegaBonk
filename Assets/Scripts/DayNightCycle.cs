@@ -53,6 +53,16 @@ public class DayNightCycle : MonoBehaviour
     public ParticleSystem snowVFX;
     public ParticleSystem dustVFX;
 
+    [Header("Night readability")]
+    [Tooltip("How much of the light a storm leaves at MIDDAY. 0.2 = a dark, heavy storm.")]
+    [Range(0.05f, 1f)] public float stormDimAtDay = 0.2f;
+    [Tooltip("How much it leaves at NIGHT. Night is already dark; taking the same 80% away again is what made stormy nights unplayable, so a storm barely dims it further.")]
+    [Range(0.05f, 1f)] public float stormDimAtNight = 0.8f;
+    [Tooltip("Floor on light at deep night, storm or not. Enough to read shapes and terrain by — night should feel like night, not like a fault.")]
+    public float minNightIntensity = 0.16f;
+    [Tooltip("Extra ambient added at night so silhouettes stay legible without washing the darkness out.")]
+    public float nightAmbientBoost = 0.06f;
+
     [Header("AAA Storm Effects")]
     public GameObject lightningVFXPrefab;
     public float lightningSpawnRadius = 60f;
@@ -192,7 +202,17 @@ public class DayNightCycle : MonoBehaviour
             sunLight.transform.localRotation = Quaternion.Euler(sunAngle, 170f, 0f);
             sunLight.color = sunColor.Evaluate(timePercent);
             float baseIntensity = sunIntensity.Evaluate(timePercent);
-            sunLight.intensity = Mathf.Lerp(baseIntensity, baseIntensity * 0.2f, weatherBlend);
+
+            // A storm should dim DAYLIGHT. Taking 80% away at night removes the
+            // little moonlight there is and leaves the region genuinely
+            // unplayable — which is why stormy nights were pitch black. The
+            // attenuation is now scaled by how much light there is to take.
+            float dayAmount = Mathf.Clamp01(Mathf.Sin(timePercent * Mathf.PI * 2f));
+            float stormFactor = Mathf.Lerp(stormDimAtNight, stormDimAtDay, dayAmount);
+            float lit = Mathf.Lerp(baseIntensity, baseIntensity * stormFactor, weatherBlend);
+
+            // And a floor, so night reads as night rather than as a black screen.
+            sunLight.intensity = Mathf.Max(lit, minNightIntensity * (1f - dayAmount));
         }
 
         if (moonLight != null)
@@ -230,9 +250,15 @@ public class DayNightCycle : MonoBehaviour
         Color equatorColorNight = new Color(0.08f, 0.09f, 0.14f);
         Color groundColorNight = new Color(0.04f, 0.05f, 0.06f);
 
-        RenderSettings.ambientSkyColor = Color.Lerp(Color.Lerp(skyColorNight, skyColorDay, dayMultiplier), new Color(0.2f, 0.22f, 0.27f), weatherBlend);
-        RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier), new Color(0.15f, 0.18f, 0.22f), weatherBlend);
-        RenderSettings.ambientGroundColor = Color.Lerp(Color.Lerp(groundColorNight, groundColorDay, dayMultiplier), new Color(0.08f, 0.1f, 0.12f), weatherBlend);
+        // A little ambient lift that only applies at night: the sun is what
+        // carries the day, so this cannot wash out daylight, but it keeps
+        // silhouettes and ground readable after dark.
+        float nightLift = nightAmbientBoost * (1f - dayMultiplier);
+        Color lift = new Color(nightLift, nightLift, nightLift * 1.25f);   // cooler, so it reads as moonlight
+
+        RenderSettings.ambientSkyColor = Color.Lerp(Color.Lerp(skyColorNight, skyColorDay, dayMultiplier), new Color(0.2f, 0.22f, 0.27f), weatherBlend) + lift;
+        RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier), new Color(0.15f, 0.18f, 0.22f), weatherBlend) + lift;
+        RenderSettings.ambientGroundColor = Color.Lerp(Color.Lerp(groundColorNight, groundColorDay, dayMultiplier), new Color(0.08f, 0.1f, 0.12f), weatherBlend) + lift * 0.6f;
 
         UpdateVFXPositions();
 

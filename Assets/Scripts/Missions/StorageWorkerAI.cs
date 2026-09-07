@@ -20,6 +20,7 @@ public class StorageWorkerAI : MonoBehaviour
     public float sittingArriveRadius = 1.6f;
 
     private List<CampBuilding> productionBuildings = new List<CampBuilding>();
+    private bool _reported;
 
     private void Start()
     {
@@ -193,6 +194,23 @@ public class StorageWorkerAI : MonoBehaviour
             FindBuildings();   // pick up anything built or upgraded since the last pass
             bool collectedAnything = false;
 
+            if (!_reported)
+            {
+                _reported = true;
+                int ready = 0, built = 0;
+                foreach (var b in productionBuildings)
+                {
+                    if (b == null) continue;
+                    if (b.currentLevel > 0) built++;
+                    if (b.pendingResourcesCount > 0) ready++;
+                }
+                var vault = System.Array.Find(FindObjectsByType<CampBuilding>(FindObjectsSortMode.None), x => x != null && x.isStorageVault);
+                Debug.Log($"[StorageWorkerAI] {productionBuildings.Count} production building(s), {built} built, {ready} with resources waiting. " +
+                          $"Storage vault: {(vault == null ? "NONE IN SCENE" : vault.currentLevel > 0 ? "level " + vault.currentLevel : "NOT BUILT")}. " +
+                          $"Agent on navmesh: {(agent != null && agent.isOnNavMesh)}. " +
+                          "Production only ACCUMULATES while a built storage vault exists — with none, resources bank straight to the stash and there is nothing for him to carry.");
+            }
+
             foreach (var building in productionBuildings)
             {
                 if (building != null && building.currentLevel > 0 && building.pendingResourcesCount > 0)
@@ -282,13 +300,42 @@ public class StorageWorkerAI : MonoBehaviour
         yield return null;
 
         float timeout = 0f;
+        float lastProgressTime = 0f;
+        Vector3 lastPos = transform.position;
+
         while (timeout < 20f)
         {
             timeout += Time.deltaTime;
             if (agent != null && agent.isOnNavMesh && !agent.pathPending)
             {
                 if (agent.pathStatus == NavMeshPathStatus.PathInvalid) break;
+
+                // A PARTIAL path means the NavMesh does not reach the target.
+                // The old loop kept waiting the full 20 seconds for an arrival
+                // that could never happen, so the worker stood frozen between
+                // every trip — which is exactly "he only shuffles near his own
+                // building". Walk as far as the mesh allows, then move on.
+                if (agent.pathStatus == NavMeshPathStatus.PathPartial &&
+                    agent.remainingDistance <= agent.stoppingDistance + 0.5f)
+                {
+                    Debug.LogWarning($"[StorageWorkerAI] Partial path — the NavMesh does not reach that building. Bake the camp NavMesh so it covers the whole camp floor, not just the area around the storage.");
+                    break;
+                }
+
                 if (agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
+
+                // Stuck detection: if he has not actually moved for 3s, stop
+                // waiting rather than burning the whole timeout on it.
+                if ((transform.position - lastPos).sqrMagnitude > 0.04f)
+                {
+                    lastPos = transform.position;
+                    lastProgressTime = timeout;
+                }
+                else if (timeout - lastProgressTime > 3f)
+                {
+                    Debug.LogWarning($"[StorageWorkerAI] Stopped making progress toward {agent.destination} (status {agent.pathStatus}) — giving up on this trip.");
+                    break;
+                }
             }
             yield return null;
         }

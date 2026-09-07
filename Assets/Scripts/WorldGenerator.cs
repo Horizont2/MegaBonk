@@ -1707,7 +1707,8 @@ public class WorldGenerator : MonoBehaviour
     {
         if (grassLayer == null || sandLayer == null || snowLayer == null || rockLayer == null || roadLayer == null) yield break;
 
-        terrainData.terrainLayers = new TerrainLayer[] { grassLayer, sandLayer, snowLayer, rockLayer, roadLayer };
+        terrainData.terrainLayers = TintLayersForSeason(
+            new TerrainLayer[] { grassLayer, sandLayer, snowLayer, rockLayer, roadLayer });
         int aWidth = terrainData.alphamapWidth; int aHeight = terrainData.alphamapHeight;
 
         // ФІКС: Правильний порядок масиву для Unity Terrain (Висота, Ширина, Шари)
@@ -2652,6 +2653,52 @@ public class WorldGenerator : MonoBehaviour
             }
         }
         td.SetHeights(startX, startZ, heights);
+    }
+
+    [Header("Season tint (RegionData.regionBiome)")]
+    [Tooltip("Tint the painted GROUND to the region's season. The splat layers are the same set in every region — grass stays summer-green in an autumn or winter region unless the layers themselves are recoloured, which is what makes every region look like the same place.")]
+    public bool tintGroundBySeason = true;
+    public Color autumnGroundTint = new Color(0.72f, 0.55f, 0.30f);
+    [Range(0f, 1f)] public float autumnGroundBlend = 0.62f;
+    public Color winterGroundTint = new Color(0.93f, 0.96f, 1f);
+    [Range(0f, 1f)] public float winterGroundBlend = 0.85f;
+
+    // Clone the shared TerrainLayer assets and tint their diffuse remap, so the
+    // ground reads as the region's season. Cloned because these layers are
+    // project assets shared by every scene — writing to them directly would
+    // repaint the whole game to whatever region was generated last.
+    private TerrainLayer[] TintLayersForSeason(TerrainLayer[] src)
+    {
+        if (!tintGroundBySeason || src == null) return src;
+
+        // 0 = forest/summer (leave it alone), 1 = desert/autumn, 2 = winter.
+        int biome = regionBiomeTypeCached;
+        if (biome == 0) return src;
+
+        Color tint = biome == 2 ? winterGroundTint : autumnGroundTint;
+        float blend = biome == 2 ? winterGroundBlend : autumnGroundBlend;
+
+        var outLayers = new TerrainLayer[src.Length];
+        for (int i = 0; i < src.Length; i++)
+        {
+            if (src[i] == null) { outLayers[i] = null; continue; }
+
+            // The ROAD keeps its own colour — a snow-white or autumn-brown road
+            // stops reading as a road at all.
+            if (src[i] == roadLayer) { outLayers[i] = src[i]; continue; }
+
+            var clone = Instantiate(src[i]);
+            clone.name = src[i].name + (biome == 2 ? " (Winter)" : " (Autumn)");
+            clone.hideFlags = HideFlags.HideAndDontSave;
+
+            Color b = clone.diffuseRemapMax;
+            Color c = Color.Lerp(b, tint, blend);
+            c.a = b.a;
+            clone.diffuseRemapMax = c;
+            outLayers[i] = clone;
+        }
+        Debug.Log($"[WorldGenerator] Ground tinted for biome {biome} ({(biome == 2 ? "winter" : "autumn")}).");
+        return outLayers;
     }
 
     private void AdjustSettingsForBiome()
