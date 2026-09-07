@@ -61,6 +61,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public bool magicCaster = false;
     [Tooltip("Color of the mage's magic orb + its glow/trail.")]
     public Color magicOrbColor = new Color(0.55f, 0.35f, 1f);
+    [Tooltip("Diameter of the mage's orb, in metres. It was a hard-coded 0.5, which is large next to characters at this scale — the bolt read as a boulder.")]
+    [Range(0.12f, 0.8f)] public float magicOrbSize = 0.34f;
 
     [Header("Summon Ability (optional — e.g. the Necromancer)")]
     [Tooltip("Enable to give this enemy the reusable minion-summon ability. Assign at least one minion prefab below.")]
@@ -1154,7 +1156,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         var orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         orb.name = "MageOrb";
         orb.transform.position = pos;
-        orb.transform.localScale = Vector3.one * 0.5f;
+        orb.transform.localScale = Vector3.one * magicOrbSize;
         // EnemyProjectile raycasts its own path — a collider would just cause
         // self-hits and physics noise, so strip the primitive's collider.
         var pc = orb.GetComponent<Collider>();
@@ -1172,12 +1174,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
         var light = orb.AddComponent<Light>();
         light.type = LightType.Point;
         light.color = magicOrbColor;
-        light.range = 6f;
+        light.range = 6f * (magicOrbSize / 0.5f);
         light.intensity = 3.2f;
 
         var trail = orb.AddComponent<TrailRenderer>();
         trail.time = 0.32f;
-        trail.startWidth = 0.42f;
+        // Sized off the orb, or shrinking the ball just leaves it rattling
+        // around inside a streak that is still the old width.
+        trail.startWidth = 0.42f * (magicOrbSize / 0.5f);
         trail.endWidth = 0f;
         trail.numCapVertices = 4;
         trail.material = mat;
