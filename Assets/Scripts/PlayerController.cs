@@ -65,10 +65,25 @@ public class PlayerController : MonoBehaviour, IDamageable
     public LineRenderer trajectoryLine;
     public int linePoints = 30;
     public float maxThrowDistance = 18f;
+    [Tooltip("Fallback only. The real radius is read from the grenade prefab's GrenadeLogic at Start so the ring can never disagree with the blast.")]
     public float grenadeExplosionRadius = 6f;
     public float grenadeThrowSpeed = 20f;
     public float grenadeCooldown = 5f;
     [HideInInspector] public float lastGrenadeTime = -100f;
+
+    // The radius the AoE ring is drawn at and the blast preview tests against.
+    //
+    // This used to be grenadeExplosionRadius (6 on the Player prefab) while the
+    // grenade that actually spawns carries GrenadeLogic.explosionRadius = 5.
+    // The ring therefore promised a metre of coverage that did not exist all the
+    // way round, and enemies sitting just inside the drawn circle took nothing --
+    // "the grenade doesn't hit where the reticle points". Reading the number off
+    // the prefab means the two cannot drift apart again.
+    private float resolvedBlastRadius = 6f;
+    // Collider radius of the grenade that will actually be thrown, so the
+    // trajectory sphere-cast sweeps the same volume the live grenade does.
+    private float resolvedGrenadeRadius = 0.15f;
+
     private bool isAimingGrenade = false;
     private Vector3 currentGrenadeTarget;
     private LineRenderer aoeMarkerLine;
@@ -307,7 +322,37 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
 
+        ResolveGrenadeMetrics();
         InitAoEMarker();
+    }
+
+    // Take the blast radius and the collider size from the grenade prefab that
+    // will actually be thrown, so the preview describes that grenade rather than
+    // a second set of numbers kept on the player.
+    private void ResolveGrenadeMetrics()
+    {
+        resolvedBlastRadius = grenadeExplosionRadius;
+        resolvedGrenadeRadius = 0.15f;
+        if (grenadePrefab == null) return;
+
+        var logic = grenadePrefab.GetComponent<GrenadeLogic>();
+        if (logic != null && logic.explosionRadius > 0.01f)
+            resolvedBlastRadius = logic.explosionRadius;
+
+        // Widest collider on the prefab, in world units. The trajectory sweep
+        // uses this so it stops on the same geometry the live grenade does; a
+        // sweep that is too thin flies through gaps the real grenade clips.
+        float widest = 0f;
+        foreach (var col in grenadePrefab.GetComponentsInChildren<Collider>(true))
+        {
+            if (col == null || col.isTrigger) continue;
+            Vector3 s = col.transform.lossyScale;
+            float axis = Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.z));
+            if (col is SphereCollider sph) widest = Mathf.Max(widest, sph.radius * axis);
+            else if (col is CapsuleCollider cap) widest = Mathf.Max(widest, cap.radius * axis);
+            else if (col is BoxCollider box) widest = Mathf.Max(widest, Mathf.Max(box.size.x * Mathf.Abs(s.x), box.size.z * Mathf.Abs(s.z)) * 0.5f);
+        }
+        if (widest > 0.01f) resolvedGrenadeRadius = Mathf.Clamp(widest, 0.05f, 0.6f);
     }
 
     private void Start()
@@ -1248,6 +1293,16 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
+        // Aim at the GROUND under the cursor, always.
+        //
+        // Enemies sit on the Default layer, so the cursor ray stops on the first
+        // body in the way and the aim point ended up at chest height -- or up a
+        // tree, when the ray clipped a canopy. The throw then solved for an
+        // airborne point while the ring was drawn on the ground below it, and the
+        // two disagreed. Dropping the aim to the ground first makes the target a
+        // place on the map, which is what a ground AoE is aimed at anyway.
+        hitPoint = ProjectAimToGround(hitPoint);
+
         // Soft aim-magnet to nearby enemy — but keep the magnet purely horizontal
         // so the predicted landing stays grounded. The old code carried the
         // enemy's elevated Y into the target, which is half the reason the
@@ -1274,6 +1329,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             Vector3 magneticTarget = new Vector3(bestTarget.position.x, hitPoint.y, bestTarget.position.z);
             hitPoint = Vector3.Lerp(hitPoint, magneticTarget, Mathf.Lerp(0.15f, 0.7f, assist));
+            // The magnet slid the point sideways while keeping the height it had
+            // at the old spot. On a slope that leaves the target hanging above or
+            // buried under the ground it is supposed to be on, so re-ground it.
+            hitPoint = ProjectAimToGround(hitPoint);
         }
 
         // Clamp to throw range in XZ.
@@ -1301,7 +1360,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         Vector3 markerPosition;
         int simulatedCount = SimulateTrajectoryToLanding(currentGrenadeTarget, out markerPosition);
 
-        int blastCount = Physics.OverlapSphereNonAlloc(markerPosition, grenadeExplosionRadius, s_overlapBuffer);
+        int blastCount = Physics.OverlapSphereNonAlloc(markerPosition, resolvedBlastRadius, s_overlapBuffer);
         bool enemyInBlast = false;
         for (int bi = 0; bi < blastCount; bi++)
         {
@@ -1339,22 +1398,30 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
-    // Snaps an XZ aim point to whatever ground is directly below it. Falls back
-    // to terrain height, then to the original point if nothing was found.
+    // Snaps an XZ aim point to the ground below it, skipping bodies and canopies
+    // the same way the ring's ground probe does.
+    //
+    // The reference height is the terrain, NOT the point being projected. The
+    // cursor ray is exactly what puts the point up a tree or on a skeleton's
+    // chest in the first place, so taking its height as the baseline would let
+    // the probe accept the very surface we are trying to get off. The terrain is
+    // an honest floor to measure from, and the 3m tolerance in SampleGroundY
+    // still lets the aim sit on rocks and raised ground standing on it.
     private Vector3 ProjectAimToGround(Vector3 worldPoint)
     {
-        Vector3 from = worldPoint + Vector3.up * 30f;
-        if (Physics.Raycast(from, Vector3.down, out RaycastHit groundHit, 100f, GetGrenadeBlockerMask()))
-        {
-            return groundHit.point;
-        }
-        if (Terrain.activeTerrain != null)
-        {
-            float ty = Terrain.activeTerrain.SampleHeight(worldPoint) + Terrain.activeTerrain.transform.position.y;
-            return new Vector3(worldPoint.x, ty, worldPoint.z);
-        }
-        return worldPoint;
+        Terrain t = GetTerrainAt(worldPoint);
+        float refY = t != null
+            ? t.SampleHeight(worldPoint) + t.transform.position.y
+            : transform.position.y;
+
+        return new Vector3(worldPoint.x, SampleGroundY(worldPoint, refY), worldPoint.z);
     }
+
+    // The fixed step the grenade will actually be integrated at. ExecuteThrow
+    // restores Time.fixedDeltaTime to this before spawning, so it is a constant
+    // here rather than a read of the live value (which is still scaled down by
+    // the aim slow-motion at the moment the preview runs).
+    private const float PHYSICS_STEP = 0.02f;
 
     private Vector3 CalculateThrowVelocity(Vector3 target)
     {
@@ -1363,7 +1430,21 @@ public class PlayerController : MonoBehaviour, IDamageable
         float distanceXZ = displacementXZ.magnitude;
 
         float dynamicFlightTime = Mathf.Clamp(distanceXZ / grenadeThrowSpeed, 0.25f, 1.2f);
-        float velY = (displacement.y / dynamicFlightTime) - (0.5f * Physics.gravity.y * dynamicFlightTime);
+
+        // Solve against how the PHYSICS ENGINE moves the grenade, not against the
+        // textbook parabola.
+        //
+        // Rigidbodies integrate semi-implicit Euler -- gravity is applied to the
+        // velocity before the step, not averaged across it -- so after time t the
+        // body sits 0.5*g*dt*t BELOW the analytic p0 + v*t + 0.5*g*t^2. Aiming
+        // with the textbook equation therefore always undershoots, consistently
+        // and in the same direction, which is exactly the "lands short of where
+        // the reticle points" complaint. Adding the term back makes the throw
+        // arrive on the marker.
+        float g = Physics.gravity.y;
+        float velY = (displacement.y / dynamicFlightTime)
+                     - (0.5f * g * dynamicFlightTime)
+                     - (0.5f * g * PHYSICS_STEP);
         Vector3 velXZ = displacementXZ / dynamicFlightTime;
 
         return velXZ + Vector3.up * velY;
@@ -1490,7 +1571,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         const int MAX_STEPS = 64;
         const float STEP_TIME = 0.04f;
-        const float COLLISION_RADIUS = 0.15f;
+        float collisionRadius = resolvedGrenadeRadius;
 
         int blockerMask = GetGrenadeBlockerMask();
         Vector3 prev = start;
@@ -1507,14 +1588,18 @@ public class PlayerController : MonoBehaviour, IDamageable
         for (int i = 1; i < MAX_STEPS; i++)
         {
             float t = i * STEP_TIME;
-            Vector3 next = start + vel * t + Physics.gravity * 0.5f * t * t;
+            // Same semi-implicit Euler drop the engine will apply, so the drawn
+            // arc traces the path the grenade actually flies.
+            Vector3 next = start + vel * t
+                         + Physics.gravity * 0.5f * t * t
+                         + Physics.gravity * 0.5f * PHYSICS_STEP * t;
 
             Vector3 segDir = next - prev;
             float segDist = segDir.magnitude;
             if (segDist > 0.0001f)
             {
                 Vector3 segDirN = segDir / segDist;
-                int hitCount = Physics.SphereCastNonAlloc(prev, COLLISION_RADIUS, segDirN, s_grenadeSimHitBuffer, segDist, blockerMask, QueryTriggerInteraction.Ignore);
+                int hitCount = Physics.SphereCastNonAlloc(prev, collisionRadius, segDirN, s_grenadeSimHitBuffer, segDist, blockerMask, QueryTriggerInteraction.Ignore);
                 if (hitCount > 0)
                 {
                     // Scan for the closest hit that isn't part of the player.
@@ -1587,65 +1672,127 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void DrawAoEMarker(Vector3 center)
     {
-        int blockerMask = GetGrenadeBlockerMask();
+        DrawGroundRing(aoeMarkerLine, center, resolvedBlastRadius);
+        DrawGroundRing(innerMarkerLine, center, 0.8f);
+    }
 
-        if (aoeMarkerLine != null)
+    // Lays a ring on the ground around the blast centre.
+    //
+    // Each point is dropped onto the ground independently so the circle follows
+    // slopes, but its height is then clamped to a band around the centre. The
+    // clamp matters at cliff edges: without it a couple of points fall tens of
+    // metres and the ring renders as a torn sheet hanging off the ledge, which
+    // reads as the reticle breaking rather than as terrain.
+    private void DrawGroundRing(LineRenderer line, Vector3 center, float radius)
+    {
+        if (line == null) return;
+
+        int segments = line.positionCount;
+        if (segments <= 0) return;
+
+        const float DROP_LIMIT = 4f;   // how far below the centre a point may sit
+        const float RISE_LIMIT = 2.5f; // and how far above
+
+        float step = 360f / segments;
+        float angle = 0f;
+        for (int i = 0; i < segments; i++)
         {
-            int segments = aoeMarkerLine.positionCount;
-            float angle = 0f;
-            for (int i = 0; i < segments; i++)
-            {
-                float x = Mathf.Sin(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
-                float z = Mathf.Cos(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
+            float x = Mathf.Sin(Mathf.Deg2Rad * angle) * radius;
+            float z = Mathf.Cos(Mathf.Deg2Rad * angle) * radius;
 
-                // ФІКС: Пускаємо промінь лише на 2 метри вище центру, а не на 20, 
-                // щоб коло не малювалось на деревах або дахах будівель!
-                Vector3 point = center + new Vector3(x, 2f, z);
-                if (Physics.Raycast(point, Vector3.down, out RaycastHit hit, 6f, blockerMask))
-                    point.y = hit.point.y + 0.15f;
-                else
-                    point.y = center.y + 0.15f;
+            Vector3 point = new Vector3(center.x + x, 0f, center.z + z);
+            float groundY = SampleGroundY(point, center.y);
+            point.y = Mathf.Clamp(groundY, center.y - DROP_LIMIT, center.y + RISE_LIMIT) + 0.15f;
 
-                aoeMarkerLine.SetPosition(i, point);
-                angle += (360f / segments);
-            }
-        }
-
-        if (innerMarkerLine != null)
-        {
-            float innerRadius = 0.8f;
-            int segments = innerMarkerLine.positionCount;
-            float angle = 0f;
-            for (int i = 0; i < segments; i++)
-            {
-                float x = Mathf.Sin(Mathf.Deg2Rad * angle) * innerRadius;
-                float z = Mathf.Cos(Mathf.Deg2Rad * angle) * innerRadius;
-
-                Vector3 point = center + new Vector3(x, 2f, z);
-                if (Physics.Raycast(point, Vector3.down, out RaycastHit hit, 6f, blockerMask))
-                    point.y = hit.point.y + 0.15f;
-                else
-                    point.y = center.y + 0.15f;
-
-                innerMarkerLine.SetPosition(i, point);
-                angle += (360f / segments);
-            }
+            line.SetPosition(i, point);
+            angle += step;
         }
     }
 
-    private float GetGroundHeight(Vector3 pos)
-    {
-        // ФІКС: Скануємо лише на 1 метр вгору і 5 вниз, щоб не хапати дахи та гілки!
-        if (Physics.Raycast(pos + Vector3.up * 1f, Vector3.down, out RaycastHit hit, 5f, GetGrenadeBlockerMask()))
-        {
-            return hit.point.y;
-        }
-        else if (Terrain.activeTerrain != null)
-        {
-            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
-        }
+    private static readonly RaycastHit[] s_groundProbeBuffer = new RaycastHit[12];
 
-        return pos.y;
+    // Ground height under an XZ position, for placing the AoE ring and the
+    // landing marker.
+    //
+    // The old version cast 1m up / 5m down and fell back to Terrain.activeTerrain.
+    // Three separate things went wrong with that, and together they are the
+    // reticle "glitching and sitting badly on the ground":
+    //
+    //   - 5m is not enough reach. Anywhere the ground inside the blast radius
+    //     drops away -- a slope, a step, a ledge -- the probe found nothing and
+    //     the caller fell back to the centre's height, so part of the ring hung
+    //     in the air while the rest lay on the ground.
+    //   - the probe accepted ANY collider on the blocker mask, and enemies sit
+    //     on Default just like the terrain does. A ring point passing over a
+    //     skeleton snapped up onto its head, so the circle jumped and rippled
+    //     as enemies walked underneath it.
+    //   - Terrain.activeTerrain is whichever terrain happens to be first. The
+    //     region levels have several, so the fallback answered with a height
+    //     sampled from the wrong one.
+    //
+    // refY is the height the answer is expected near (the blast centre). Hits
+    // more than a little above it are rejected, which is what stops the ring
+    // climbing onto bodies, canopies and roofs without needing a short probe.
+    private float SampleGroundY(Vector3 pos, float refY)
+    {
+        const float RISE = 3f;      // how far above refY a valid surface may sit
+        const float REACH = 40f;    // long enough to follow a slope or a ledge down
+
+        Vector3 origin = new Vector3(pos.x, refY + RISE, pos.z);
+        int count = Physics.RaycastNonAlloc(origin, Vector3.down, s_groundProbeBuffer, REACH,
+                                            GetGrenadeBlockerMask(), QueryTriggerInteraction.Ignore);
+
+        float best = float.NegativeInfinity;
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit h = s_groundProbeBuffer[i];
+            if (h.collider == null) continue;
+
+            // Terrain is the common case and is always valid ground — take it
+            // without paying for the component walks below. This runs for every
+            // point of both rings on every aim frame.
+            if (!(h.collider is TerrainCollider))
+            {
+                if (IsColliderPartOfPlayer(h.collider)) continue;
+                // Enemies share the player's layer setup, so filter them by
+                // component the way the blast itself does.
+                if (h.collider.GetComponentInParent<EnemyAI>() != null) continue;
+                if (h.collider.GetComponentInParent<IDamageable>() != null) continue;
+            }
+
+            // Highest surface at or just above the blast plane: stairs and
+            // rubble read correctly, a canopy overhead does not.
+            if (h.point.y > best) best = h.point.y;
+        }
+        if (best > float.NegativeInfinity) return best;
+
+        Terrain t = GetTerrainAt(pos);
+        if (t != null) return t.SampleHeight(pos) + t.transform.position.y;
+
+        return refY;
+    }
+
+    // Kept for callers that have no better reference height than the point itself.
+    private float GetGroundHeight(Vector3 pos) => SampleGroundY(pos, pos.y);
+
+    // The terrain whose footprint actually contains this position. Region levels
+    // are built from several terrains and Terrain.activeTerrain is simply the
+    // first one registered, so sampling it answers for the wrong tile.
+    private static Terrain GetTerrainAt(Vector3 worldPos)
+    {
+        Terrain[] all = Terrain.activeTerrains;
+        if (all == null || all.Length == 0) return null;
+        for (int i = 0; i < all.Length; i++)
+        {
+            Terrain t = all[i];
+            if (t == null || t.terrainData == null) continue;
+            Vector3 origin = t.transform.position;
+            Vector3 size = t.terrainData.size;
+            if (worldPos.x >= origin.x && worldPos.x <= origin.x + size.x &&
+                worldPos.z >= origin.z && worldPos.z <= origin.z + size.z)
+                return t;
+        }
+        return null;
     }
 
     public void OpenPerfectDodgeWindow(Transform attacker, float duration)
@@ -1921,12 +2068,26 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Throw);
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
 
-            // === ФІКС ФІЗИКИ 1: Щоб граната не врізалась у самого гравця при спавні і не відбивалась під ноги ===
-            Collider grenadeCol = grenade.GetComponent<Collider>();
-            Collider playerCol = GetComponent<Collider>();
-            if (grenadeCol != null && playerCol != null)
+            // Ignore EVERY collider pair between the grenade and the player, not
+            // just the two root ones.
+            //
+            // The grenade prefab carries a child box collider besides its root
+            // sphere, and the player has child colliders of its own (weapon,
+            // armour). Those pairs were still live, and GrenadeLogic explodes on
+            // contact with anything not tagged Player -- a child collider is
+            // untagged -- so the throw sometimes detonated in the player's hand
+            // instead of flying to the marker. The trajectory preview never
+            // showed this because it skips the player's hierarchy explicitly.
+            var grenadeCols = grenade.GetComponentsInChildren<Collider>(true);
+            var playerCols = GetComponentsInChildren<Collider>(true);
+            for (int gi = 0; gi < grenadeCols.Length; gi++)
             {
-                Physics.IgnoreCollision(grenadeCol, playerCol, true);
+                if (grenadeCols[gi] == null) continue;
+                for (int pi = 0; pi < playerCols.Length; pi++)
+                {
+                    if (playerCols[pi] == null) continue;
+                    Physics.IgnoreCollision(grenadeCols[gi], playerCols[pi], true);
+                }
             }
 
             Rigidbody rb = grenade.GetComponent<Rigidbody>();

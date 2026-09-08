@@ -72,10 +72,23 @@ public class GrenadeLogic : MonoBehaviour
     private void OnCollisionEnter(Collision collision)
     {
         if (hasExploded) return;
-        if (!collision.gameObject.CompareTag("Player"))
+        // CompareTag on the contacted object alone missed the player's untagged
+        // children (weapon, armour, hand colliders), so brushing one of those on
+        // the way out detonated the grenade at the thrower's feet rather than at
+        // the aimed marker. Walk the hierarchy instead.
+        if (IsPlayerHierarchy(collision.transform)) return;
+        Explode();
+    }
+
+    private static bool IsPlayerHierarchy(Transform t)
+    {
+        while (t != null)
         {
-            Explode();
+            if (t.CompareTag("Player")) return true;
+            if (t.GetComponent<PlayerController>() != null) return true;
+            t = t.parent;
         }
+        return false;
     }
 
     private void Explode()
@@ -175,7 +188,12 @@ public class GrenadeLogic : MonoBehaviour
         }
 
         if (meshRenderer != null) meshRenderer.enabled = false;
-        GetComponent<Collider>().enabled = false;
+        // Every collider, not just the root one — the prefab has a child box
+        // collider too, and leaving it live let the spent grenade go on shoving
+        // things around during its destroy delay.
+        var cols = GetComponentsInChildren<Collider>(true);
+        for (int c = 0; c < cols.Length; c++)
+            if (cols[c] != null) cols[c].enabled = false;
         Destroy(gameObject, maxHitStopDuration + 0.1f);
     }
 
