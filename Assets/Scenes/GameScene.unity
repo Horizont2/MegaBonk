@@ -17079,6 +17079,15 @@ MonoBehaviour:
   patrolRouteRadius: 12
   aggroRange: 14
   roamRadius: 3.5
+  densityMultiplier: 2
+  encounterActivationDistance: 95
+  hornPatrolRatio: 0.3
+  longPatrolRatio: 0.35
+  longPatrolRouteRadius: 38
+  watchtowerPrefab: {fileID: 100100000, guid: 71bd3b8ce83ac9e48a5697e124581a15, type: 3}
+  watchtowerCount: 3
+  watchtowerGuards: 2
+  watchtowerSeparation: 90
   clearedRewardPrefab: {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
   patrolClearReward: 3
   campClearReward: 5

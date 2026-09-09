@@ -44,6 +44,34 @@ public class WorldEncounterDirector : MonoBehaviour
     public float aggroRange = 14f;
     public float roamRadius = 3.5f;
 
+    [Header("Density")]
+    // The region read as empty: the player could walk it end to end and meet
+    // almost nobody. This multiplies the number of ENCOUNTERS, not the size of
+    // each -- more places where something is happening, rather than bigger mobs.
+    // Live enemy count stays bounded because groups stream in (see below).
+    [Tooltip("Multiplier on encounterCount. 2 = twice as many encounters on the map.")]
+    [Range(0.5f, 4f)] public float densityMultiplier = 2f;
+    [Tooltip("Distance at which a group actually spawns its enemies. Keeps 80 encounters from meaning 260 live Animators.")]
+    public float encounterActivationDistance = 95f;
+
+    [Header("Sentry Patrols")]
+    [Tooltip("Fraction of patrols that carry a horn and can raise a region alarm.")]
+    [Range(0f, 1f)] public float hornPatrolRatio = 0.3f;
+    [Tooltip("Fraction of patrols that walk a LONG route between distant points instead of circling one spot.")]
+    [Range(0f, 1f)] public float longPatrolRatio = 0.35f;
+    [Tooltip("Route radius for a long patrol. They cover ground, so they turn up where the player did not expect anyone.")]
+    public float longPatrolRouteRadius = 38f;
+
+    [Header("Watchtowers")]
+    [Tooltip("Tower mesh. Assets/Locations/fbx2/MESH_ScoutTower is the one that matches the region kit.")]
+    public GameObject watchtowerPrefab;
+    [Tooltip("How many watchtowers to raise across the region.")]
+    [Range(0, 8)] public int watchtowerCount = 3;
+    [Tooltip("Guards stationed at the foot of each tower.")]
+    [Range(0, 6)] public int watchtowerGuards = 2;
+    [Tooltip("Keeps towers away from each other so their sweeps don't overlap into one unavoidable wall of light.")]
+    public float watchtowerSeparation = 90f;
+
     [Header("Clear Reward")]
     [Tooltip("Префаб, що випадає у центрі групи, коли всю групу вбили. Зазвичай XP кристал")]
     public GameObject clearedRewardPrefab;
@@ -160,7 +188,9 @@ public class WorldEncounterDirector : MonoBehaviour
 
         int targetCount = conqueredMode
             ? Mathf.Max(1, Mathf.RoundToInt(encounterCount * conqueredCountMultiplier))
-            : encounterCount;
+            : Mathf.RoundToInt(encounterCount * densityMultiplier);
+
+        EnsureAlertDirector();
 
         int placed = 0;
         int attempts = 0;
@@ -195,6 +225,92 @@ public class WorldEncounterDirector : MonoBehaviour
 
         if (placed < targetCount)
             Debug.LogWarning($"[WorldEncounter] Only placed {placed}/{targetCount} encounters (attempts={attempts}). Reduce minSeparation or encounterCount.");
+
+        // Towers last: they want to sit apart from each other and away from the
+        // encounters already down, and placing them after gives the separation
+        // test the full picture.
+        if (!conqueredMode) yield return StartCoroutine(PlaceWatchtowers(totems));
+    }
+
+    // The alert coordinator is a plain runtime object -- nothing to wire in the
+    // scene, so a region that was authored before this system existed still gets
+    // working alarms.
+    private void EnsureAlertDirector()
+    {
+        if (RegionAlertDirector.Instance != null) return;
+        var go = new GameObject("[RegionAlertDirector]");
+        go.transform.SetParent(transform);
+        var dir = go.AddComponent<RegionAlertDirector>();
+        dir.reinforcementPrefabs = enemyPrefabs;
+    }
+
+    private IEnumerator PlaceWatchtowers(RegionTotem[] totems)
+    {
+        if (watchtowerPrefab == null || watchtowerCount <= 0) yield break;
+
+        var towerPositions = new List<Vector3>(watchtowerCount);
+        int attempts = 0;
+        int maxAttempts = watchtowerCount * 40;
+
+        while (towerPositions.Count < watchtowerCount && attempts < maxAttempts)
+        {
+            attempts++;
+            Vector3 candidate = SampleCandidatePosition();
+            if (player != null && Vector3.Distance(candidate, player.position) < minDistanceFromPlayer) continue;
+
+            bool tooCloseToTotem = false;
+            for (int i = 0; i < totems.Length; i++)
+            {
+                if (totems[i] == null) continue;
+                if (Vector3.Distance(candidate, totems[i].transform.position) < minDistanceFromTotems) { tooCloseToTotem = true; break; }
+            }
+            if (tooCloseToTotem) continue;
+
+            bool tooCloseToTower = false;
+            for (int i = 0; i < towerPositions.Count; i++)
+            {
+                if (Vector3.Distance(candidate, towerPositions[i]) < watchtowerSeparation) { tooCloseToTower = true; break; }
+            }
+            if (tooCloseToTower) continue;
+
+            SpawnWatchtower(candidate);
+            towerPositions.Add(candidate);
+            yield return null;
+        }
+
+        if (logPlacements)
+            GameLog.Info($"[WorldEncounter] Raised {towerPositions.Count}/{watchtowerCount} watchtowers.");
+    }
+
+    private void SpawnWatchtower(Vector3 position)
+    {
+        GameObject tower = Instantiate(watchtowerPrefab, position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+        tower.name = "Watchtower";
+        tower.transform.SetParent(transform);
+
+        var alarm = tower.GetComponent<WatchtowerAlarm>();
+        if (alarm == null) alarm = tower.AddComponent<WatchtowerAlarm>();
+
+        // A tower with nobody at its foot is a free objective. The guards make
+        // putting it out a real decision rather than a detour.
+        if (watchtowerGuards <= 0 || enemyPrefabs == null || enemyPrefabs.Length == 0) return;
+
+        GameObject guardRoot = new GameObject("Watchtower_Guards");
+        guardRoot.transform.position = position;
+        guardRoot.transform.SetParent(tower.transform);
+
+        var eeg = guardRoot.AddComponent<EnemyEncounterGroup>();
+        eeg.enemyPrefabs = enemyPrefabs;
+        eeg.style = EnemyEncounterGroup.EncounterStyle.Camp;   // stationed, not wandering
+        eeg.enemyCount = watchtowerGuards;
+        eeg.spawnSpread = 4f;
+        eeg.aggroRange = aggroRange;
+        eeg.campfirePrefab = null;
+        eeg.campGuardsFaceFire = false;
+        eeg.clearedRewardPrefab = clearedRewardPrefab;
+        eeg.clearedRewardCount = patrolClearReward;
+        eeg.activationDistance = encounterActivationDistance;
+        eeg.autoStart = true;
     }
 
     private bool ResolveIsWinter()
@@ -254,14 +370,40 @@ public class WorldEncounterDirector : MonoBehaviour
         eeg.clearedRewardPrefab = clearedRewardPrefab;
         eeg.clearedRewardCount = isCamp ? campClearReward : patrolClearReward;
         eeg.autoStart = true;
+        eeg.activationDistance = encounterActivationDistance;
 
         if (!isCamp)
         {
-            eeg.patrolPoints = GeneratePatrolWaypoints(groupObj.transform, position);
+            // A long patrol walks between far-apart points instead of circling
+            // one spot. This is what stops the map reading as a set of static
+            // pockets the player can memorise and route around -- a long patrol
+            // turns up somewhere the player already cleared.
+            bool isLong = Random.value < longPatrolRatio;
+            float routeRadius = isLong ? longPatrolRouteRadius : patrolRouteRadius;
+            if (isLong)
+            {
+                groupObj.name = "Encounter_LongPatrol";
+                eeg.waypointPauseDuration = 2.5f;   // less loitering, more ground covered
+                eeg.patrolMoveSpeed = 2.2f;
+            }
+
+            eeg.patrolPoints = GeneratePatrolWaypoints(groupObj.transform, position, routeRadius);
+
+            // Horns go on patrols only. A camp that could call the region in
+            // would make every camp a mandatory stealth problem; a patrol that
+            // can is something the player can watch coming and choose to avoid.
+            if (Random.value < hornPatrolRatio)
+            {
+                eeg.hasHorn = true;
+                groupObj.name += "_Horn";
+            }
         }
     }
 
     private Transform[] GeneratePatrolWaypoints(Transform groupRoot, Vector3 center)
+        => GeneratePatrolWaypoints(groupRoot, center, patrolRouteRadius);
+
+    private Transform[] GeneratePatrolWaypoints(Transform groupRoot, Vector3 center, float routeRadius)
     {
         Transform[] points = new Transform[patrolWaypointCount];
         float baseAngle = Random.Range(0f, Mathf.PI * 2f);
@@ -269,7 +411,7 @@ public class WorldEncounterDirector : MonoBehaviour
         for (int i = 0; i < patrolWaypointCount; i++)
         {
             float angle = baseAngle + (i * (Mathf.PI * 2f / patrolWaypointCount)) + Random.Range(-0.35f, 0.35f);
-            float r = patrolRouteRadius * Random.Range(0.7f, 1.3f);
+            float r = routeRadius * Random.Range(0.7f, 1.3f);
             Vector3 pos = center + new Vector3(Mathf.Cos(angle) * r, 0f, Mathf.Sin(angle) * r);
 
             // Clamp to terrain bounds

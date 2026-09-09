@@ -344,6 +344,44 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private float nextRoamPickTime;
     private float passiveAggroCheckTimer;
 
+    // ---- Perception: losing the player, and looking for them ------------------
+    //
+    // Chase used to be a one-way door. Once aggroed an enemy pursued forever, so
+    // a region slowly drained into one ball of skeletons around the player and
+    // breaking contact was impossible. These give the chase an end, in three
+    // stages, so retreating is a real tactic rather than a slower death:
+    //
+    //   sight lost  -> keep chasing the LAST KNOWN position for a moment
+    //   arrived     -> SEARCH the area for a while, still able to re-spot
+    //   nothing     -> walk back to the post and resume duty
+    //
+    // Only encounter enemies opt in. The radial spawner's horde is meant to be
+    // relentless and is left exactly as it was.
+    [HideInInspector] public bool canDeAggro = false;
+    [HideInInspector] public float loseSightDuration = 6f;   // grace after sight breaks
+    [HideInInspector] public float searchDuration = 9f;      // how long the area is searched
+    [HideInInspector] public float searchRoamRadius = 7f;
+    [HideInInspector] public float chaseGiveUpRange = 34f;   // too far to see, whatever the walls say
+    [HideInInspector] public float leashRange = 55f;         // max distance from the post
+
+    private bool isSearching = false;
+    private float searchEndTime;
+    private float sightLostTimer;
+    private Vector3 lastKnownTargetPos;
+    private float perceptionCheckTimer;
+
+    // The post this enemy belongs to, captured the first time it is made
+    // passive. Search and de-aggro restore these, so a patrol that chased the
+    // player across the map walks back to its own route instead of adopting
+    // whatever spot it happened to give up on.
+    private bool homeCaptured = false;
+    private Vector3 homeAnchorPoint;
+    private Transform homeAnchorTransform;
+    private float homeRoamRadius;
+    private bool homeRoamWhilePassive;
+
+    public bool IsSearching => isSearching;
+
     // Footstep bookkeeping — track distance covered along XZ so we can
     // trigger step SFX at a believable stride, gated by hearing range.
     private Vector3 footstepLastPos;
@@ -654,6 +692,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
             return;
         }
 
+        // Chasing: decide whether the chase is still justified. Only encounter
+        // enemies can give up; the radial horde stays relentless.
+        if (canDeAggro)
+        {
+            UpdateChasePerception();
+            if (!isAggroed) { UpdatePassiveBehavior(); return; }
+        }
+
         if (isRanged)
         {
             UpdateRangedBehavior();
@@ -767,8 +813,133 @@ public class EnemyAI : MonoBehaviour, IDamageable
         AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Footstep, transform.position);
     }
 
+    // Remember where this enemy is stationed, so search and de-aggro have
+    // somewhere to send it back to. Captured once, on the first passive setup.
+    public void CapturePost()
+    {
+        if (homeCaptured) return;
+        homeCaptured = true;
+        homeAnchorPoint = anchorTransform != null ? anchorTransform.position : anchorPoint;
+        homeAnchorTransform = anchorTransform;
+        homeRoamRadius = roamRadius;
+        homeRoamWhilePassive = roamWhilePassive;
+    }
+
+    // Can this enemy actually see the target right now? Distance alone is not
+    // sight -- without the line check, ducking behind a building did nothing and
+    // the chase continued through solid walls.
+    private bool CanSeeTarget()
+    {
+        if (target == null) return false;
+
+        Vector3 eye = transform.position + Vector3.up * 1.4f;
+        Vector3 at = target.position + Vector3.up * 1.0f;
+        Vector3 to = at - eye;
+        float dist = to.magnitude;
+        if (dist > chaseGiveUpRange) return false;
+        if (dist < 0.05f) return true;
+
+        // Only static world geometry blocks sight. Other enemies must not, or a
+        // crowd would blind itself and the whole pack would give up at once.
+        int blockers = 0;
+        int def = LayerMask.NameToLayer("Default");      if (def >= 0) blockers |= 1 << def;
+        int obs = LayerMask.NameToLayer("Obstacles");    if (obs >= 0) blockers |= 1 << obs;
+        int nat = LayerMask.NameToLayer("Nature");       if (nat >= 0) blockers |= 1 << nat;
+        if (blockers == 0) return true;
+
+        return !Physics.Raycast(eye, to / dist, dist - 0.5f, blockers, QueryTriggerInteraction.Ignore);
+    }
+
+    // Runs while aggroed. Decides when the chase is over.
+    private void UpdateChasePerception()
+    {
+        perceptionCheckTimer -= Time.deltaTime;
+        if (perceptionCheckTimer > 0f) return;
+        perceptionCheckTimer = 0.25f;
+
+        // Wandered too far from the post? Give up regardless of sight, or the
+        // region hollows out as every group migrates toward the player.
+        if (homeCaptured)
+        {
+            Vector3 post = homeAnchorTransform != null ? homeAnchorTransform.position : homeAnchorPoint;
+            if ((transform.position - post).sqrMagnitude > leashRange * leashRange)
+            {
+                BeginSearch(transform.position);
+                return;
+            }
+        }
+
+        if (CanSeeTarget())
+        {
+            sightLostTimer = 0f;
+            lastKnownTargetPos = target.position;
+            return;
+        }
+
+        sightLostTimer += 0.25f;
+        if (sightLostTimer >= loseSightDuration)
+            BeginSearch(lastKnownTargetPos);
+    }
+
+    // Stop chasing and comb the area around `center`. Still fully able to
+    // re-spot the player, so hiding right next to a searcher does not work.
+    public void BeginSearch(Vector3 center)
+    {
+        if (isDead) return;
+        CapturePost();
+
+        isAggroed = false;
+        isSearching = true;
+        searchEndTime = Time.time + searchDuration;
+        sightLostTimer = 0f;
+
+        startPassive = true;
+        anchorTransform = null;
+        anchorPoint = center;
+        roamRadius = searchRoamRadius;
+        roamWhilePassive = true;
+        nextRoamPickTime = 0f;   // pick a search point immediately
+    }
+
+    // Nothing found. Back to the route.
+    private void ReturnToPost()
+    {
+        isSearching = false;
+        if (!homeCaptured) return;
+        anchorTransform = homeAnchorTransform;
+        anchorPoint = homeAnchorPoint;
+        roamRadius = homeRoamRadius;
+        roamWhilePassive = homeRoamWhilePassive;
+        nextRoamPickTime = 0f;
+    }
+
+    // Called by a horn, a watchtower, or a neighbouring group: something happened
+    // over there, go and look. Deliberately NOT an instant aggro -- the enemy
+    // converges on the noise and only engages if it actually finds the player,
+    // so a raised alarm reads as a search party rather than as everyone gaining
+    // perfect knowledge of the player's position.
+    public void AlertTo(Vector3 position)
+    {
+        if (isDead || isAggroed) return;
+        CapturePost();
+
+        isSearching = true;
+        searchEndTime = Time.time + searchDuration;
+
+        startPassive = true;
+        anchorTransform = null;
+        anchorPoint = position;
+        roamRadius = searchRoamRadius;
+        roamWhilePassive = true;
+        nextRoamPickTime = 0f;
+    }
+
     private void UpdatePassiveBehavior()
     {
+        // Search runs on the passive mover, just aimed somewhere else and on a
+        // timer. When it expires the enemy goes back to its own duty.
+        if (isSearching && Time.time >= searchEndTime) ReturnToPost();
+
         Vector3 anchor = anchorTransform != null ? anchorTransform.position : anchorPoint;
 
         passiveAggroCheckTimer -= Time.deltaTime;
@@ -776,7 +947,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             passiveAggroCheckTimer = 0.2f;
             float distSqr = (target.position - transform.position).sqrMagnitude;
-            if (distSqr <= aggroRange * aggroRange)
+            // A searching enemy is alert: it notices further out, and it has to
+            // actually see the player rather than sense them through a wall.
+            float range = isSearching ? aggroRange * 1.6f : aggroRange;
+            if (distSqr <= range * range && (!canDeAggro || CanSeeTarget()))
             {
                 Aggro();
                 if (parentGroup != null) parentGroup.AlertAll();
@@ -807,7 +981,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (distXZ > standThreshold)
         {
             Vector3 moveDir = toTarget / distXZ;
-            float passiveSpeed = actualMoveSpeed * 0.4f;
+            // A search party moves with purpose; an idle patrol strolls.
+            float passiveSpeed = actualMoveSpeed * (isSearching ? 0.8f : 0.4f);
             Vector3 nextPos = transform.position + moveDir * passiveSpeed * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
             SetPositionSafe(nextPos);
@@ -842,6 +1017,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         if (isAggroed) return;
         isAggroed = true;
+        // Engaging ends any search and resets the give-up clock, so an enemy that
+        // re-spots the player gets the full grace period again rather than
+        // dropping the chase a moment later on a stale timer.
+        isSearching = false;
+        sightLostTimer = 0f;
+        if (target != null) lastKnownTargetPos = target.position;
+        CapturePost();
 
         if (target != null)
         {

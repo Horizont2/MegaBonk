@@ -9,6 +9,14 @@ public class EnemyEncounterGroup : MonoBehaviour
     [Header("Style")]
     public EncounterStyle style = EncounterStyle.Patrol;
 
+    [Header("Sentry Horn")]
+    [Tooltip("This patrol carries a horn: it spots the player further out and raises a region-wide alarm.")]
+    public bool hasHorn = false;
+    [Tooltip("How far the horn-bearer notices the player. Deliberately much longer than aggroRange.")]
+    public float hornSpotRange = 30f;
+    [Tooltip("Seconds between being seen and the horn actually sounding. This is the player's window to kill the sentry or break sight.")]
+    public float hornSpotDelay = 1.6f;
+
     [Header("Enemy Setup")]
     public GameObject[] enemyPrefabs;
     [Range(1, 8)] public int enemyCount = 3;
@@ -35,6 +43,17 @@ public class EnemyEncounterGroup : MonoBehaviour
     [Tooltip("Чи мають вороги повертатися обличчям до вогнища, коли стоять")]
     public bool campGuardsFaceFire = true;
 
+    [Header("Streaming")]
+    // Doubling the number of encounters on the map without this would put ~260
+    // enemies live at once -- 260 Animators and CharacterControllers, which the
+    // frame budget will not carry. Instead every encounter exists as a cheap
+    // marker and only becomes real enemies when the player comes near, so the
+    // region can be densely populated while the live count stays bounded.
+    [Tooltip("Spawn the group only once the player is this close. 0 = always spawned.")]
+    public float activationDistance = 0f;
+    [Tooltip("Despawn again beyond this distance. Only ever applies to a group that is still untouched, so nothing can be farmed by walking away.")]
+    public float deactivationDistance = 150f;
+
     [Header("Lifecycle")]
     public bool autoStart = true;
     [Tooltip("Винагорода, що випадає на місці групи, коли всіх вбили. Звичайно XP кристал")]
@@ -53,7 +72,66 @@ public class EnemyEncounterGroup : MonoBehaviour
 
     private void Start()
     {
-        if (autoStart) SpawnGroup();
+        if (autoStart && activationDistance <= 0f) SpawnGroup();
+    }
+
+    // ---- Streaming -----------------------------------------------------------
+    private float streamCheckTimer;
+    private Transform streamPlayer;
+
+    private void UpdateStreaming()
+    {
+        if (activationDistance <= 0f || !autoStart) return;
+
+        streamCheckTimer -= Time.deltaTime;
+        if (streamCheckTimer > 0f) return;
+        streamCheckTimer = 0.75f;
+
+        if (streamPlayer == null)
+        {
+            var pc = FindFirstObjectByType<PlayerController>();
+            if (pc == null) return;
+            streamPlayer = pc.transform;
+        }
+
+        float dist = Vector3.Distance(transform.position, streamPlayer.position);
+
+        if (!spawned)
+        {
+            if (dist <= activationDistance) SpawnGroup();
+            return;
+        }
+
+        if (dist <= deactivationDistance) return;
+
+        // Only pack an encounter away if the player never engaged it. A group
+        // that has lost members or been alerted stays real: rebuilding it later
+        // would quietly heal the survivors and refund the fight.
+        if (clearedFired) return;
+        if (spawnedEnemies.Count != enemyCount) return;
+        for (int i = 0; i < spawnedEnemies.Count; i++)
+        {
+            EnemyAI e = spawnedEnemies[i];
+            if (e == null) return;                              // someone died here
+            if (e.IsAggroed || e.IsSearching) return;           // still in play
+            if (e.CurrentHealth < e.maxHealth - 0.01f) return;  // wounded
+        }
+
+        DespawnGroup();
+    }
+
+    private void DespawnGroup()
+    {
+        StopAllCoroutines();
+        for (int i = 0; i < spawnedEnemies.Count; i++)
+            if (spawnedEnemies[i] != null) Destroy(spawnedEnemies[i].gameObject);
+        spawnedEnemies.Clear();
+
+        if (spawnedCampfire != null) { Destroy(spawnedCampfire); spawnedCampfire = null; }
+
+        spawned = false;
+        currentPatrolIndex = 0;
+        hornSpotTimer = 0f;
     }
 
     public void SpawnGroup()
@@ -120,6 +198,9 @@ public class EnemyEncounterGroup : MonoBehaviour
                 ai.startPassive = true;
                 ai.parentGroup = this;
                 ai.aggroRange = aggroRange;
+                // Encounter enemies belong to a place. They may give up a chase
+                // and walk back to it; the radial spawner's horde may not.
+                ai.canDeAggro = true;
 
                 if (style == EncounterStyle.Camp)
                 {
@@ -140,6 +221,10 @@ public class EnemyEncounterGroup : MonoBehaviour
                     ai.faceAnchorWhenIdle = false;
                 }
 
+                // Record the post AFTER the anchor is configured, so a search or
+                // a de-aggro sends this enemy back to its own station rather
+                // than to wherever it stood when the fight ended.
+                ai.CapturePost();
                 spawnedEnemies.Add(ai);
             }
         }
@@ -173,7 +258,7 @@ public class EnemyEncounterGroup : MonoBehaviour
 
         while (true)
         {
-            if (AnyAggroed())
+            if (AnyBusy())
             {
                 yield return new WaitForSeconds(1f);
                 continue;
@@ -187,9 +272,15 @@ public class EnemyEncounterGroup : MonoBehaviour
                 continue;
             }
 
+            bool interrupted = false;
             while (true)
             {
-                if (AnyAggroed()) yield break;
+                // Pause the route while the group is fighting or searching, then
+                // pick it back up. This used to `yield break`, which killed the
+                // coroutine outright: a patrol that aggroed ONCE never patrolled
+                // again for the rest of the run, and the region filled up with
+                // groups frozen wherever their last fight ended.
+                if (AnyBusy()) { interrupted = true; break; }
 
                 Vector3 toWP = wp.position - transform.position;
                 toWP.y = 0f;
@@ -205,6 +296,11 @@ public class EnemyEncounterGroup : MonoBehaviour
                 yield return null;
             }
 
+            // Interrupted mid-leg: don't burn the waypoint or stand around at a
+            // spot we never reached. Loop back and re-approach the same one once
+            // the fight or search is over.
+            if (interrupted) continue;
+
             yield return new WaitForSeconds(waypointPauseDuration);
             currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
         }
@@ -212,6 +308,9 @@ public class EnemyEncounterGroup : MonoBehaviour
 
     private void Update()
     {
+        UpdateStreaming();
+        UpdateHorn();
+
         // Cleanup check — fires the cleared reward once when everyone is dead/null.
         if (!spawned || clearedFired || spawnedEnemies.Count == 0) return;
 
@@ -265,6 +364,19 @@ public class EnemyEncounterGroup : MonoBehaviour
         return false;
     }
 
+    // Fighting OR searching. The patrol route must stay parked for both, or the
+    // group centre would drag its own searchers away from the area they were
+    // sent to comb.
+    private bool AnyBusy()
+    {
+        for (int i = 0; i < spawnedEnemies.Count; i++)
+        {
+            EnemyAI e = spawnedEnemies[i];
+            if (e != null && (e.IsAggroed || e.IsSearching)) return true;
+        }
+        return false;
+    }
+
     public void AlertAll()
     {
         for (int i = 0; i < spawnedEnemies.Count; i++)
@@ -272,5 +384,87 @@ public class EnemyEncounterGroup : MonoBehaviour
             EnemyAI e = spawnedEnemies[i];
             if (e != null) e.Aggro();
         }
+    }
+
+    // A horn went up somewhere. Go and look -- do NOT simply aggro. The group
+    // converges on the reported position and searches it; if the player is not
+    // there they drift back to their own route. That is what makes moving after
+    // being spotted worthwhile.
+    public void RespondToAlert(Vector3 position)
+    {
+        for (int i = 0; i < spawnedEnemies.Count; i++)
+        {
+            EnemyAI e = spawnedEnemies[i];
+            if (e != null) e.AlertTo(position);
+        }
+    }
+
+    // ---- Sentry horn ---------------------------------------------------------
+    //
+    // Long sight, slow reaction. The delay is the whole design: being seen is not
+    // the failure state, being seen AND letting the horn finish is. It gives the
+    // player a readable window to close the distance and silence the sentry, or
+    // to break line of sight and have the sighting come to nothing.
+    private float hornSpotTimer;
+    private float hornRecheckTimer;
+
+    private void UpdateHorn()
+    {
+        if (!hasHorn || !spawned) return;
+        if (RegionAlertDirector.Instance == null) return;
+        if (RegionAlertDirector.Instance.AlertActive) return;   // already ringing
+
+        hornRecheckTimer -= Time.deltaTime;
+        if (hornRecheckTimer > 0f) return;
+        hornRecheckTimer = 0.2f;
+
+        EnemyAI bearer = LivingBearer();
+        if (bearer == null) return;    // sentry is dead: nobody left to sound it
+
+        var player = FindFirstObjectByType<PlayerController>();
+        if (player == null || player.currentHealth <= 0) { hornSpotTimer = 0f; return; }
+
+        Vector3 eye = bearer.transform.position + Vector3.up * 1.5f;
+        Vector3 to = (player.transform.position + Vector3.up) - eye;
+        float dist = to.magnitude;
+
+        bool seen = dist <= hornSpotRange && !Physics.Raycast(eye, to / dist, dist - 0.5f,
+                                                              SightBlockerMask(), QueryTriggerInteraction.Ignore);
+        if (!seen)
+        {
+            // Bleed the timer back down rather than resetting it, so flickering
+            // in and out of cover still eventually gets you spotted.
+            hornSpotTimer = Mathf.Max(0f, hornSpotTimer - 0.4f);
+            return;
+        }
+
+        hornSpotTimer += 0.2f;
+        if (hornSpotTimer < hornSpotDelay) return;
+
+        hornSpotTimer = 0f;
+        if (RegionAlertDirector.Instance.RaiseAlert(player.transform.position, bearer.transform))
+            AlertAll();   // the sentry's own group engages immediately
+    }
+
+    private EnemyAI LivingBearer()
+    {
+        for (int i = 0; i < spawnedEnemies.Count; i++)
+            if (spawnedEnemies[i] != null) return spawnedEnemies[i];
+        return null;
+    }
+
+    private static int s_sightMask = -1;
+    private static int SightBlockerMask()
+    {
+        if (s_sightMask != -1) return s_sightMask;
+        int mask = 0;
+        string[] names = { "Default", "Obstacles", "Nature" };
+        foreach (var n in names)
+        {
+            int l = LayerMask.NameToLayer(n);
+            if (l >= 0) mask |= 1 << l;
+        }
+        s_sightMask = mask;
+        return s_sightMask;
     }
 }
