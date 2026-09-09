@@ -126,6 +126,25 @@ public class LevelUpManager : MonoBehaviour
         // Already choosing? Queue this level-up and show its own card screen
         // after the current pick, so the player gets one upgrade per level.
         if (IsMenuOpen) { pendingExtraMenus++; return; }
+
+        // Never open over a cinematic. The final totem's guardian hands out
+        // enough XP to cross a level right as the victory sequence starts, and
+        // OpenChoiceScreen sets Time.timeScale to 0 — which froze the victory
+        // routine mid-coroutine, so the title card sat on screen forever and the
+        // player was never returned to camp. Hold the pick until the cinematic
+        // is done and it will open then, or carry over to the next scene.
+        if (RegionManager.CinematicActive) { pendingExtraMenus++; return; }
+
+        OpenChoiceScreen();
+    }
+
+    // Drain anything that was held back during a cinematic. Safe to call every
+    // frame; it only acts when a pick is genuinely owed and nothing is on screen.
+    private void Update()
+    {
+        if (IsMenuOpen || pendingExtraMenus <= 0) return;
+        if (RegionManager.CinematicActive) return;
+        pendingExtraMenus--;
         OpenChoiceScreen();
     }
 

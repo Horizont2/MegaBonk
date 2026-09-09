@@ -21,6 +21,16 @@ public class RegionManager : MonoBehaviour
     public static bool CinematicActive = false;
     private PlayerController playerController;
 
+    // A static that gates other systems must not survive the scene that owns it.
+    // Leaving a region while the flag was still set (a death, a forced load, an
+    // exception mid-cinematic) would carry "a cinematic is playing" into camp,
+    // where nothing ever clears it — and LevelUpManager, which now holds picks
+    // back during cinematics, would never show a card again.
+    private void OnDestroy()
+    {
+        CinematicActive = false;
+    }
+
     private void Start()
     {
         // Вимикаємо ефект на самому початку гри
@@ -183,13 +193,59 @@ public class RegionManager : MonoBehaviour
             // times" bug.
             if (_finalPurificationStarted) return;
             _finalPurificationStarted = true;
+            RegionExitWatchdog.Arm(60f);
             StartCoroutine(FinalRegionPurificationRoutine(purifiedTotem.transform.position));
+        }
+    }
+
+    // Last-resort guarantee that a won region hands the player back to camp.
+    //
+    // Everything that returns the player runs inside one long coroutine on this
+    // component. A coroutine is not a promise: disable or destroy the owner, let
+    // an exception escape any step, and every line after it -- including the
+    // scene load at the very end -- silently never runs, leaving the player
+    // stranded in a region they have already beaten with no way out but Alt+F4.
+    // This runs on its own DontDestroyOnLoad object, on unscaled time, and
+    // stands down the moment the scene actually changes.
+    private class RegionExitWatchdog : MonoBehaviour
+    {
+        private static RegionExitWatchdog s_instance;
+        private float _deadline;
+
+        public static void Arm(float seconds)
+        {
+            if (s_instance == null)
+            {
+                var go = new GameObject("[RegionExitWatchdog]");
+                DontDestroyOnLoad(go);
+                s_instance = go.AddComponent<RegionExitWatchdog>();
+            }
+            s_instance._deadline = Time.unscaledTime + seconds;
+            s_instance.enabled = true;
+        }
+
+        private void Update()
+        {
+            string active = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (active == "CampScene") { enabled = false; return; }
+            if (Time.unscaledTime < _deadline) return;
+
+            enabled = false;
+            Debug.LogWarning("[RegionManager] Victory sequence never returned to camp within its deadline — forcing the load so the player isn't stranded in a conquered region.");
+            // Whatever stalled may well have been a zero timeScale.
+            if (Time.timeScale < 0.01f) Time.timeScale = 1f;
+            CinematicActive = false;
+            EnemyAI.GlobalFreeze = false;
+            SceneLoader.LoadScene("CampScene");
         }
     }
 
     private IEnumerator TransferCorruptionRoutine(Vector3 startPos, RegionTotem nextTotem)
     {
-        yield return new WaitForSeconds(2f);
+        // Realtime: a level-up card screen opening on the kill that purified the
+        // totem sets timeScale to 0, and a scaled wait here would leave the next
+        // totem permanently un-activated -- the region becomes uncompletable.
+        yield return new WaitForSecondsRealtime(2f);
 
         if (corruptionTransferVFX != null)
         {
@@ -214,7 +270,7 @@ public class RegionManager : MonoBehaviour
 
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration;
 
             Vector3 currentPos = Vector3.Lerp(startPos, targetPos, t);
@@ -324,7 +380,7 @@ public class RegionManager : MonoBehaviour
             while (preRoll < preRollDur)
             {
                 if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-                preRoll += Time.deltaTime;
+                preRoll += Time.unscaledDeltaTime;
                 // Ease-in-out — the push starts and ends gently.
                 float pt = Mathf.SmoothStep(0f, 1f, preRoll / preRollDur);
                 mainCam.transform.position = Vector3.Lerp(preRollStart, preRollEnd, pt);
@@ -364,7 +420,7 @@ public class RegionManager : MonoBehaviour
         while (elapsed < riseDuration)
         {
             if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float x = Mathf.Clamp01(elapsed / riseDuration);
             // Smoother-step (6x^5-15x^4+10x^3): zero velocity AND zero
             // acceleration at both ends — the camera never jerks.
@@ -524,13 +580,19 @@ public class RegionManager : MonoBehaviour
         return Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Escape);
     }
 
+    // UNSCALED on purpose. The victory sequence runs its own slow-motion ramps,
+    // and anything else that zeroes Time.timeScale while it plays -- a level-up
+    // card screen, the pause menu -- used to stop this dead. The routine then
+    // never reached the FadeAndLoadScene at its end, so the player sat on the
+    // victory title card in the conquered region forever. No wait in this
+    // sequence may depend on scaled time.
     private IEnumerator WaitOrSkip(float seconds)
     {
         float t = 0f;
         while (t < seconds)
         {
             if (CheckSkipRequested()) yield break;
-            t += Time.deltaTime;
+            t += Time.unscaledDeltaTime;
             yield return null;
         }
     }
@@ -677,7 +739,7 @@ public class RegionManager : MonoBehaviour
         while (bt < burstDur)
         {
             if (CheckSkipRequested()) { if (burstLightGO) Destroy(burstLightGO); if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
-            bt += Time.deltaTime;
+            bt += Time.unscaledDeltaTime;
             float u = Mathf.Clamp01(bt / burstDur);
             float pe = 1f - (1f - u) * (1f - u); // ease-out push
             Vector3 shake = new Vector3(Mathf.PerlinNoise(bt * 40f, 0f) - 0.5f,
@@ -703,7 +765,7 @@ public class RegionManager : MonoBehaviour
         while (elapsed < healDur)
         {
             if (CheckSkipRequested()) { if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float e = Mathf.Clamp01(elapsed / healDur);
             float s = e * e * (3f - 2f * e); // ease in/out
 
@@ -783,7 +845,7 @@ public class RegionManager : MonoBehaviour
         while (elapsed < flightDur)
         {
             if (CheckSkipRequested()) { if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float u = Mathf.Clamp01(elapsed / flightDur);
             float e = u * u * (3f - 2f * u); // ease in/out
 
@@ -803,7 +865,7 @@ public class RegionManager : MonoBehaviour
             // into the ground on a sharp ridge.
             float targetY = Mathf.Max(pos.y, aheadGround + 24f);
             if (!camYInit) { camY = targetY; camYInit = true; }
-            camY = Mathf.Lerp(camY, targetY, Time.deltaTime * 1.4f);
+            camY = Mathf.Lerp(camY, targetY, Time.unscaledDeltaTime * 1.4f);
             camY = Mathf.Max(camY, GroundHeightAt(pos) + 12f);
             pos.y = camY;
             cam.transform.position = pos;
@@ -826,7 +888,7 @@ public class RegionManager : MonoBehaviour
             float turn = Vector3.SignedAngle(prevFwd, fwdFlat, Vector3.up);
             prevFwd = fwdFlat;
             float targetRoll = Mathf.Clamp(-turn * 4.5f, -28f, 28f);
-            roll = Mathf.Lerp(roll, targetRoll, Time.deltaTime * 3f);
+            roll = Mathf.Lerp(roll, targetRoll, Time.unscaledDeltaTime * 3f);
             cam.transform.rotation = targetRot * Quaternion.Euler(0f, 0f, roll);
 
             // A touch wider FOV mid-flight for a sense of speed, easing back.
@@ -856,7 +918,7 @@ public class RegionManager : MonoBehaviour
         while (ct < craneDur)
         {
             if (CheckSkipRequested()) { if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
-            ct += Time.deltaTime;
+            ct += Time.unscaledDeltaTime;
             float k = ct / craneDur; k = k * k * (3f - 2f * k);
             cam.transform.position = Vector3.Lerp(heroStartPos, heroPos, k);
             cam.transform.rotation = Quaternion.Slerp(heroStartRot, Quaternion.LookRotation(totemPos + Vector3.up * 3f - heroPos), k);
