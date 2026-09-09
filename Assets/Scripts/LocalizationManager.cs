@@ -406,16 +406,16 @@ public static class LocalizationManager
         Add7("Gamma",         "Gamma",         "Гамма",          "Гамма",          "Gamma",          "Gamma",          "Gamma",          "Gamma");
         Add7("CAMERA",        "CAMERA",        "КАМЕРА",         "КАМЕРА",         "CÁMARA",         "KAMERA",         "CAMÉRA",         "KAMERA");
         Add7("Field of View", "Field of View", "Поле зору",      "Поле зрения",    "Campo de visión","Sichtfeld",      "Champ de vision","Pole widzenia");
-        Add7("Screen Shake",  "Screen Shake",  "Тряска екрана",  "Тряска экрана",  "Vibración",      "Bildschütteln",  "Tremblement",    "Wstrząsy");
+        Add7("Screen Shake",  "Screen Shake",  "Струс екрана",   "Тряска экрана",  "Vibración",      "Bildschütteln",  "Tremblement",    "Wstrząsy");
         Add7("Damage Popups", "Damage Popups", "Числа шкоди",    "Числа урона",    "Números de daño","Schadenszahlen", "Chiffres dégâts","Liczby obrażeń");
         Add7("Hit-Stop FX",   "Hit-Stop FX",   "Хіт-стоп",       "Хит-стоп",       "Hit-Stop",       "Trefferstopp",   "Hit-Stop",       "Hit-Stop");
-        Add7("Low HP Vignette","Low HP Vignette","Віньєтка HP",  "Виньетка HP",    "Viñeta HP baja", "HP-Vignette",    "Vignette PV bas","Winieta HP");
-        Add7("High Contrast", "High Contrast", "Контрастність",  "Контрастность",  "Alto contraste", "Hoher Kontrast", "Contraste élevé","Wysoki kontrast");
+        Add7("Low HP Vignette","Low HP Vignette","Віньєтка на низькому HP","Виньетка на низком HP","Viñeta HP baja","HP-Vignette",  "Vignette PV bas","Winieta HP");
+        Add7("High Contrast", "High Contrast", "Висока контрастність", "Высокая контрастность", "Alto contraste", "Hoher Kontrast", "Contraste élevé","Wysoki kontrast");
         // ── Settings: sections / misc ──
         Add7("HUD",           "HUD",           "Інтерфейс",      "Интерфейс",      "HUD",            "HUD",            "ATH",            "HUD");
         Add7("SUBTITLES",     "SUBTITLES",     "СУБТИТРИ",       "СУБТИТРЫ",       "SUBTÍTULOS",     "UNTERTITEL",     "SOUS-TITRES",    "NAPISY");
         Add7("TEXT",          "TEXT",          "ТЕКСТ",          "ТЕКСТ",          "TEXTO",          "TEXT",           "TEXTE",          "TEKST");
-        Add7("FEEDBACK",      "FEEDBACK",      "ВІДГУК",         "ОТКЛИК",         "RESPUESTA",      "FEEDBACK",       "RETOUR",         "REAKCJE");
+        Add7("FEEDBACK",      "FEEDBACK",      "ЕФЕКТИ",         "ЭФФЕКТЫ",        "EFECTOS",        "EFFEKTE",        "EFFETS",         "EFEKTY");
         Add7("BEHAVIOUR",     "BEHAVIOUR",     "ПОВЕДІНКА",      "ПОВЕДЕНИЕ",      "COMPORTAMIENTO", "VERHALTEN",      "COMPORTEMENT",   "ZACHOWANIE");
         Add7("DIFFICULTY",    "DIFFICULTY",    "СКЛАДНІСТЬ",     "СЛОЖНОСТЬ",      "DIFICULTAD",     "SCHWIERIGKEIT",  "DIFFICULTÉ",     "TRUDNOŚĆ");
         Add7("Auto-Save",     "Auto-Save",     "Автозбереження", "Автосохранение", "Autoguardado",   "Auto-Speichern", "Sauvegarde auto","Autozapis");
@@ -430,7 +430,7 @@ public static class LocalizationManager
         Add7("DEPLOY ARMY",   "DEPLOY ARMY",   "РОЗГОРНУТИ АРМІЮ","РАЗВЕРНУТЬ АРМИЮ","DESPLEGAR EJÉRCITO","ARMEE ENTSENDEN","DÉPLOYER L'ARMÉE","ROZMIEŚĆ ARMIĘ");
         Add7("ARMY DEPLOYMENT","ARMY DEPLOYMENT","РОЗГОРТАННЯ АРМІЇ","РАЗВЁРТЫВАНИЕ АРМИИ","DESPLIEGUE","ARMEE-AUFSTELLUNG","DÉPLOIEMENT","ROZMIESZCZENIE");
         // ── Shop ──
-        Add7("Choose Category","Choose Category","Оберіть категорію","Выбери категорию","Elige categoría","Kategorie wählen","Choisir catégorie","Wybierz kategorię");
+        Add7("Choose Category","Choose Category","Обери категорію","Выбери категорию","Elige categoría","Kategorie wählen","Choisir catégorie","Wybierz kategorię");
         Add7("Back to camp",  "Back to camp",  "Назад до табору","Назад в лагерь", "Volver al campamento","Zurück zum Lager","Retour au camp","Powrót do obozu");
         Add7("Back to Camp",  "Back to Camp",  "Назад до табору","Назад в лагерь", "Volver al campamento","Zurück zum Lager","Retour au camp","Powrót do obozu");
         Add7("Back to categories","Back to categories","Назад до категорій","К категориям","A las categorías","Zu Kategorien","Aux catégories","Do kategorii");
@@ -1161,7 +1161,7 @@ public static class LocalizationManager
         Add7("Defeated",           "Defeated",           "Переможено",       "Побеждён",        "Derrotado",         "Besiegt",           "Vaincu",             "Pokonany");
         Add7("Victory",            "Victory",            "Перемога",         "Победа",          "Victoria",          "Sieg",              "Victoire",           "Zwycięstwo");
         Add7("Defeat",             "Defeat",             "Поразка",          "Поражение",       "Derrota",           "Niederlage",        "Défaite",            "Porażka");
-        Add7("You Died",           "You Died",           "Ви загинули",      "Вы погибли",      "Has muerto",        "Du bist gestorben", "Vous êtes mort",     "Zginąłeś");
+        Add7("You Died",           "You Died",           "Ти загинув",       "Ты погиб",        "Has muerto",        "Du bist gestorben", "Tu es mort",         "Zginąłeś");
         Add7("Respawn",            "Respawn",            "Відродитися",      "Возродиться",     "Reaparecer",        "Wiederbeleben",     "Réapparaître",       "Odrodzenie");
         Add7("Wait",               "Wait",               "Чекати",           "Ждать",           "Esperar",           "Warten",            "Attendre",           "Czekaj");
 
@@ -2433,7 +2433,7 @@ public static class LocalizationManager
              "La Cabane du Bûcheron produit des BÛCHES par minute. Ressource la moins chère, indispensable.",
              "Chata Drwala produkuje KŁODY na minutę. Najtańszy surowiec, ale każda budowa go potrzebuje.");
         Add5("The Hunter's Cabin produces FOOD per minute — the rarest basic resource. Prioritise it before high-tier builds.",
-             "Хижина Охотника даёт ЕДУ в минуту — самый редкий базовый ресурс. Приоритет перед высокими тирами.",
+             "Хижина Охотника даёт ЕДУ в минуту — самый редкий базовый ресурс. Прокачай её раньше построек высоких уровней.",
              "La Cabaña del Cazador da COMIDA por minuto — el recurso básico más raro. Prioridad antes de altos niveles.",
              "Die Jägerhütte gibt NAHRUNG pro Minute — die seltenste Basisressource. Priorität vor High-Tier-Bauten.",
              "La Cabane du Chasseur produit de la NOURRITURE — la ressource de base la plus rare. À prioriser.",
@@ -3084,8 +3084,8 @@ public static class LocalizationManager
         // === Battle Result ===
         Add("MERC_VICTORY", "VICTORY", "ПЕРЕМОГА");
         Add("MERC_DEFEAT", "DEFEAT", "ПОРАЗКА");
-        Add("MERC_VICTORY_TEXT", "Your army routed the defenders.", "Ваша армія розгромила захисників.");
-        Add("MERC_DEFEAT_TEXT",  "Your army was broken. The region remains hostile.", "Ваша армія розбита. Регіон лишається ворожим.");
+        Add("MERC_VICTORY_TEXT", "Your army routed the defenders.", "Твоя армія розгромила захисників.");
+        Add("MERC_DEFEAT_TEXT",  "Your army was broken. The region remains hostile.", "Твою армію розбито. Регіон лишається ворожим.");
         Add("MERC_LOSSES_LINE",  "Losses: {0} / {1}", "Втрати: {0} / {1}");
 
         // === Unit flavour (short) ===
@@ -3283,13 +3283,13 @@ public static class LocalizationManager
         AddSelf("<b>Drag</b> to pan, scroll to zoom. Click an available region to see rewards and deploy when ready.",
             "<b>Тягни</b> для переміщення, скрол — масштаб. Клацни доступний регіон для нагород і вирушення.");
         AddSelf("Each armor piece can be levelled 0→5 in the Shop. Higher tier + level = bigger Power Score.",
-            "Кожен предмет броні можна прокачати 0→5 у Магазині. Вищий тир + рівень = більший Power Score.");
+            "Кожен предмет броні можна прокачати 0→5 у Магазині. Вищий ранг + рівень = більша Сила.");
         AddSelf("Raises your maximum Wood / Stone / Food capacity — otherwise resources overflow and cap at max.",
             "Підвищує макс. запас Дерева / Каменю / Їжі — інакше ресурси переливаються й обрізаються.");
         AddSelf("Spend diamonds in the Shop to level up your equipped weapon — bigger damage per swing.",
             "Витрачай діаманти в Магазині для прокачки зброї — більша шкода за удар.");
         AddSelf("Spend diamonds to unlock and upgrade gear — the higher-tier sets need Storage Vault upgrades to unlock.",
-            "Витрачай діаманти на нові сети — вищі тири потребують прокачки Схову.");
+            "Витрачай діаманти на нові комплекти — вищі ранги потребують прокачки Схову.");
         AddSelf("Elite tells are slower and hit harder. Perfect-dodge them with SHIFT to trigger a crit + slow-mo.",
             "Елітні розмахи повільніші й сильніші. Perfect-dodge (SHIFT) — крит + slow-mo.");
 
@@ -3322,7 +3322,7 @@ public static class LocalizationManager
         AddSelf("Hold <b>LMB</b> to chain melee swings. Killing enemies grows the STACK — every 15 stacks adds a damage multiplier.",
             "Тримай <b>ЛКМ</b> для серії ударів. Вбивства ростять STACK — кожні 15 стаків додають множник шкоди.");
         AddSelf("Spend diamonds to unlock and upgrade weapons & armor. Higher tiers boost your Power Score, which gates harder regions.",
-            "Витрачай діаманти на зброю та броню. Вищі тири підіймають Power Score, який відкриває складніші регіони.");
+            "Витрачай діаманти на зброю та броню. Вищі рівні підіймають Силу, яка відкриває складніші регіони.");
         AddSelf("Enemies drop XP shards. Fill the XP bar to level up and pick a new upgrade.",
             "Вороги лишають осколки досвіду. Заповни шкалу XP, щоб підняти рівень і обрати покращення.");
         AddSelf("Drag to pan, scroll to zoom. Click an available region to see its rewards and deploy when ready.",
@@ -3346,11 +3346,11 @@ public static class LocalizationManager
         AddSelf("The Storage Vault raises your max Wood / Stone / Food capacity. Upgrade it BEFORE big builds so nothing overflows.",
             "Схов Табору підіймає макс. запас Дерева / Каменю / Їжі. Прокачай його ДО великих будов, щоб ресурси не переливались.");
         AddSelf("The Hunter's Cabin produces FOOD per minute — the rarest basic resource. Prioritise it before high-tier builds.",
-            "Хатина Мисливця виробляє ЇЖУ за хвилину — найрідкісніший базовий ресурс. Пріоритезуй її перед високими тирами.");
+            "Хатина Мисливця виробляє ЇЖУ за хвилину — найрідкісніший базовий ресурс. Прокачай її раніше за будівлі вищих рівнів.");
         AddSelf("The Lumberjack's Hut generates LOGS per minute. Cheapest resource but every build needs some.",
             "Хата Лісоруба виробляє КОЛОДИ за хвилину. Найдешевший ресурс, але кожна будова щось потребує.");
         AddSelf("The Forge boosts your in-mission weapon damage by up to +15% at max level. Stacks with weapon tier.",
-            "Кузня підіймає шкоду зброї в місії до +15% на макс. рівні. Множиться на тир зброї.");
+            "Кузня підіймає шкоду зброї в місії до +15% на макс. рівні. Множиться на ранг зброї.");
 
         // === Achievements ===
         Add("ACHIEVEMENT_UNLOCKED", "Achievement unlocked: {0}", "Досягнення відкрито: {0}");
@@ -3795,7 +3795,7 @@ public static class LocalizationManager
         Add("DIAMONDS", "DIAMONDS", "ДІАМАНТИ");
         Add("Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
             "Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
-            "Діаманти — стала валюта. <b>Винеси їх живим</b> — витрачаються у Крамниці на зброю, броню і мета.");
+            "Діаманти — стала валюта. <b>Винеси їх живим</b> — витрачаються у Крамниці на зброю, броню та мета-покращення.");
         Add("ENCOUNTER CLEARED", "ENCOUNTER CLEARED", "ГРУПУ ЗАЧИЩЕНО");
         // RegionTotem.cs sets this as the level objective when the pre-gate
         // ambush triggers. It had no entry at all, so every locale rendered the
@@ -3810,7 +3810,7 @@ public static class LocalizationManager
             "Each Forge level raises your in-mission <b>weapon damage</b>: +2% / +5% / +8% / +11% / +15%. Stacks on top of weapon stats.",
             "Кожен рівень Кузні підвищує <b>урон зброї</b> у місіях: +2% / +5% / +8% / +11% / +15%. Стакається зі статами зброї.");
         Add("GRENADE", "GRENADE", "ГРАНАТА");
-        Add("HUNTER'S CABIN", "HUNTER'S CABIN", "ХАТА МИСЛИВЦЯ");
+        Add("HUNTER'S CABIN", "HUNTER'S CABIN", "ХАТИНА МИСЛИВЦЯ");
         Add("Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
             "Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
             "Виробляє <b>ЇЖУ</b> щохвилини. Їжа — найрідкісніший з базових ресурсів; поліпш Хату перед високотірними будівлями.");
@@ -4215,7 +4215,7 @@ public static class LocalizationManager
         //    Storage/Vault already covered elsewhere; these three were not. ──
         Add7("A roaring hearth for crafting tools and weapons. Attracts skilled metalworkers to your camp.",
              "A roaring hearth for crafting tools and weapons. Attracts skilled metalworkers to your camp.",
-             "Гуркітливе горно для виготовлення знарядь і зброї. Приваблює вправних ковалів до твого табору.",
+             "Ревуче горно для виготовлення знарядь і зброї. Приваблює вправних ковалів до твого табору.",
              "Ревущий горн для ковки инструментов и оружия. Привлекает умелых кузнецов в твой лагерь.",
              "Un horno rugiente para forjar herramientas y armas. Atrae a hábiles herreros a tu campamento.",
              "Eine lodernde Esse zum Fertigen von Werkzeugen und Waffen. Zieht geschickte Metallhandwerker in dein Lager.",
@@ -4275,7 +4275,7 @@ public static class LocalizationManager
         Add7("Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
              "Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
              "Шість слотів: голова, груди, руки, пояс, ноги, ступні. Ранги можна змішувати — Сила рахує кожен вдягнений предмет.",
-             "Шесть слотов: Голова, Грудь, Руки, Пояс, Ноги, Ступни. Смешивай тиры свободно — Power Score суммирует каждый надетый предмет.",
+             "Шесть слотов: голова, грудь, руки, пояс, ноги, ступни. Ранги можно смешивать — Сила считает каждый надетый предмет.",
              "Seis ranuras: Cabeza, Pecho, Brazos, Cinturón, Piernas, Pies. Mezcla niveles libremente: el Power Score suma cada pieza equipada.",
              "Sechs Slots: Kopf, Brust, Arme, Gürtel, Beine, Füße. Mische Stufen frei — Power Score summiert jedes angelegte Teil.",
              "Six emplacements : Tête, Torse, Bras, Ceinture, Jambes, Pieds. Mélange les paliers librement — le Power Score additionne chaque pièce équipée.",
@@ -4322,7 +4322,7 @@ public static class LocalizationManager
              "Ten region jest już oczyszczony — totemy milczą. Zostały małe patrole do farmienia, ale bez fal bossów.");
         Add7("Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
              "Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
-             "Діаманти — постійна валюта. <b>Винеси їх живим</b> — вони витрачаються в Магазині на зброю, броню та мету.",
+             "Діаманти — постійна валюта. <b>Винеси їх живим</b> — вони витрачаються в Магазині на зброю, броню та мета-покращення.",
              "Алмазы — постоянная валюта. <b>Вынеси их живым</b> — они тратятся в Магазине на оружие, броню и мету.",
              "Los diamantes son moneda persistente. <b>Sácalos con vida</b> — se gastan en la Tienda en armas, armaduras y mejoras meta.",
              "Diamanten sind dauerhafte Währung. <b>Bring sie lebend heraus</b> — sie werden im Shop für Waffen, Rüstung und Meta ausgegeben.",
@@ -4330,7 +4330,7 @@ public static class LocalizationManager
              "Diamenty to trwała waluta. <b>Wynieś je żywy</b> — wydajesz je w Sklepie na broń, pancerz i meta-ulepszenia.");
         Add7("Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
              "Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
-             "Знищення цілого патруля чи табору дає бонусний кластер лута. Полюй на сутички між тотемами, щоб стакати XP і діаманти.",
+             "Знищення цілого патруля чи табору дає бонусну купу здобичі. Полюй на сутички між тотемами, щоб накопичувати XP і діаманти.",
              "Уничтожение целого патруля или лагеря даёт бонусный кластер лута. Охоться на стычки между тотемами, чтобы копить XP и алмазы.",
              "Aniquilar una patrulla o campamento entero suelta un botín extra. Caza encuentros entre tótems para acumular XP y diamantes.",
              "Das Auslöschen einer ganzen Patrouille oder eines Lagers lässt Bonus-Beute fallen. Jage Begegnungen zwischen den Totems, um XP und Diamanten zu sammeln.",
@@ -4354,7 +4354,7 @@ public static class LocalizationManager
              "Przytrzymaj <b>PPM</b>, by wycelować granat. Czas zwalnia podczas celowania. Puść, by rzucić. Jest czas odnowienia — nie marnuj go na maruderów. Celowanie granatem możesz też anulować LPM.");
         Add7("Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
              "Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
-             "Виробляє <b>ЇЖУ</b> щохвилини. Їжа — найрідкісніший базовий ресурс; прокачай Хатину перед високими тирами будівель.",
+             "Виробляє <b>ЇЖУ</b> щохвилини. Їжа — найрідкісніший базовий ресурс; прокачай Хатину перед будівлями вищих рівнів.",
              "Производит <b>ЕДУ</b> в минуту. Еда — самый редкий из базовых ресурсов; улучши Хижину перед высокоуровневыми постройками.",
              "Produce <b>COMIDA</b> por minuto. La comida es el más raro de los recursos básicos; mejora la Cabaña antes de construcciones de alto nivel.",
              "Produziert <b>NAHRUNG</b> pro Minute. Nahrung ist die seltenste der Grundressourcen; verbessere die Hütte vor hochstufigen Bauten.",
@@ -4362,7 +4362,7 @@ public static class LocalizationManager
              "Produkuje <b>JEDZENIE</b> na minutę. Jedzenie to najrzadszy z podstawowych surowców; ulepsz Chatę przed budowlami wysokiego poziomu.");
         Add7("Pick one of three upgrade cards each level. Hover for the effect, click to commit — your choice locks in for the run.",
              "Pick one of three upgrade cards each level. Hover for the effect, click to commit — your choice locks in for the run.",
-             "Обирай одну з трьох карток покращень щорівня. Наведи, щоб побачити ефект, клацни, щоб підтвердити — вибір фіксується на забіг.",
+             "Обирай одну з трьох карток покращень на кожному рівні. Наведи, щоб побачити ефект, клацни, щоб підтвердити — вибір фіксується на забіг.",
              "Выбирай одну из трёх карт улучшений на каждом уровне. Наведи, чтобы увидеть эффект, кликни, чтобы подтвердить — выбор фиксируется на забег.",
              "Elige una de las tres cartas de mejora en cada nivel. Pasa el cursor para ver el efecto, haz clic para confirmar — tu elección queda fijada para la partida.",
              "Wähle auf jeder Stufe eine von drei Upgrade-Karten. Zeige darauf für den Effekt, klicke zum Bestätigen — deine Wahl gilt für den ganzen Run.",
@@ -4434,8 +4434,8 @@ public static class LocalizationManager
              "Wysoki czerwony filar oznacza następny skażony totem — widoczny w całym regionie. Biegnij ku niemu.");
         Add7("Spend diamonds to unlock and upgrade gear. Higher tiers raise your Power Score, which gates the harder regions.",
              "Spend diamonds to unlock and upgrade gear. Higher tiers raise your Power Score, which gates the harder regions.",
-             "Витрачай діаманти, щоб відкривати та покращувати спорядження. Вищі тири підіймають Power Score, який відкриває складніші регіони.",
-             "Трать алмазы, чтобы открывать и улучшать снаряжение. Высшие тиры повышают Power Score, который открывает более сложные регионы.",
+             "Витрачай діаманти, щоб відкривати та покращувати спорядження. Вищі рівні підіймають Силу, яка відкриває складніші регіони.",
+             "Трать алмазы, чтобы открывать и улучшать снаряжение. Высшие ранги повышают Силу, которая открывает более сложные регионы.",
              "Gasta diamantes para desbloquear y mejorar equipo. Los niveles superiores elevan tu Power Score, que da acceso a las regiones más difíciles.",
              "Gib Diamanten aus, um Ausrüstung freizuschalten und zu verbessern. Höhere Stufen steigern deinen Power Score, der die schwereren Regionen freischaltet.",
              "Dépense des diamants pour débloquer et améliorer l'équipement. Les paliers supérieurs augmentent ton Power Score, qui donne accès aux régions plus difficiles.",
@@ -4466,7 +4466,7 @@ public static class LocalizationManager
              "Stań na skażonym totemie i wciśnij <b>F</b>. Pojawi się fala — przetrwaj, by go oczyścić. Potem odblokuje się następny totem.");
         Add7("Each armor piece can be levelled 0→5. Linear cost — no surprise spikes. Maxed sets unlock the toughest regions.",
              "Each armor piece can be levelled 0→5. Linear cost — no surprise spikes. Maxed sets unlock the toughest regions.",
-             "Кожен елемент броні можна прокачати 0→5. Лінійна ціна — без несподіваних стрибків. Повністю прокачані сети відкривають найважчі регіони.",
+             "Кожен елемент броні можна прокачати 0→5. Лінійна ціна — без несподіваних стрибків. Повністю прокачані комплекти відкривають найважчі регіони.",
              "Каждый элемент брони можно прокачать 0→5. Линейная цена — без неожиданных скачков. Полностью прокачанные сеты открывают самые сложные регионы.",
              "Cada pieza de armadura sube de 0→5. Coste lineal — sin picos sorpresa. Los conjuntos al máximo desbloquean las regiones más duras.",
              "Jedes Rüstungsteil lässt sich von 0→5 aufwerten. Lineare Kosten — keine überraschenden Sprünge. Maximierte Sets schalten die härtesten Regionen frei.",
@@ -4474,16 +4474,16 @@ public static class LocalizationManager
              "Każdy element pancerza można ulepszyć 0→5. Liniowy koszt — bez niespodziewanych skoków. Maksymalne zestawy odblokowują najtrudniejsze regiony.");
         Add7("Hold <b>E</b> to begin an upgrade. Each tier raises production and unlocks a stronger passive bonus.",
              "Hold <b>E</b> to begin an upgrade. Each tier raises production and unlocks a stronger passive bonus.",
-             "Тримай <b>E</b>, щоб почати покращення. Кожен тир підіймає виробництво й відкриває сильніший пасивний бонус.",
-             "Удерживай <b>E</b>, чтобы начать улучшение. Каждый тир повышает производство и открывает более сильный пассивный бонус.",
+             "Тримай <b>E</b>, щоб почати покращення. Кожен рівень підіймає виробництво й відкриває сильніший пасивний бонус.",
+             "Удерживай <b>E</b>, чтобы начать улучшение. Каждый уровень повышает производство и открывает более сильный пассивный бонус.",
              "Mantén <b>E</b> para iniciar una mejora. Cada nivel aumenta la producción y desbloquea un bonus pasivo más fuerte.",
              "Halte <b>E</b>, um eine Verbesserung zu starten. Jede Stufe steigert die Produktion und schaltet einen stärkeren passiven Bonus frei.",
              "Maintiens <b>E</b> pour lancer une amélioration. Chaque palier augmente la production et débloque un bonus passif plus fort.",
              "Przytrzymaj <b>E</b>, by rozpocząć ulepszenie. Każdy poziom zwiększa produkcję i odblokowuje silniejszy bonus pasywny.");
         Add7("Spend diamonds in the Shop to level up your equipped weapon. Each level scales damage, crit, and Power Score.",
              "Spend diamonds in the Shop to level up your equipped weapon. Each level scales damage, crit, and Power Score.",
-             "Витрачай діаманти в Магазині, щоб прокачати вдягнену зброю. Кожен рівень масштабує шкоду, крит і Power Score.",
-             "Трать алмазы в Магазине, чтобы прокачать снаряжённое оружие. Каждый уровень масштабирует урон, крит и Power Score.",
+             "Витрачай діаманти в Магазині, щоб прокачати вдягнену зброю. Кожен рівень підіймає шкоду, крит і Силу.",
+             "Трать алмазы в Магазине, чтобы прокачать снаряжённое оружие. Каждый уровень поднимает урон, крит и Силу.",
              "Gasta diamantes en la Tienda para subir de nivel el arma equipada. Cada nivel escala daño, crítico y Power Score.",
              "Gib Diamanten im Shop aus, um deine ausgerüstete Waffe zu verbessern. Jede Stufe skaliert Schaden, Krit und Power Score.",
              "Dépense des diamants à la Boutique pour améliorer l'arme équipée. Chaque niveau augmente les dégâts, le crit et le Power Score.",
@@ -4696,7 +4696,7 @@ public static class LocalizationManager
         Add5("MERC_BTN_MAX", "МАКС", "MÁX", "MAX", "MAX", "MAKS");
         Add5("MERC_BTN_UPGRADE", "УЛУЧШИТЬ", "MEJORAR", "VERBESSERN", "AMÉLIORER", "ULEPSZ");
         Add5("MERC_DEFEAT", "ПОРАЖЕНИЕ", "DERROTA", "NIEDERLAGE", "DÉFAITE", "PORAŻKA");
-        Add5("MERC_DEFEAT_TEXT", "Ваша армия разбита. Регион остаётся враждебным.", "Tu ejército fue destrozado. La región sigue hostil.", "Deine Armee wurde zerschlagen. Die Region bleibt feindlich.", "Ton armée a été brisée. La région reste hostile.", "Twoja armia została rozbita. Region pozostaje wrogi.");
+        Add5("MERC_DEFEAT_TEXT", "Твою армию разбили. Регион остаётся враждебным.", "Tu ejército fue destrozado. La región sigue hostil.", "Deine Armee wurde zerschlagen. Die Region bleibt feindlich.", "Ton armée a été brisée. La région reste hostile.", "Twoja armia została rozbita. Region pozostaje wrogi.");
         Add5("MERC_ENEMY_POWER", "Сила врага: {0}", "Poder Enemigo: {0}", "Feindmacht: {0}", "Puissance Ennemie : {0}", "Moc Wroga: {0}");
         Add5("MERC_ENEMY_STRENGTH", "Мощь врага: {0}", "Fuerza Enemiga: {0}", "Feindstärke: {0}", "Force Ennemie : {0}", "Siła Wroga: {0}");
         Add5("MERC_EXPECTED_LOSSES", "Ожидаемые потери: {0}-{1}", "Bajas Estimadas: {0}-{1}", "Erwartete Verluste: {0}-{1}", "Pertes Estimées : {0}-{1}", "Oczekiwane Straty: {0}-{1}");
@@ -4731,7 +4731,7 @@ public static class LocalizationManager
         Add5("MERC_UNIT_MILITIA", "Ополченец", "Miliciano", "Milizionär", "Milicien", "Milicjant");
         Add5("MERC_UNIT_RANGER", "Следопыт", "Montaraz", "Waldläufer", "Rôdeur", "Zwiadowca");
         Add5("MERC_VICTORY", "ПОБЕДА", "VICTORIA", "SIEG", "VICTOIRE", "ZWYCIĘSTWO");
-        Add5("MERC_VICTORY_TEXT", "Ваша армия разгромила защитников.", "Tu ejército derrotó a los defensores.", "Deine Armee schlug die Verteidiger in die Flucht.", "Ton armée a mis en déroute les défenseurs.", "Twoja armia rozgromiła obrońców.");
+        Add5("MERC_VICTORY_TEXT", "Твоя армия разгромила защитников.", "Tu ejército derrotó a los defensores.", "Deine Armee schlug die Verteidiger in die Flucht.", "Ton armée a mis en déroute les défenseurs.", "Twoja armia rozgromiła obrońców.");
         Add5("MERC_WIN_PROBABILITY", "Вероятность победы", "Probabilidad de Victoria", "Siegwahrscheinlichkeit", "Probabilité de Victoire", "Szansa na Zwycięstwo");
         Add5("MOVEMENT", "ДВИЖЕНИЕ", "MOVIMIENTO", "BEWEGUNG", "MOUVEMENT", "RUCH");
         Add5("Master Architect", "Мастер-архитектор", "Maestro Arquitecto", "Meisterarchitekt", "Maître Architecte", "Mistrz Architekt");
