@@ -41,6 +41,12 @@ public class RegionData : ScriptableObject
     public string customSceneName = "";
 
     [Header("Map Logic")]
+    [Tooltip("The ONE authored fact about where the map starts. Tick for the region(s) that are open before the player has conquered anything; everything else begins Locked and opens only as a neighbour of something taken.")]
+    public bool startsAvailable = false;
+    // Runtime state. This is mutated during play, and a ScriptableObject mutated
+    // in the editor is written back to the asset on disk -- so this field drifts
+    // to whatever the last playtest happened to reach and must NEVER be treated
+    // as the authored starting value. That is what startsAvailable is for.
     public RegionState currentState = RegionState.Locked;
     public List<RegionData> neighboringRegions;
     [HideInInspector] public bool isNewlyUnlocked = false;

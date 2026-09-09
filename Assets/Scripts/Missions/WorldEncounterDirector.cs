@@ -63,6 +63,10 @@ public class WorldEncounterDirector : MonoBehaviour
     public float longPatrolRouteRadius = 38f;
 
     [Header("Watchtowers")]
+    [Tooltip("OFF by default while the feature is being tested. Tick to place watchtowers again.")]
+    public bool enableWatchtowers = false;
+    [Tooltip("Log every rejected tower position and why. Use with enableWatchtowers when none appear.")]
+    public bool logWatchtowerPlacement = false;
     [Tooltip("Tower mesh. Assets/Locations/fbx2/MESH_ScoutTower is the one that matches the region kit.")]
     public GameObject watchtowerPrefab;
     [Tooltip("How many watchtowers to raise across the region.")]
@@ -246,17 +250,25 @@ public class WorldEncounterDirector : MonoBehaviour
 
     private IEnumerator PlaceWatchtowers(RegionTotem[] totems)
     {
-        if (watchtowerPrefab == null || watchtowerCount <= 0) yield break;
+        if (!enableWatchtowers) yield break;
+
+        if (watchtowerPrefab == null || watchtowerCount <= 0)
+        {
+            if (logWatchtowerPlacement)
+                Debug.LogWarning($"[Watchtower] Nothing to place: prefab={(watchtowerPrefab == null ? "NULL" : watchtowerPrefab.name)}, count={watchtowerCount}.");
+            yield break;
+        }
 
         var towerPositions = new List<Vector3>(watchtowerCount);
         int attempts = 0;
         int maxAttempts = watchtowerCount * 40;
+        int rejPlayer = 0, rejTotem = 0, rejTower = 0;
 
         while (towerPositions.Count < watchtowerCount && attempts < maxAttempts)
         {
             attempts++;
             Vector3 candidate = SampleCandidatePosition();
-            if (player != null && Vector3.Distance(candidate, player.position) < minDistanceFromPlayer) continue;
+            if (player != null && Vector3.Distance(candidate, player.position) < minDistanceFromPlayer) { rejPlayer++; continue; }
 
             bool tooCloseToTotem = false;
             for (int i = 0; i < totems.Length; i++)
@@ -264,22 +276,32 @@ public class WorldEncounterDirector : MonoBehaviour
                 if (totems[i] == null) continue;
                 if (Vector3.Distance(candidate, totems[i].transform.position) < minDistanceFromTotems) { tooCloseToTotem = true; break; }
             }
-            if (tooCloseToTotem) continue;
+            if (tooCloseToTotem) { rejTotem++; continue; }
 
             bool tooCloseToTower = false;
             for (int i = 0; i < towerPositions.Count; i++)
             {
                 if (Vector3.Distance(candidate, towerPositions[i]) < watchtowerSeparation) { tooCloseToTower = true; break; }
             }
-            if (tooCloseToTower) continue;
+            if (tooCloseToTower) { rejTower++; continue; }
 
             SpawnWatchtower(candidate);
             towerPositions.Add(candidate);
             yield return null;
         }
 
-        if (logPlacements)
-            GameLog.Info($"[WorldEncounter] Raised {towerPositions.Count}/{watchtowerCount} watchtowers.");
+        // Always report a shortfall. A silent zero is what made the first pass
+        // look like the feature had never been wired up at all.
+        if (towerPositions.Count < watchtowerCount)
+        {
+            Debug.LogWarning($"[Watchtower] Raised only {towerPositions.Count}/{watchtowerCount} after {attempts} attempts " +
+                             $"(rejected: {rejPlayer} too near player, {rejTotem} too near a totem, {rejTower} too near another tower). " +
+                             $"Lower watchtowerSeparation ({watchtowerSeparation}) or minDistanceFromPlayer ({minDistanceFromPlayer}) if the terrain is small.");
+        }
+        else if (logWatchtowerPlacement)
+        {
+            GameLog.Info($"[Watchtower] Raised {towerPositions.Count}/{watchtowerCount} watchtowers in {attempts} attempts.");
+        }
     }
 
     private void SpawnWatchtower(Vector3 position)

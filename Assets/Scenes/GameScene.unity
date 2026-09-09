@@ -17084,6 +17084,8 @@ MonoBehaviour:
   hornPatrolRatio: 0.3
   longPatrolRatio: 0.35
   longPatrolRouteRadius: 38
+  enableWatchtowers: 0
+  logWatchtowerPlacement: 0
   watchtowerPrefab: {fileID: 100100000, guid: 71bd3b8ce83ac9e48a5697e124581a15, type: 3}
   watchtowerCount: 3
   watchtowerGuards: 2

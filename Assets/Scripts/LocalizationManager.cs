@@ -681,6 +681,47 @@ public static class LocalizationManager
     // language flip re-renders them.
     private static void SeedIntroCutscene()
     {
+        // -- Menu intro cinematic (Timeline signals -> IntroCinematicManager) --
+        // These four lines had no entries at all, which is why the opening
+        // narration stayed English in every locale. Registered WITHOUT the
+        // surrounding quotation marks; IntroCinematicManager strips them for the
+        // lookup and puts them back around the translation.
+        Add7("When the Pale King first marched south... our chronicles ended mid-sentence. Aethelgard was a place where children could sleep without dreaming of teeth. But darkness... darkness always finds a crack.",
+            "When the Pale King first marched south... our chronicles ended mid-sentence. Aethelgard was a place where children could sleep without dreaming of teeth. But darkness... darkness always finds a crack.",
+            "Коли Блідий Король уперше рушив на південь... наші літописи обірвалися на півслові. Етельгард був місцем, де діти могли спати, не бачачи у снах ікол. Але темрява... темрява завжди знаходить щілину.",
+            "Когда Бледный Король впервые двинулся на юг... наши летописи оборвались на полуслове. Этельгард был местом, где дети могли спать, не видя во снах клыков. Но тьма... тьма всегда находит щель.",
+            "Cuando el Rey Pálido marchó al sur por primera vez... nuestras crónicas se cortaron a media frase. Aethelgard era un lugar donde los niños podían dormir sin soñar con colmillos. Pero la oscuridad... la oscuridad siempre encuentra una grieta.",
+            "Als der Bleiche König zum ersten Mal nach Süden zog... endeten unsere Chroniken mitten im Satz. Aethelgard war ein Ort, an dem Kinder schlafen konnten, ohne von Zähnen zu träumen. Doch die Dunkelheit... die Dunkelheit findet immer einen Riss.",
+            "Quand le Roi Blême marcha vers le sud pour la première fois... nos chroniques s'interrompirent au milieu d'une phrase. Aethelgard était un lieu où les enfants pouvaient dormir sans rêver de crocs. Mais les ténèbres... les ténèbres trouvent toujours une fissure.",
+            "Gdy Blady Król po raz pierwszy ruszył na południe... nasze kroniki urwały się w pół słowa. Aethelgard był miejscem, gdzie dzieci mogły spać, nie śniąc o kłach. Lecz mrok... mrok zawsze znajdzie szczelinę.");
+
+        Add7("They say he was once a knight of our own banner. Struck down at the gates, he was woken by something... that crawled out of the moat. Now, he wears a crown of ash. And the Bone Tide... follows in his wake.",
+            "They say he was once a knight of our own banner. Struck down at the gates, he was woken by something... that crawled out of the moat. Now, he wears a crown of ash. And the Bone Tide... follows in his wake.",
+            "Кажуть, колись він був лицарем нашого ж стяга. Полеглий біля воріт, він був розбуджений чимось... що виповзло з рову. Тепер на ньому корона з попелу. А Кістяний Приплив... суне за ним слідом.",
+            "Говорят, когда-то он был рыцарем нашего же знамени. Павший у ворот, он был разбужен чем-то... что выползло изо рва. Теперь на нём корона из пепла. А Костяной Прилив... идёт за ним следом.",
+            "Dicen que una vez fue caballero de nuestro propio estandarte. Caído ante las puertas, lo despertó algo... que reptó fuera del foso. Ahora lleva una corona de ceniza. Y la Marea de Huesos... sigue su estela.",
+            "Man sagt, er war einst ein Ritter unseres eigenen Banners. Vor den Toren gefallen, weckte ihn etwas... das aus dem Graben kroch. Nun trägt er eine Krone aus Asche. Und die Knochenflut... folgt seiner Spur.",
+            "On dit qu'il fut jadis un chevalier de notre propre bannière. Abattu aux portes, il fut réveillé par quelque chose... qui rampa hors des douves. Il porte à présent une couronne de cendre. Et la Marée d'Os... suit dans son sillage.",
+            "Mówią, że był kiedyś rycerzem naszego własnego sztandaru. Powalony u bram, obudziło go coś... co wypełzło z fosy. Teraz nosi koronę z popiołu. A Kościany Przypływ... podąża jego śladem.");
+
+        Add7("The dead do not rise on their own. They are raised. Sunlight is a small justice they suffer only until nightfall. When the world becomes fair to no one... they take what they always wanted. Another chance to feed.",
+            "The dead do not rise on their own. They are raised. Sunlight is a small justice they suffer only until nightfall. When the world becomes fair to no one... they take what they always wanted. Another chance to feed.",
+            "Мертві не повстають самі. Їх піднімають. Сонячне світло — мала справедливість, яку вони терплять лише до смеркання. Коли світ перестає бути справедливим до всіх... вони беруть те, чого завжди хотіли. Ще одну нагоду наїстися.",
+            "Мёртвые не встают сами. Их поднимают. Солнечный свет — малая справедливость, которую они терпят лишь до темноты. Когда мир перестаёт быть справедливым ко всем... они берут то, чего всегда хотели. Ещё одну возможность насытиться.",
+            "Los muertos no se alzan solos. Son alzados. La luz del sol es una pequeña justicia que soportan sólo hasta el anochecer. Cuando el mundo deja de ser justo con nadie... toman lo que siempre quisieron. Otra oportunidad de alimentarse.",
+            "Die Toten erheben sich nicht von selbst. Sie werden erhoben. Sonnenlicht ist eine kleine Gerechtigkeit, die sie nur bis zum Einbruch der Nacht ertragen. Wenn die Welt zu niemandem mehr gerecht ist... nehmen sie, was sie immer wollten. Eine weitere Gelegenheit zu fressen.",
+            "Les morts ne se lèvent pas d'eux-mêmes. On les relève. La lumière du jour est une petite justice qu'ils ne subissent que jusqu'à la nuit. Quand le monde n'est plus juste envers personne... ils prennent ce qu'ils ont toujours voulu. Une nouvelle occasion de se repaître.",
+            "Umarli nie powstają sami. Są podnoszeni. Światło słońca to drobna sprawiedliwość, którą znoszą tylko do zmierzchu. Gdy świat przestaje być sprawiedliwy dla kogokolwiek... biorą to, czego zawsze pragnęli. Kolejną okazję, by się nasycić.");
+
+        Add7("...We lit the Watchfires. Not for warmth. But so the dead see the flames... and remember they were once afraid of it. Take up your weapon. Find the totems. Free their names. Let this tide break... against your wrath.",
+            "...We lit the Watchfires. Not for warmth. But so the dead see the flames... and remember they were once afraid of it. Take up your weapon. Find the totems. Free their names. Let this tide break... against your wrath.",
+            "...Ми запалили Сторожові вогні. Не заради тепла. А щоб мертві побачили полум'я... і згадали, що колись його боялися. Візьми зброю. Знайди тотеми. Звільни їхні імена. Хай цей приплив розіб'ється... об твій гнів.",
+            "...Мы зажгли Сторожевые огни. Не ради тепла. А чтобы мёртвые увидели пламя... и вспомнили, что когда-то его боялись. Возьми оружие. Найди тотемы. Освободи их имена. Пусть этот прилив разобьётся... о твой гнев.",
+            "...Encendimos las Hogueras de Guardia. No por calor. Sino para que los muertos vean las llamas... y recuerden que una vez las temieron. Toma tu arma. Halla los tótems. Libera sus nombres. Que esta marea se rompa... contra tu ira.",
+            "...Wir entzündeten die Wachfeuer. Nicht der Wärme wegen. Sondern damit die Toten die Flammen sehen... und sich erinnern, dass sie sie einst fürchteten. Nimm deine Waffe. Finde die Totems. Befreie ihre Namen. Lass diese Flut zerbrechen... an deinem Zorn.",
+            "...Nous avons allumé les Feux de Garde. Non pour la chaleur. Mais pour que les morts voient les flammes... et se souviennent qu'ils les craignaient jadis. Prends ton arme. Trouve les totems. Libère leurs noms. Que cette marée se brise... contre ta colère.",
+            "...Rozpaliliśmy Ognie Strażnicze. Nie dla ciepła. Lecz by umarli ujrzeli płomienie... i przypomnieli sobie, że kiedyś się ich bali. Weź broń. Znajdź totemy. Uwolnij ich imiona. Niech ten przypływ rozbije się... o twój gniew.");
+
         // -- Slide narration (keys MUST match the scene subtitle text exactly) --
         Add7("Once upon a time, these forests breathed life. People cut wood, lit fires, and darkness stayed away.",
             "Once upon a time, these forests breathed life. People cut wood, lit fires, and darkness stayed away.",
@@ -2846,6 +2887,10 @@ public static class LocalizationManager
         // sets these at runtime, they aren't inspector-baked.
         Add7("Continue", "Continue", "Продовжити", "Продолжить", "Continuar", "Fortsetzen", "Continuer", "Kontynuuj");
         Add7("Start Adventure!", "Start Adventure!", "Почати подорож", "Начать приключение!", "¡Comenzar aventura!", "Abenteuer starten!", "Commencer l'aventure !", "Rozpocznij przygodę!");
+        // Shown on the main-menu button in place of "Continue" when the tutorial
+        // has not been cleared -- the button starts Lvl_1 in that state, so the
+        // label has to say so.
+        Add7("Start new journey!", "Start new journey!", "Почати нову подорож!", "Начать новое путешествие!", "¡Comenzar un nuevo viaje!", "Neue Reise beginnen!", "Commencer un nouveau voyage !", "Rozpocznij nową podróż!");
         Add7("You sure?\nAll journey progress will be lost",
              "You sure?\nAll journey progress will be lost",
              "Точно?\nВесь прогрес подорожі буде втрачено",
@@ -3513,6 +3558,14 @@ public static class LocalizationManager
         AddSelf("Owned",                  "Володієте");
         AddSelf("New",                    "Новий");
         AddSelf("Continue",               "Продовжити");
+        // The main menu's four buttons are authored as "Continue" /
+        // "Achievements" / "Settings" / "Quit". The first two had entries; the
+        // last two only ever got an Add5(), which supplies RU/ES/DE/FR/PL and no
+        // English or Ukrainian at all -- so Tr() found nothing, fell through to
+        // nothing, and returned the key. That is why the menu showed two
+        // translated buttons above two English ones.
+        AddSelf("Settings",               "Налаштування");
+        AddSelf("Quit",                   "Вийти");
         AddSelf("Retry",                  "Спробувати знову");
         AddSelf("Return to Camp",         "Повернутись до табору");
         AddSelf("Return to Menu",         "На головну");

@@ -49,7 +49,16 @@ public class MapProgressionManager : MonoBehaviour
         foreach (var region in allRegionsInGame)
         {
             if (region == null) continue;
-            int defaultState = (int)region.currentState;
+            // Default from the AUTHORED flag, never from currentState.
+            //
+            // currentState lives on a ScriptableObject and is written to during
+            // play; in the editor Unity then saves that back into the asset. So
+            // the field silently became "wherever the last playtest got to", and
+            // it was being used as the fallback for a fresh save. Three regions
+            // had drifted to Available on disk that way -- including the Throne
+            // Room, the final one -- which is why capturing the first region
+            // appeared to open several at once.
+            int defaultState = (int)(region.startsAvailable ? RegionState.Available : RegionState.Locked);
             int savedState = PlayerPrefs.GetInt(KeyFor(region), defaultState);
             region.currentState = (RegionState)savedState;
         }

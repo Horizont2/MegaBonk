@@ -144,8 +144,34 @@ public class IntroCinematicManager : MonoBehaviour
         // Route Timeline-authored English through Tr so the cinematic
         // subtitles localise. Register each line as a self-keyed entry
         // in LocalizationManager for the languages you ship.
-        List<string> autoChunks = AutoSplitText(LocalizationManager.Tr(fullText));
+        List<string> autoChunks = AutoSplitText(Localise(fullText));
         typingCoroutine = StartCoroutine(TypeTextChunks(autoChunks));
+    }
+
+    // The narration lines are authored in the Timeline signal WITH their
+    // surrounding quotation marks, because the quotes are part of how the
+    // subtitle reads on screen. That made the lookup key include the quotes
+    // too, which is a trap nobody notices: the line looks correct in the
+    // inspector, the entry looks correct in the table, and the two never match,
+    // so every locale silently fell through to the raw English.
+    //
+    // Look the line up as authored first; if that misses, try it without the
+    // quotes and put them back around the translation. Entries are then written
+    // in the natural, unquoted form.
+    private static string Localise(string authored)
+    {
+        if (string.IsNullOrEmpty(authored)) return authored;
+
+        string direct = LocalizationManager.Tr(authored);
+        if (direct != authored) return direct;
+
+        string trimmed = authored.Trim();
+        if (trimmed.Length < 2 || trimmed[0] != '"' || trimmed[trimmed.Length - 1] != '"')
+            return direct;
+
+        string inner = trimmed.Substring(1, trimmed.Length - 2);
+        string translated = LocalizationManager.Tr(inner);
+        return translated == inner ? direct : "\"" + translated + "\"";
     }
 
     // ��ò�� ������������� ���Ĳ����� ������

@@ -283,7 +283,7 @@ public class MainMenuManager : MonoBehaviour
             bool showContinue = hasSave && tutorialDone;
 
             TextMeshProUGUI btnText = continueButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null) btnText.text = LocalizationManager.Tr(showContinue ? "Continue" : "Start Adventure!");
+            if (btnText != null) btnText.text = LocalizationManager.Tr(showContinue ? "Continue" : "Start new journey!");
 
             continueButton.interactable = true;
             CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
