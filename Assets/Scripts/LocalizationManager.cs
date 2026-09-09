@@ -487,7 +487,7 @@ public static class LocalizationManager
 
         AddLore("LORE_AETHER_SHARDS",
             "The Aether Shards",
-            "Аетерові Уламки",
+            "Уламки ефіру",
             "They are not crystals. They are the cooled grief of stars, fallen during the long siege. " +
             "Carry too many and you will hear the song they sang at the moment of their making — " +
             "and it is the song of something that should not have been born.",
@@ -502,12 +502,12 @@ public static class LocalizationManager
             "and orders them up like a man calling cattle to a slaughterhouse. " +
             "Find the keep. Find the lord. End the order.",
             "Мертві не повстають. Їх ПІДНІМАЮТЬ. Якийсь володар досі стоїть у якійсь твердині за туманом " +
-            "і піднімає їх, як людина гонить худобу на бійню. " +
+            "і піднімає їх, як людина жене худобу на бійню. " +
             "Знайди твердиню. Знайди володаря. Зупини наказ.");
 
         AddLore("LORE_TOTEMS",
             "On the Purifying Totems",
-            "Про Очисні Тотеми",
+            "Про очисні тотеми",
             "The first Watcher carved them from the hearthstones of villages that had already fallen. " +
             "Each totem holds a single name. When you strike it true, the name is freed, " +
             "and one soul that was bound to the Pale King's army walks at last into the long sleep.",
@@ -517,17 +517,17 @@ public static class LocalizationManager
 
         AddLore("LORE_THE_FORGE",
             "The Forge at the Camp",
-            "Кузня в Таборі",
+            "Кузня в таборі",
             "The forge-mother does not speak. She lost her tongue at the Sundering of Old Vael and " +
             "would not take a new one when offered. She works the bellows in three-beat rhythm: " +
             "in. out. silence. The silence is for the names of her sons.",
-            "Кузнечиха не говорить. Вона втратила язик під час Розриву Старого Велю " +
+            "Ковалиха не говорить. Вона втратила язик під час Розриву Старого Веля " +
             "і відмовилася від нового, коли їй пропонували. Вона роздуває міхи в три удари: " +
             "вдих. видих. тиша. Тиша — за іменами її синів.");
 
         AddLore("LORE_NIGHT_BUFF",
             "Why the Dead are Stronger at Night",
-            "Чому Мертві Сильніші Вночі",
+            "Чому мертві сильніші вночі",
             "Sunlight is a small justice that comes back every morning. The dead remember justice; " +
             "they are ashamed of it. They wait until the world is fair to no one, " +
             "and then they take what they always wanted: another chance to feed.",
@@ -557,17 +557,17 @@ public static class LocalizationManager
 
         AddLore("LORE_FORGE_MOTHER",
             "The Forge-Mother's Pact",
-            "Пакт Кузнечихи",
+            "Пакт Ковалихи",
             "Three sons. Two she watched march out the gates of Old Vael. The third she sent " +
             "willing into the fire of her own forge, because the realm needed a sword that " +
             "would not break, and a mother's grief is the only quench-water that holds.",
-            "Троє синів. Двох вона провела за ворота Старого Велю. Третього вона послала " +
+            "Троє синів. Двох вона провела за ворота Старого Веля. Третього вона послала " +
             "власноруч у вогонь своєї кузні — бо королівству потрібен був меч, що не зламається, " +
             "а материнський смуток — єдиний гарт, що тримає.");
 
         AddLore("LORE_WATCHFIRE",
             "On the Watchfires",
-            "Про Сторожові Вогні",
+            "Про сторожові вогні",
             "We light them not for warmth, nor to see by. We light them so that the dead know " +
             "where the line is. So that the dead remember: this far, no further. So that on " +
             "the longest night, the dead see the fire and remember they were once afraid of it.",
@@ -577,7 +577,7 @@ public static class LocalizationManager
 
         AddLore("LORE_DEAD_RIVER",
             "Of the Dead River",
-            "Про Мертву Ріку",
+            "Про мертву ріку",
             "Below the high country there is a river that no fish swims and no horse will " +
             "drink from. Some say it is the boundary the Pale King set. Others say it is " +
             "where the kingdom's prayers go when they are not answered, and they sink, and " +
@@ -588,7 +588,7 @@ public static class LocalizationManager
 
         AddLore("LORE_BLOOD_OATH",
             "The Blood Oath at the Gates",
-            "Кривава Присяга Біля Воріт",
+            "Кривава присяга біля воріт",
             "Twelve hundred swore it. Eleven hundred and ninety-eight broke it within the year. " +
             "Two kept it. We do not know which two — only that the snow that fell on the gates " +
             "that winter did not melt in any spring since.",
@@ -599,7 +599,7 @@ public static class LocalizationManager
         // === Mission flavor lines (shown as random tip text in loading screens) ===
         Add("TIP_LORE_1",
             "The aether shards sing when carried in odd numbers. Always carry even.",
-            "Аетерові уламки співають, коли їх непарне число. Носи завжди парну кількість.");
+            "Уламки ефіру співають, коли їх непарне число. Носи завжди парну кількість.");
         Add("TIP_LORE_2",
             "A grenade thrown into a Bone Tide will kill thirty things. A grenade thrown at the Pale King will kill one man, and that may be enough.",
             "Граната, кинута в Кістяний Приплив, вб'є тридцять. Граната, кинута в Блідого Короля, вб'є одного — і цього може вистачити.");
@@ -611,7 +611,7 @@ public static class LocalizationManager
             "Ідеальне ухилення — це не крок убік від удару. Це крок у ритм того, хто б'є.");
         Add("TIP_LORE_5",
             "The forge-mother does not take silver. She takes the names of those you have lost.",
-            "Кузнечиха не бере срібла. Вона бере імена тих, кого ти втратив.");
+            "Ковалиха не бере срібла. Вона бере імена тих, кого ти втратив.");
         Add("TIP_LORE_6",
             "The totems are not weapons. They are receipts. Each one is a debt the Pale King owes us, paid in his servants' freedom.",
             "Тотеми — не зброя. Тотеми — розписки. Кожна — борг, який Блідий Король сплачує нам свободою своїх слуг.");
@@ -659,7 +659,7 @@ public static class LocalizationManager
         // === Forge-mother dialogue (silent — pantomime in text) ===
         Add("DLG_FORGE_MOTHER_1",
             "[The forge-mother nods at the anvil. The hammer is waiting for you.]",
-            "[Кузнечиха киває на ковадло. Молот чекає тебе.]");
+            "[Ковалиха киває на ковадло. Молот чекає тебе.]");
         Add("DLG_FORGE_MOTHER_2",
             "[She presses three fingers to her mouth, then to your shoulder. Her sons. Now you.]",
             "[Вона притискає три пальці до вуст, потім до твого плеча. Її сини. Тепер — ти.]");
@@ -1358,7 +1358,7 @@ public static class LocalizationManager
         Add7("The Long Night", "The Long Night", "Довга ніч", "Долгая ночь", "La larga noche", "Die lange Nacht", "La longue nuit", "Długa noc");
         Add7("Six minutes between you and Aethelgard's mercy. Stand.",
              "Six minutes between you and Aethelgard's mercy. Stand.",
-             "Шість хвилин між тобою і милістю Ітельгарду. Вистій.",
+             "Шість хвилин між тобою і милістю Етельгарду. Вистій.",
              "Шесть минут между тобой и милостью Этельгарда. Устой.",
              "Seis minutos entre tú y la clemencia de Aethelgard. Resiste.",
              "Sechs Minuten zwischen dir und Aethelgards Gnade. Halte stand.",
@@ -1775,7 +1775,7 @@ public static class LocalizationManager
              "L'arc du coup se resserre. Plus de frappes par souffle.",
              "Łuk cięcia się zwęża. Więcej ciosów na oddech.");
         Add5("+15 Atk Speed",         "+15 скорости атаки",   "+15 vel. ataque",     "+15 Angriffstempo",   "+15 vit. attaque",     "+15 szybkości ataku");
-        Add5("Aethelgard Plate",      "Броня Ительгарда",     "Placa de Aethelgard", "Aethelgard-Panzer",   "Plaque d'Aethelgard",  "Zbroja Aethelgardu");
+        Add5("Aethelgard Plate",      "Броня Этельгарда",     "Placa de Aethelgard", "Aethelgard-Panzer",   "Plaque d'Aethelgard",  "Zbroja Aethelgardu");
         Add5("Damp the next blow with old steel and older oaths.",
              "Приглушить следующий удар старой сталью и ещё более старыми клятвами.",
              "Amortigua el siguiente golpe con acero viejo y juramentos más antiguos.",
@@ -1900,13 +1900,13 @@ public static class LocalizationManager
         Add5("Reach a 15-enemy Stack.",                           "Достигни стека из 15 врагов.","Alcanza una pila de 15 enemigos.","Erreiche einen 15-Feind-Stapel.","Atteins une pile de 15 ennemis.","Osiągnij stos 15 wrogów.");
         Add5("Conquer the Citadel Outskirts.",                    "Захвати Окраины Цитадели.","Conquista las Afueras de la Ciudadela.","Erobere die Zitadellen-Vororte.","Conquiers les Faubourgs de la Citadelle.","Zdobądź Przedmieścia Cytadeli.");
         Add5("Defeat the Overlord in the Throne Room.",           "Победи Владыку в Тронной зале.","Derrota al Señor Supremo en la Sala del Trono.","Besiege den Oberherrn im Thronsaal.","Vaincs le Suzerain dans la Salle du Trône.","Pokonaj Władcę w Sali Tronowej.");
-        Add5("Conquer every region in Aethelgard.",               "Захвати каждый регион Ительгарда.","Conquista todas las regiones de Aethelgard.","Erobere jede Region Aethelgards.","Conquiers chaque région d'Aethelgard.","Zdobądź każdy region Aethelgardu.");
+        Add5("Conquer every region in Aethelgard.",               "Захвати каждый регион Этельгарда.","Conquista todas las regiones de Aethelgard.","Erobere jede Region Aethelgards.","Conquiers chaque région d'Aethelgard.","Zdobądź każdy region Aethelgardu.");
         Add5("Recover 5 lore scrolls.",                           "Найди 5 свитков легенд.","Recupera 5 pergaminos de saber.","Berge 5 Legendenschriften.","Récupère 5 parchemins de savoir.","Odnajdź 5 zwojów legend.");
         Add5("Hoard 2000 diamonds at once.",                      "Накопи 2000 диамантов одновременно.","Acumula 2000 diamantes a la vez.","Horte 2000 Diamanten auf einmal.","Accumule 2000 diamants d'un coup.","Nazbieraj 2000 diamentów naraz.");
 
         // --- Batch 4: Loading hints ---
         Add5("The Kingdom of Aethelgard does not forgive mistakes. Always compare your Power with the Recommended Power of a region before venturing out.",
-             "Королевство Ительгард не прощает ошибок. Всегда сверяй свою Силу с Рекомендованной Силой региона перед вылазкой.",
+             "Королевство Этельгард не прощает ошибок. Всегда сверяй свою Силу с Рекомендованной Силой региона перед вылазкой.",
              "El reino de Aethelgard no perdona errores. Compara siempre tu Poder con el Poder Recomendado antes de salir.",
              "Das Königreich Aethelgard verzeiht keine Fehler. Vergleiche deine Macht stets mit der empfohlenen Macht einer Region.",
              "Le royaume d'Aethelgard ne pardonne pas les erreurs. Compare toujours ta Puissance à la Puissance Recommandée.",
@@ -1966,7 +1966,7 @@ public static class LocalizationManager
              "On dit qu'à la Carrière des Pierres Tombées, des mineurs morts balancent encore leurs pioches.",
              "Mówią, że w Kamiennym Kamieniołomie martwi górnicy wciąż bezmyślnie machają kilofami.");
         Add5("Your Camp is the only truly safe haven in all of Aethelgard. Return there to catch your breath by the fire.",
-             "Твой Лагерь — единственная по-настоящему безопасная гавань во всём Ительгарде. Вернись передохнуть у костра.",
+             "Твой Лагерь — единственная по-настоящему безопасная гавань во всём Этельгарде. Вернись передохнуть у костра.",
              "Tu campamento es el único refugio verdaderamente seguro. Vuelve a respirar junto al fuego.",
              "Dein Lager ist der einzige wirklich sichere Hafen. Kehre am Feuer zurück, um zu verschnaufen.",
              "Ton Camp est le seul véritable havre. Reviens y reprendre haleine près du feu.",
@@ -1978,13 +1978,13 @@ public static class LocalizationManager
              "Les morts ne sentent pas la douleur, mais on peut les tailler en pièces. Garde ta lame affûtée.",
              "Martwi nie czują bólu, ale wciąż można ich porąbać. Ostrze musi być ostre.");
         Add5("Only the strongest and most ruthless rulers can unite the fractured Kingdom of Aethelgard. Will you be one of them?",
-             "Лишь сильнейшие и самые жестокие правители могут объединить разодранный Ительгард. Станешь ли ты одним из них?",
+             "Лишь сильнейшие и самые жестокие правители могут объединить разодранный Этельгард. Станешь ли ты одним из них?",
              "Solo los soberanos más fuertes y despiadados pueden unir el reino fracturado. ¿Serás uno de ellos?",
              "Nur die stärksten und rücksichtslosesten Herrscher können Aethelgard einen. Wirst du einer von ihnen sein?",
              "Seuls les souverains les plus forts et impitoyables uniront le royaume brisé. En feras-tu partie ?",
              "Tylko najsilniejsi i najbezwzględniejsi władcy zjednoczą rozbite królestwo. Będziesz jednym z nich?");
         Add5("The dense, dark forests and steep cliffs of Aethelgard show no mercy to those who lose their focus.",
-             "Густые тёмные леса и крутые скалы Ительгарда не щадят потерявших бдительность.",
+             "Густые тёмные леса и крутые скалы Этельгарда не щадят потерявших бдительность.",
              "Los densos bosques oscuros y los acantilados de Aethelgard no perdonan al distraído.",
              "Die dichten Wälder und steilen Klippen Aethelgards zeigen den Unachtsamen keine Gnade.",
              "Les forêts denses et les falaises abruptes d'Aethelgard ne pardonnent pas la distraction.",
@@ -2017,11 +2017,11 @@ public static class LocalizationManager
         // --- Batch 5: Weapon names + flavor descriptions ---
         Add5("Rusty Peasant Sword",         "Ржавый Крестьянский Меч","Espada Campesina Oxidada","Verrostetes Bauernschwert","Épée Paysanne Rouillée","Zardzewiały Miecz Chłopski");
         Add5("Iron Oathkeeper",             "Железный Клятвохранитель","Guardián de Juramento de Hierro","Eiserner Eidwahrer","Gardien du Serment de Fer","Żelazny Strażnik Przysięgi");
-        Add5("Aethelgard's Vengeance",      "Месть Ительгарда",     "Venganza de Aethelgard","Aethelgards Rache","Vengeance d'Aethelgard","Zemsta Aethelgardu");
+        Add5("Aethelgard's Vengeance",      "Месть Этельгарда",     "Venganza de Aethelgard","Aethelgards Rache","Vengeance d'Aethelgard","Zemsta Aethelgardu");
         Add5("Barbarian Axe",               "Варварский Топор",     "Hacha Bárbara",         "Barbarenaxt",         "Hache Barbare",        "Topór Barbarzyński");
         Add5("Barbarian's Officer Axe",     "Офицерский Топор Варваров","Hacha de Oficial Bárbaro","Barbaren-Offiziersaxt","Hache d'Officier Barbare","Oficerski Topór Barbarzyński");
         Add5("Pulled from the cellar of a torched farm in the Aethelgard ruins. Edge chipped, balance gone — but it still bites.",
-             "Извлечён из погреба сожжённой фермы в руинах Ительгарда. Лезвие иззубрено, баланс потерян — но он ещё кусает.",
+             "Извлечён из погреба сожжённой фермы в руинах Этельгарда. Лезвие иззубрено, баланс потерян — но он ещё кусает.",
              "Sacado del sótano de una granja quemada en las ruinas de Aethelgard. Filo mellado, equilibrio perdido — pero muerde.",
              "Aus dem Keller eines abgebrannten Hofs in den Aethelgard-Ruinen geborgen. Klinge zerschlagen, Balance dahin — beißt aber noch.",
              "Extraite de la cave d'une ferme incendiée dans les ruines d'Aethelgard. Tranchant ébréché, équilibre perdu — mais elle mord encore.",
@@ -2033,7 +2033,7 @@ public static class LocalizationManager
              "Forgée à la Forge Royale. Ce qu'un chevalier reçoit à sa veillée — acier pur, équilibre parfait.",
              "Wykuty w Królewskiej Kuźni. To, co rycerz otrzymuje w czuwaniu — czysta stal, doskonały balans.");
         Add5("Recovered from the King's tomb beneath Old Aethelgard. The steel is older than the kingdom and remembers every hand that has carried it.",
-             "Извлечён из гробницы короля под Старым Ительгардом. Сталь старше королевства и помнит каждую руку, что её несла.",
+             "Извлечён из гробницы короля под Старым Этельгардом. Сталь старше королевства и помнит каждую руку, что её несла.",
              "Recuperada de la tumba real bajo la Vieja Aethelgard. El acero es más antiguo que el reino y recuerda cada mano.",
              "Aus dem Königsgrab unter Alt-Aethelgard geborgen. Der Stahl ist älter als das Königreich und erinnert sich an jede Hand.",
              "Récupérée de la tombe du Roi sous la Vieille Aethelgard. L'acier est plus vieux que le royaume et se souvient de chaque main.",
@@ -2091,7 +2091,7 @@ public static class LocalizationManager
         Add5("Helm of the Hollow Sun. The seer's prayer is etched along the cheekguard.",
              "Шлем Пустого Солнца. Молитва провидца выгравирована по нащёчнику.","Yelmo del Sol Hueco. La plegaria del vidente grabada en el guardacara.","Helm der Hohlen Sonne. Das Sehergebet ist entlang des Wangenschutzes eingeätzt.","Heaume du Soleil Creux. La prière du voyant gravée le long de la couvre-joue.","Hełm Pustego Słońca. Modlitwa wieszcza wyryta wzdłuż policznika.");
         Add5("Hobnail boots of the Aethelgard infantry. The soles still bite cobblestone.",
-             "Шипованные сапоги пехоты Ительгарда. Подошвы всё ещё грызут брусчатку.","Botas claveteadas de la infantería de Aethelgard. Suelas que aún muerden adoquines.","Nagelstiefel der Aethelgard-Infanterie. Die Sohlen beißen noch Kopfsteinpflaster.","Bottes cloutées de l'infanterie d'Aethelgard. Les semelles mordent encore les pavés.","Ćwiekowane buty piechoty Aethelgardu. Podeszwy wciąż gryzą bruk.");
+             "Шипованные сапоги пехоты Этельгарда. Подошвы всё ещё грызут брусчатку.","Botas claveteadas de la infantería de Aethelgard. Suelas que aún muerden adoquines.","Nagelstiefel der Aethelgard-Infanterie. Die Sohlen beißen noch Kopfsteinpflaster.","Bottes cloutées de l'infanterie d'Aethelgard. Les semelles mordent encore les pavés.","Ćwiekowane buty piechoty Aethelgardu. Podeszwy wciąż gryzą bruk.");
         Add5("Issue chestplate of the city watch. The lining still smells of mothproof.",
              "Уставный нагрудник городской стражи. Подкладка ещё пахнет средством от моли.","Peto reglamentario de la guardia urbana. El forro aún huele a antipolillas.","Standardharnisch der Stadtwache. Die Innenschicht riecht noch nach Mottenschutz.","Plastron réglementaire de la garde municipale. La doublure sent encore l'antimite.","Regulaminowy napierśnik straży miejskiej. Podszewka wciąż pachnie środkiem na mole.");
         Add5("Knight's boots, weighted for the saddle and slow on broken ground.",
@@ -2137,7 +2137,7 @@ public static class LocalizationManager
 
         // Mercenary flavor descriptions
         Add5("Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Levy would break against.",
-             "Помазанные чемпионы Ительгарда, преданные стали и огню. Один Рыцарь в строю удержит пролом, о который Ополчение разобьётся.",
+             "Помазанные чемпионы Этельгарда, преданные стали и огню. Один Рыцарь в строю удержит пролом, о который Ополчение разобьётся.",
              "Campeones ungidos de Aethelgard, jurados al acero y al fuego. Un solo Caballero cierra una brecha donde la Milicia se rompe.",
              "Gesalbte Champions Aethelgards, geschworen auf Stahl und Feuer. Ein einzelner Ritter hält eine Bresche, an der die Miliz zerschellt.",
              "Champions oints d'Aethelgard, jurés à l'acier et au feu. Un seul Chevalier tient la brèche où la Milice se briserait.",
@@ -2157,7 +2157,7 @@ public static class LocalizationManager
 
         // Credits body prose lines
         Add5("Horizont Studio",                                     "Студия Horizont","Estudio Horizont","Horizont Studio","Studio Horizont","Studio Horizont");
-        Add5("Hollow Siege / Aethelgard",                           "Hollow Siege / Ительгард","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard");
+        Add5("Hollow Siege / Aethelgard",                           "Hollow Siege / Этельгард","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard");
         Add5("Game Design, Programming, Level Design",              "Гейм-дизайн, программирование, дизайн уровней","Diseño de juego, programación, diseño de niveles","Spieldesign, Programmierung, Leveldesign","Design de jeu, programmation, level design","Projektowanie gier, programowanie, projektowanie poziomów");
         Add5("3D Models & Environment",                             "3D-модели и окружение","Modelos 3D y entorno","3D-Modelle & Umgebung","Modèles 3D et environnement","Modele 3D i otoczenie");
         Add5("FMOD Studio by Firelight Technologies",               "FMOD Studio от Firelight Technologies","FMOD Studio de Firelight Technologies","FMOD Studio von Firelight Technologies","FMOD Studio par Firelight Technologies","FMOD Studio od Firelight Technologies");
@@ -2175,7 +2175,7 @@ public static class LocalizationManager
         Add5("CREDITS_HEADER_THANKS",       "ОСОБАЯ БЛАГОДАРНОСТЬ","AGRADECIMIENTOS ESPECIALES","BESONDERER DANK","REMERCIEMENTS SPÉCIAUX","SPECJALNE PODZIĘKOWANIA");
         Add5("CREDITS_HEADER_COPYRIGHT",    "АВТОРСКИЕ ПРАВА","DERECHOS DE AUTOR","COPYRIGHT",         "COPYRIGHT",           "PRAWA AUTORSKIE");
         Add5("CREDITS_THANKS_LINE",         "Всем, кто тестировал, играл и верил.","A todos los que probaron, jugaron y creyeron.","An alle, die getestet, gespielt und geglaubt haben.","À tous ceux qui ont testé, joué et cru.","Wszystkim, którzy testowali, grali i wierzyli.");
-        Add5("CREDITS_END_TAGLINE",         "Ительгард помнит.","Aethelgard recuerda.","Aethelgard erinnert sich.","Aethelgard se souvient.","Aethelgard pamięta.");
+        Add5("CREDITS_END_TAGLINE",         "Этельгард помнит.","Aethelgard recuerda.","Aethelgard erinnert sich.","Aethelgard se souvient.","Aethelgard pamięta.");
 
         // Compass cardinals
         Add5("COMPASS_N",  "С", "N", "N", "N", "N");
@@ -2191,7 +2191,7 @@ public static class LocalizationManager
              "Ainsi tomba le dernier qui tenait la couronne des ténèbres.",
              "I tak upadł ostatni, który dzierżył koronę ciemności.");
         Add5("ENDING_LINE_2",
-             "Ительгард дышит впервые за целую жизнь.",
+             "Этельгард дышит впервые за целую жизнь.",
              "Aethelgard respira por primera vez en toda una vida.",
              "Aethelgard atmet zum ersten Mal seit einem ganzen Leben.",
              "Aethelgard respire pour la première fois d'une vie entière.",
@@ -2261,7 +2261,7 @@ public static class LocalizationManager
              "Forêt de Vael — jadis terrain de chasse royal, désormais pâture aux morts.",
              "Las Vael — niegdyś królewskie łowisko, teraz karma dla zmarłych.");
         Add5("REGION_INTRO_HIGHLANDS",
-             "Нагорье Ительгарда — где Кровавая Клятва была принесена и нарушена.",
+             "Нагорье Этельгарда — где Кровавая Клятва была принесена и нарушена.",
              "Tierras Altas de Aethelgard — donde el Juramento de Sangre fue jurado y roto.",
              "Hochland von Aethelgard — wo der Blutschwur geleistet und gebrochen wurde.",
              "Hautes-terres d'Aethelgard — où le Serment de Sang fut prêté et brisé.",
@@ -2299,7 +2299,7 @@ public static class LocalizationManager
              "Un nom de plus effacé du registre du Roi Pâle.",
              "Kolejne imię wykreślone z rejestru Bladego Króla.");
         Add5("REGION_CLEARED_3",
-             "Ительгард помнит, что было отнято. Ительгард помнит, что было возвращено.",
+             "Этельгард помнит, что было отнято. Этельгард помнит, что было возвращено.",
              "Aethelgard recuerda lo que fue tomado. Aethelgard recuerda lo que fue devuelto.",
              "Aethelgard erinnert sich an das Genommene. Aethelgard erinnert sich an das Zurückgegebene.",
              "Aethelgard se souvient de ce qui fut pris. Aethelgard se souvient de ce qui fut rendu.",
@@ -2468,7 +2468,7 @@ public static class LocalizationManager
 
         // --- Batch 10: Stranger + Forge-mother + region cinematic HUD ---
         Add5("DLG_STRANGER_1",
-             "Незнакомец: От тебя пахнет вратами Ительгарда. Я знал их когда-то.",
+             "Незнакомец: От тебя пахнет вратами Этельгарда. Я знал их когда-то.",
              "Desconocido: Hueles a las puertas de Aethelgard. Las conocí alguna vez.",
              "Fremder: Du riechst nach den Toren Aethelgards. Ich kannte sie einst.",
              "Étranger : Tu sens les portes d'Aethelgard. Je les ai connues, jadis.",
@@ -2498,7 +2498,7 @@ public static class LocalizationManager
              "Étranger : Chaque homme que tu tues là-bas fut l'un des nôtres. Tu n'as pas tort de le faire. Sois seulement celui qui se souvient.",
              "Nieznajomy: Każdy, którego tam zabijasz, był jednym z nas. Nie mylisz się. Bądź tym, który pamięta.");
         Add5("DLG_FORGE_MOTHER_1",
-             "[Кузнечиха кивает на наковальню. Молот ждёт тебя.]",
+             "[Ковалиха кивает на наковальню. Молот ждёт тебя.]",
              "[La herrera asiente hacia el yunque. El martillo te espera.]",
              "[Die Schmiedin nickt zum Amboss. Der Hammer wartet auf dich.]",
              "[La forgeronne fait un signe vers l'enclume. Le marteau t'attend.]",
@@ -2566,7 +2566,7 @@ public static class LocalizationManager
              "Elias : Si tu trouves d'anciens parchemins, apporte-les moi.",
              "Elias: Znajdziesz starożytne zwoje — przynieś je.");
         Add5("Elias: Aethelgard will rise again. I feel it.",
-             "Элиас: Ительгард восстанет вновь. Я это чувствую.",
+             "Элиас: Этельгард восстанет вновь. Я это чувствую.",
              "Elias: Aethelgard se alzará de nuevo. Lo siento.",
              "Elias: Aethelgard wird sich erheben. Ich spüre es.",
              "Elias : Aethelgard se relèvera. Je le sens.",
@@ -2578,7 +2578,7 @@ public static class LocalizationManager
              "Elias : Écoute bien. Ce camp ne survivra pas éternellement de restes.",
              "Elias: Słuchaj uważnie. Ten obóz nie przetrwa wiecznie na resztkach.");
         Add5("Elias: The skeletons you fought? They are the cursed remains of Aethelgard's royal guard.",
-             "Элиас: Скелеты, с которыми ты дрался? Это проклятые останки королевской гвардии Ительгарда.",
+             "Элиас: Скелеты, с которыми ты дрался? Это проклятые останки королевской гвардии Этельгарда.",
              "Elias: ¿Los esqueletos que combatiste? Son los restos malditos de la guardia real de Aethelgard.",
              "Elias: Die Skelette, gegen die du gekämpft hast? Verfluchte Reste der königlichen Garde.",
              "Elias : Les squelettes contre lesquels tu combats ? Les restes maudits de la garde royale.",
@@ -2632,7 +2632,7 @@ public static class LocalizationManager
              "Elias : Tu combats comme un démon. Ça me rappelle les vieux jours...",
              "Elias: Walczysz jak demon. Przypomina mi to dawne czasy...");
         Add5("Elias: I wasn't always a ragged scout. I was the Chief Cartographer of Aethelgard.",
-             "Элиас: Я не всегда был обтрёпанным разведчиком. Я был Главным Картографом Ительгарда.",
+             "Элиас: Я не всегда был обтрёпанным разведчиком. Я был Главным Картографом Этельгарда.",
              "Elias: No siempre fui un explorador andrajoso. Fui el Cartógrafo Jefe de Aethelgard.",
              "Elias: Ich war nicht immer ein zerlumpter Späher. Ich war Chefkartograph Aethelgards.",
              "Elias : Je n'ai pas toujours été un éclaireur en haillons. J'étais Cartographe en Chef d'Aethelgard.",
@@ -2674,7 +2674,7 @@ public static class LocalizationManager
              "Elias : L'astrolabe est calibré. Je peux enfin tracer une voie à travers les blizzards magiques.",
              "Elias: Astrolabium jest skalibrowane. Nareszcie mogę wytyczyć drogę przez magiczne zamiecie.");
         Add5("Elias: The Northern Peaks are unlocked. The entire map of Aethelgard is restored.",
-             "Элиас: Северные Вершины открыты. Вся карта Ительгарда восстановлена.",
+             "Элиас: Северные Вершины открыты. Вся карта Этельгарда восстановлена.",
              "Elias: Los Picos del Norte están abiertos. Todo el mapa de Aethelgard está restaurado.",
              "Elias: Die Nordgipfel sind offen. Die gesamte Karte Aethelgards ist wiederhergestellt.",
              "Elias : Les Pics du Nord sont ouverts. La carte entière d'Aethelgard est restaurée.",
@@ -2848,7 +2848,7 @@ public static class LocalizationManager
              "Nieznajomy: Witaj w swoim obozie. To twoje bezpieczne schronienie między niebezpiecznymi wyprawami.");
         Add7("Stranger: Up there is the Camp Stash. All the resources you manage to bring back from the forest are stored here safely.",
              "Stranger: Up there is the Camp Stash. All the resources you manage to bring back from the forest are stored here safely.",
-             "Незнайомець: Там нагорі — Запаси Табору. Усі ресурси, які ти приносиш із лісу, зберігаються там у безпеці.",
+             "Незнайомець: Там нагорі — запаси табору. Усі ресурси, які ти приносиш із лісу, зберігаються там у безпеці.",
              "Незнакомец: Там наверху — Запасы Лагеря. Все ресурсы, что ты приносишь из леса, хранятся там в безопасности.",
              "Extraño: Allí arriba está el Almacén del Campamento. Todos los recursos que traes del bosque se guardan allí.",
              "Fremder: Dort oben ist der Lagervorrat. Alle Ressourcen, die du aus dem Wald bringst, sind dort sicher.",
@@ -2864,7 +2864,7 @@ public static class LocalizationManager
              "Nieznajomy: Możesz użyć tych zasobów, by odbudować to miejsce. Podejdź do działki i przytrzymaj [E]. Odbudowane budynki będą z czasem generować zasoby!");
         Add7("Stranger: Check the Notice Board over there. You can take on special missions to earn resources and valuable Diamonds.",
              "Stranger: Check the Notice Board over there. You can take on special missions to earn resources and valuable Diamonds.",
-             "Незнайомець: Глянь на Дошку Оголошень. Там можна брати особливі місії, щоб заробляти ресурси й цінні Алмази.",
+             "Незнайомець: Глянь на дошку оголошень. Там можна брати особливі місії, щоб заробляти ресурси й цінні Діаманти.",
              "Незнакомец: Проверь Доску Объявлений. Там можно брать особые миссии, чтобы получать ресурсы и ценные Алмазы.",
              "Extraño: Revisa el Tablón de Anuncios. Puedes aceptar misiones especiales para ganar recursos y valiosos Diamantes.",
              "Fremder: Schau am Anschlagbrett vorbei. Dort kannst du besondere Missionen annehmen für Ressourcen und wertvolle Diamanten.",
@@ -2872,7 +2872,7 @@ public static class LocalizationManager
              "Nieznajomy: Sprawdź Tablicę Ogłoszeń. Możesz podjąć specjalne misje po zasoby i cenne Diamenty.");
         Add7("Stranger: At the edge of the camp is the mysterious Shop. Use your Diamonds there to buy permanent meta-upgrades for your future runs.",
              "Stranger: At the edge of the camp is the mysterious Shop. Use your Diamonds there to buy permanent meta-upgrades for your future runs.",
-             "Незнайомець: На краю табору стоїть таємничий Магазин. Витрачай там Алмази на постійні мета-покращення для майбутніх забігів.",
+             "Незнайомець: На краю табору стоїть таємничий Магазин. Витрачай там Діаманти на постійні мета-покращення для майбутніх забігів.",
              "Незнакомец: На краю лагеря — загадочный Магазин. Трать там Алмазы на постоянные мета-улучшения для будущих забегов.",
              "Extraño: Al borde del campamento hay una Tienda misteriosa. Usa tus Diamantes para comprar mejoras meta permanentes para tus futuras partidas.",
              "Fremder: Am Rand des Lagers steht der geheimnisvolle Laden. Gib deine Diamanten dort für permanente Meta-Upgrades aus.",
@@ -2971,9 +2971,9 @@ public static class LocalizationManager
 
         // Objective / mission text (Level1_QuestManager.UpdateObjectiveUI)
         Add7("Main Quest",         "Main Quest",         "Головне завдання",  "Главный квест",   "Misión principal",   "Hauptquest",         "Quête principale",     "Główna misja");
-        Add7("Investigate the Outpost","Investigate the Outpost","Дослідити застава","Разведать заставу","Investigar el puesto","Vorposten untersuchen","Enquêter au poste","Zbadaj placówkę");
+        Add7("Investigate the Outpost","Investigate the Outpost","Обстеж заставу","Разведай заставу","Investigar el puesto","Vorposten untersuchen","Enquêter au poste","Zbadaj placówkę");
         Add7("Stranger's Request", "Stranger's Request", "Прохання незнайомця","Просьба незнакомца","Petición del extraño","Bitte des Fremden","Requête de l'étranger", "Prośba Nieznajomego");
-        Add7("Gather Wood",        "Gather Wood",        "Збирай дерево",     "Собери дерево",   "Recoge madera",      "Sammle Holz",        "Récolter du bois",     "Zbierz drewno");
+        Add7("Gather Wood",        "Gather Wood",        "Назбирай дерева", "Собери дерево",   "Recoge madera",      "Sammle Holz",        "Récolter du bois",     "Zbierz drewno");
         Add7("Ambush!",            "Ambush!",            "Засідка!",          "Засада!",         "¡Emboscada!",        "Hinterhalt!",        "Embuscade !",          "Zasadzka!");
         Add7("Survive the Skeletons","Survive the Skeletons","Виживи проти скелетів","Выживи против скелетов","Sobrevive a los esqueletos","Überlebe die Skelette","Survivre aux squelettes","Przetrwaj szkielety");
         Add7("Escape!",            "Escape!",            "Тікай!",            "Беги!",           "¡Escapa!",           "Flieh!",             "Fuir !",               "Uciekaj!");
@@ -3126,11 +3126,11 @@ public static class LocalizationManager
         AddSelf("Elias: If you find any ancient scrolls out there, bring them to me.",
             "Еліас: Якщо знайдеш стародавні сувої — принеси їх мені.");
         AddSelf("Elias: Aethelgard will rise again. I feel it.",
-            "Еліас: Ітельгард повстане знову. Я це відчуваю.");
+            "Еліас: Етельгард повстане знову. Я це відчуваю.");
         AddSelf("Elias: Listen closely. This camp won't survive on scraps forever.",
             "Еліас: Слухай уважно. Цей табір не виживе на недоїдках вічно.");
         AddSelf("Elias: The skeletons you fought? They are the cursed remains of Aethelgard's royal guard.",
-            "Еліас: Скелети, з якими ти бився? Це прокляті рештки королівської варти Ітельгарду.");
+            "Еліас: Скелети, з якими ти бився? Це прокляті рештки королівської варти Етельгарду.");
         AddSelf("Elias: Centuries ago, the Ashen Blight ruined this kingdom. We must reclaim the 24 lost provinces.",
             "Еліас: Століття тому Попеляста Порча знищила це королівство. Треба повернути 24 втрачені провінції.");
         AddSelf("Elias: Build me a drafting table here later, and I will chart a safe path to the forests.",
@@ -3148,7 +3148,7 @@ public static class LocalizationManager
         AddSelf("Elias: You fight like a demon. It reminds me of the old days...",
             "Еліас: Ти б'єшся як демон. Це нагадує мені старі часи...");
         AddSelf("Elias: I wasn't always a ragged scout. I was the Chief Cartographer of Aethelgard.",
-            "Еліас: Я не завжди був обірваним розвідником. Я був Головним Картографом Ітельгарду.");
+            "Еліас: Я не завжди був обірваним розвідником. Я був Головним Картографом Етельгарду.");
         AddSelf("Elias: I drew the very borders you now bleed to reclaim. It breaks my heart to see them ruined.",
             "Еліас: Я малював ті самі кордони, за які ти зараз проливаєш кров. Серце розривається дивитися на них зруйнованими.");
         AddSelf("Elias: The alchemical lab is complete. The reagents cleared the faded ink on the parchments.",
@@ -3162,7 +3162,7 @@ public static class LocalizationManager
         AddSelf("Elias: The astrolabe is calibrated. I can finally chart a path through the magical blizzards.",
             "Еліас: Астролябію відкалібровано. Нарешті можу прокласти шлях крізь магічні хуртовини.");
         AddSelf("Elias: The Northern Peaks are unlocked. The entire map of Aethelgard is restored.",
-            "Еліас: Північні Вершини відкриті. Уся мапа Ітельгарду відновлена.");
+            "Еліас: Північні Вершини відкриті. Уся мапа Етельгарду відновлена.");
         AddSelf("Elias: You are so close. Only the harshest lands remain.",
             "Еліас: Ти так близько. Залишились лише найсуворіші землі.");
         AddSelf("Elias: The King's personal guard fell in those mountains. They are ruthless. Prepare yourself.",
@@ -3230,7 +3230,7 @@ public static class LocalizationManager
         AddSelf("Iron Oathkeeper",           "Залізний Клятводержець");
         AddSelf("Barbarian Axe",             "Варварська Сокира");
         AddSelf("Barbarian's Officer Axe",   "Офіцерська Сокира Варвара");
-        AddSelf("Aethelgard's Vengeance",    "Помста Ітельгарду");
+        AddSelf("Aethelgard's Vengeance",    "Помста Етельгарду");
 
         // === Tutorial hint titles + bodies (HintData assets) ===
         AddSelf("ARMOR SLOTS", "СЛОТИ БРОНІ");
@@ -3394,7 +3394,7 @@ public static class LocalizationManager
         AddSelf("Reach a 15-enemy Stack.",                           "Досягни стеку з 15 ворогів.");
         AddSelf("Conquer the Citadel Outskirts.",                    "Захопи Околиці Цитаделі.");
         AddSelf("Defeat the Overlord in the Throne Room.",           "Перемогти Володаря в Тронній залі.");
-        AddSelf("Conquer every region in Aethelgard.",               "Захопи кожен регіон Ітельгарду.");
+        AddSelf("Conquer every region in Aethelgard.",               "Захопи кожен регіон Етельгарду.");
         AddSelf("Recover 5 lore scrolls.",                           "Відшукай 5 свитків легенд.");
         AddSelf("Hoard 2000 diamonds at once.",                      "Накопич 2000 діамантів одночасно.");
 
@@ -3417,7 +3417,7 @@ public static class LocalizationManager
         AddSelf("Whetstone Rhythm",                                                   "Ритм Точила");
         AddSelf("The swing-arc tightens. More strikes per breath.",                   "Дуга удару стискається. Більше ударів на подих.");
         AddSelf("+15 Atk Speed",                                                      "+15 швидкості атаки");
-        AddSelf("Aethelgard Plate",                                                   "Броня Ітельгарду");
+        AddSelf("Aethelgard Plate",                                                   "Броня Етельгарду");
         AddSelf("Damp the next blow with old steel and older oaths.",                 "Приглуш наступний удар старою сталлю і ще старішими клятвами.");
         AddSelf("+5% Damage Resist",                                                  "+5% опору шкоди");
         AddSelf("Field Medicine",                                                     "Польова Медицина");
@@ -3450,7 +3450,7 @@ public static class LocalizationManager
 
         // === Credits body (prose lines shown between headers) ===
         AddSelf("Horizont Studio",                                          "Студія Horizont");
-        AddSelf("Hollow Siege / Aethelgard",                                "Hollow Siege / Ітельгард");
+        AddSelf("Hollow Siege / Aethelgard",                                "Hollow Siege / Етельгард");
         AddSelf("Game Design, Programming, Level Design",                   "Гейм-дизайн, програмування, дизайн рівнів");
         AddSelf("3D Models & Environment",                                  "3D-моделі та оточення");
         AddSelf("FMOD Studio by Firelight Technologies",                    "FMOD Studio від Firelight Technologies");
@@ -3501,7 +3501,7 @@ public static class LocalizationManager
 
         // === Loading-screen hints (LoadingCanvas.gameHints array) ===
         AddSelf("The Kingdom of Aethelgard does not forgive mistakes. Always compare your Power with the Recommended Power of a region before venturing out.",
-                "Королівство Ітельгард не пробачає помилок. Завжди порівнюй свою Силу з Рекомендованою Силою регіону, перш ніж вирушати.");
+                "Королівство Етельгард не пробачає помилок. Завжди порівнюй свою Силу з Рекомендованою Силою регіону, перш ніж вирушати.");
         AddSelf("Retreat is not cowardice. If a battle turns against you, it is better to Give Up and return to Camp than to perish in the woods.",
                 "Відступ — не боягузтво. Якщо бій обертається проти тебе, краще Здатись і повернутись до табору, ніж загинути в лісі.");
         AddSelf("Grenades are your best friend against a crowd. Use them to thin the enemy ranks before drawing your sword.",
@@ -3521,13 +3521,13 @@ public static class LocalizationManager
         AddSelf("They say in Stonefall Quarry, undead miners still mindlessly swing their pickaxes. Stay on your guard.",
                 "Кажуть, у Кам'яному Каменярі мертві шахтарі досі бездумно махають кирками. Тримай варту.");
         AddSelf("Your Camp is the only truly safe haven in all of Aethelgard. Return there to catch your breath by the fire.",
-                "Твій Табір — єдина по-справжньому безпечна гавань у всьому Ітельгарді. Повертайся туди перевести дух біля вогнища.");
+                "Твій Табір — єдина по-справжньому безпечна гавань у всьому Етельгарді. Повертайся туди перевести дух біля вогнища.");
         AddSelf("The dead do not feel pain, but they can still be hacked to pieces. Keep your blade sharp.",
                 "Мертві не відчувають болю, але їх усе одно можна порубати на шматки. Тримай клинок гострим.");
         AddSelf("Only the strongest and most ruthless rulers can unite the fractured Kingdom of Aethelgard. Will you be one of them?",
-                "Лише найсильніші й найжорстокіші правителі можуть об'єднати роздертий Ітельгард. Чи станеш ти одним із них?");
+                "Лише найсильніші й найжорстокіші правителі можуть об'єднати роздертий Етельгард. Чи станеш ти одним із них?");
         AddSelf("The dense, dark forests and steep cliffs of Aethelgard show no mercy to those who lose their focus.",
-                "Густі темні ліси й круті скелі Ітельгарду не милують тих, хто втрачає пильність.");
+                "Густі темні ліси й круті скелі Етельгарду не милують тих, хто втрачає пильність.");
         AddSelf("New armor doesn't just increase your defense—it changes your appearance. Find gear worthy of a true lord.",
                 "Нова броня не тільки збільшує захист — вона змінює твій вигляд. Знайди спорядження, гідне справжнього лорда.");
         AddSelf("Always check the Notice Board in your Camp. It frequently offers new, lucrative contracts and missions.",
@@ -3543,7 +3543,7 @@ public static class LocalizationManager
 
         // Mercenary flavor descriptions (MercenaryData authored English).
         AddSelf("Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Levy would break against.",
-                "Освячені чемпіони Ітельгарду, віддані сталі й вогню. Один Лицар у строю здатен утримати пролом, від якого Ополчення розсипалось би.");
+                "Освячені чемпіони Етельгарду, віддані сталі й вогню. Один Лицар у строю здатен утримати пролом, від якого Ополчення розсипалось би.");
         AddSelf("Farmers with pitchforks and stubborn courage. Cheap to hire, quick to fall, but a full line of them turns a hopeless assault into an even one.",
                 "Селяни з вилами і впертою відвагою. Дешеві, гинуть швидко — але повний ряд перетворює безнадійний штурм на рівний бій.");
         AddSelf("Silent scouts from the borderland forests. Devastating against unarmored conscripts and the pace-setters of any ambush.",
@@ -3564,15 +3564,15 @@ public static class LocalizationManager
         // === Shop weapon names + descriptions ===
         AddSelf("Rusty Peasant Sword",         "Іржавий Селянський Меч");
         AddSelf("Iron Oathkeeper",             "Залізний Клятводержець");
-        AddSelf("Aethelgard's Vengeance",      "Помста Ітельгарду");
+        AddSelf("Aethelgard's Vengeance",      "Помста Етельгарду");
         AddSelf("Barbarian Axe",               "Варварська Сокира");
         AddSelf("Barbarian's Officer Axe",     "Офіцерська Варварська Сокира");
         AddSelf("Pulled from the cellar of a torched farm in the Aethelgard ruins. Edge chipped, balance gone — but it still bites.",
-                "Витягнутий з льоху випаленої ферми в руїнах Ітельгарду. Лезо щерблене, баланс втрачено — але він досі кусає.");
+                "Витягнутий з льоху випаленої ферми в руїнах Етельгарду. Лезо щерблене, баланс втрачено — але він досі кусає.");
         AddSelf("Forged in the Royal Smithy. What a knight receives at his vigil — plain steel, perfect balance.",
                 "Викуваний у Королівській Кузні. Те, що лицар отримує на своїй чуванні — проста сталь, ідеальний баланс.");
         AddSelf("Recovered from the King's tomb beneath Old Aethelgard. The steel is older than the kingdom and remembers every hand that has carried it.",
-                "Здобутий з гробниці короля під Старим Ітельгардом. Сталь старша за королівство й пам'ятає кожну руку, що її несла.");
+                "Здобутий з гробниці короля під Старим Етельгардом. Сталь старша за королівство й пам'ятає кожну руку, що її несла.");
         AddSelf("Crude work of the Northclans. Hard wood, harder iron, and a leather thong stained with last winter's blood.",
                 "Груба робота Північних Кланів. Тверде дерево, ще твердіше залізо і шкіряний ремінь, змочений минулозимовою кров'ю.");
         AddSelf("Officer's piece of the Wild Clans. Rune-etched for the Bear Spirit; its weight rewards a single, killing blow.",
@@ -3618,7 +3618,7 @@ public static class LocalizationManager
         AddSelf("Helm of the Hollow Sun. The seer's prayer is etched along the cheekguard.",
                 "Шолом Порожнього Сонця. Молитва провидця вигравірувана вздовж нащічника.");
         AddSelf("Hobnail boots of the Aethelgard infantry. The soles still bite cobblestone.",
-                "Шиповані чоботи піхоти Ітельгарду. Підошви досі гризуть бруківку.");
+                "Шиповані чоботи піхоти Етельгарду. Підошви досі гризуть бруківку.");
         AddSelf("Issue chestplate of the city watch. The lining still smells of mothproof.",
                 "Стандартний нагрудник міської варти. Підкладка досі пахне засобом від молі.");
         AddSelf("Knight's boots, weighted for the saddle and slow on broken ground.",
@@ -3673,7 +3673,7 @@ public static class LocalizationManager
         Add("CREDITS_THANKS_LINE",         "To everyone who tested, played, and believed.",
             "Всім, хто тестував, грав і вірив.");
         Add("CREDITS_END_TAGLINE",         "Aethelgard remembers.",
-            "Ітельгард пам'ятає.");
+            "Етельгард пам'ятає.");
 
         // === Ending narration ===
         Add("ENDING_LINE_1",
@@ -3687,7 +3687,7 @@ public static class LocalizationManager
             "У селищах, які ти відбудував, перше світло пробивається крізь дим.");
         Add("ENDING_LINE_FINAL",
             "You have restored Aethelgard.",
-            "Ти відродив Ітельгард.");
+            "Ти відродив Етельгард.");
 
         // === Mission element status tag ===
         Add("MISSION_DONE_TAG", "DONE", "ЗРОБЛЕНО");
