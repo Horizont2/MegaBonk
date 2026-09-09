@@ -21696,7 +21696,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 200deb60d5b246a4082128cb84a9d263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SettingsAAARowHover
-  description: Off / Hard / Soft Low / Soft High. Biggest single-toggle performance
+  description: Off / Sharp / Soft Low / Soft High. Biggest single-toggle performance
     lever.
   runtime: {fileID: 518308438373269592}
 --- !u!1 &3658131897022299612
@@ -37127,7 +37127,7 @@ MonoBehaviour:
   - row: {fileID: 7162903832989677247}
     description: Texture mip level. Low saves VRAM, Ultra gives sharpest surfaces.
   - row: {fileID: 3647984719686606709}
-    description: Off / Hard / Soft Low / Soft High. Biggest single-toggle performance
+    description: Off / Sharp / Soft Low / Soft High. Biggest single-toggle performance
       lever.
   - row: {fileID: 3099444552133030802}
     description: How far from the camera shadows are rendered, in metres.
@@ -43245,7 +43245,7 @@ MonoBehaviour:
     - m_Text: Off
       m_Image: {fileID: 0}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
-    - m_Text: Hard
+    - m_Text: Sharp
       m_Image: {fileID: 0}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
     - m_Text: Soft Low

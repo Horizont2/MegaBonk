@@ -388,7 +388,7 @@ public static class LocalizationManager
         Add7("Master",        "Master",        "Загальна",       "Общая",          "Maestro",        "Gesamt",         "Général",        "Główny");
         Add7("Music",         "Music",         "Музика",         "Музыка",         "Música",         "Musik",          "Musique",        "Muzyka");
         Add7("Sound FX",      "Sound FX",      "Звукові ефекти", "Звук. эффекты",  "Efectos",        "Soundeffekte",   "Effets sonores", "Efekty");
-        Add7("Ambient",       "Ambient",       "Оточення",       "Окружение",      "Ambiente",       "Umgebung",       "Ambiance",       "Otoczenie");
+        Add7("Ambient",       "Ambient",       "Атмосфера",      "Окружение",      "Ambiente",       "Umgebung",       "Ambiance",       "Otoczenie");
         Add7("MIX",           "MIX",           "МІКС",           "МИКС",           "MEZCLA",         "MIX",            "MIX",            "MIKS");
         // ── Settings: display ──
         Add7("DISPLAY",       "DISPLAY",       "ЕКРАН",          "ЭКРАН",          "PANTALLA",       "ANZEIGE",        "AFFICHAGE",      "EKRAN");
@@ -422,7 +422,7 @@ public static class LocalizationManager
         Add7("Mute When Unfocused","Mute When Unfocused","Без звуку у фоні","Без звука в фоне","Silenciar en 2.º plano","Stumm im Hintergrund","Muet en arrière-plan","Wycisz w tle");
         Add7("GAMEPAD",       "GAMEPAD",       "ГЕЙМПАД",        "ГЕЙМПАД",        "MANDO",          "GAMEPAD",        "MANETTE",        "PAD");
         Add7("MOUSE & KEYBOARD","MOUSE & KEYBOARD","МИША ТА КЛАВІАТУРА","МЫШЬ И КЛАВИАТУРА","RATÓN Y TECLADO","MAUS & TASTATUR","SOURIS & CLAVIER","MYSZ I KLAWIATURA");
-        Add7("BINDINGS",      "BINDINGS",      "ПРИЗНАЧЕННЯ",    "НАЗНАЧЕНИЯ",     "CONTROLES",      "TASTENBELEGUNG", "TOUCHES",        "PRZYPISANIA");
+        Add7("BINDINGS",      "BINDINGS",      "ПРИВ'ЯЗКИ",     "НАЗНАЧЕНИЯ",     "CONTROLES",      "TASTENBELEGUNG", "TOUCHES",        "PRZYPISANIA");
         Add7("SAVE",          "SAVE",          "ЗБЕРЕГТИ",       "СОХРАНИТЬ",      "GUARDAR",        "SPEICHERN",      "ENREGISTRER",    "ZAPISZ");
         // ── Barracks ──
         Add7("HIRE",          "HIRE",          "НАЙНЯТИ",        "НАНЯТЬ",         "CONTRATAR",      "ANHEUERN",       "RECRUTER",       "NAJMIJ");
@@ -828,7 +828,7 @@ public static class LocalizationManager
         Add7("FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA");
         Add7("SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA");
         Add7("TAA",     "TAA",     "TAA",     "TAA",     "TAA",     "TAA",     "TAA",     "TAA");
-        Add7("Hard",    "Hard",    "Жорсткі", "Жесткие", "Duras",   "Hart",    "Dures",   "Twarde");
+        Add7("Sharp",   "Sharp",   "Різкі",   "Резкие",  "Nítidas", "Scharf",  "Nettes",  "Ostre");
         Add7("Soft Low","Soft Low","М'які слабкі","Мягкие низкие","Suaves bajo","Weich niedrig","Doux faible","Miękkie niskie");
         Add7("Soft High","Soft High","М'які високі","Мягкие высокие","Suaves alto","Weich hoch","Doux élevé","Miękkie wysokie");
         Add7("Unlimited","Unlimited","Без ліміту","Без ограничения","Sin límite","Unbegrenzt","Illimité","Bez limitu");
@@ -1202,7 +1202,7 @@ public static class LocalizationManager
     // in English in every language.
     private static void SeedCampMissionText()
     {
-        Add7("Skeleton Cull", "Skeleton Cull", "Відбір скелетів", "Отбраковка скелетов", "Purga de esqueletos", "Skelett-Ausmerzung", "Élagage des squelettes", "Odstrzał szkieletów");
+        Add7("Skeleton Cull", "Skeleton Cull", "Проріджування скелетів", "Отбраковка скелетов", "Purga de esqueletos", "Skelett-Ausmerzung", "Élagage des squelettes", "Odstrzał szkieletów");
         Add7("Thin the patrols circling the outer wood-line. Their bones rot what the loam should feed.",
              "Thin the patrols circling the outer wood-line. Their bones rot what the loam should feed.",
              "Проріди патрулі, що кружляють уздовж узлісся. Їхні кістки гноять те, що мала б живити земля.",
@@ -1211,7 +1211,7 @@ public static class LocalizationManager
              "Lichte die Patrouillen am Waldrand. Ihre Knochen verderben, was der Boden nähren sollte.",
              "Éclaircis les patrouilles qui rôdent à la lisière. Leurs os pourrissent ce que la terre devrait nourrir.",
              "Przerzedź patrole krążące wzdłuż skraju lasu. Ich kości gniją to, co ziemia powinna żywić.");
-        Add7("Scrap Run", "Scrap Run", "Виліт по брухт", "Ходка за ломом", "Recogida de chatarra", "Schrott-Lauf", "Course à la ferraille", "Wyprawa po złom");
+        Add7("Scrap Run", "Scrap Run", "Похід за брухтом", "Ходка за ломом", "Recogida de chatarra", "Schrott-Lauf", "Course à la ferraille", "Wyprawa po złom");
         Add7("Drag back enough aether shards to feed the camp's furnace through dawn.",
              "Drag back enough aether shards to feed the camp's furnace through dawn.",
              "Притягни досить осколків ефіру, щоб горно табору дотягнуло до світанку.",
@@ -1301,7 +1301,7 @@ public static class LocalizationManager
              "Bewache den hohen Pass. Fällst du, fallen die östlichen Dörfer mit dir.",
              "Surveille le haut col. Si tu tombes, les villages de l'est tombent avec toi.",
              "Pilnuj wysokiej przełęczy. Jeśli padniesz, wschodnie wioski padną z tobą.");
-        Add7("Crystal Rush", "Crystal Rush", "Кристальний рейд", "Кристальный рывок", "Fiebre del cristal", "Kristallrausch", "Ruée du cristal", "Gorączka kryształu");
+        Add7("Crystal Rush", "Crystal Rush", "Кришталева гарячка", "Кристальный рывок", "Fiebre del cristal", "Kristallrausch", "Ruée du cristal", "Gorączka kryształu");
         Add7("The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
              "The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
              "Ефірні джерела кровоточать. Збери те, що вони точать, поки скверна їх не запечатала.",
@@ -1346,7 +1346,7 @@ public static class LocalizationManager
              "Welle um Welle, bis der Morgen sie bricht. Keiner passiert die Linie.",
              "Vague après vague, jusqu'à ce que l'aube les brise. Nul ne franchit la ligne.",
              "Fala za falą, aż świt je złamie. Nikt nie przejdzie linii.");
-        Add7("Aether Motherlode", "Aether Motherlode", "Ефірна жила-матка", "Эфирная материнская жила", "Filón madre de éter", "Äther-Mutterader", "Filon-mère d'éther", "Eterowa macierz złoża");
+        Add7("Aether Motherlode", "Aether Motherlode", "Багата ефірна жила", "Эфирная материнская жила", "Filón madre de éter", "Äther-Mutterader", "Filon-mère d'éther", "Eterowa macierz złoża");
         Add7("A motherlode under the chapel. Strip it bare before the wardens wake.",
              "A motherlode under the chapel. Strip it bare before the wardens wake.",
              "Багатюща жила під каплицею. Обдери її до дна, поки не прокинулися вартові.",
@@ -1415,8 +1415,8 @@ public static class LocalizationManager
              "Schaltet den Kartentisch frei (8 Regionen)",
              "Débloque la Table des cartes (8 régions)",
              "Odblokowuje Stół map (8 regionów)");
-        Add7("Unlocks next  8 regions (16 Regions)",
-             "Unlocks next  8 regions (16 Regions)",
+        Add7("Unlocks next 8 regions (16 Regions)",
+             "Unlocks next 8 regions (16 Regions)",
              "Відкриває наступні 8 регіонів (16 регіонів)",
              "Открывает следующие 8 регионов (16 регионов)",
              "Desbloquea 8 regiones más (16 regiones)",
@@ -3235,7 +3235,7 @@ public static class LocalizationManager
         // === Tutorial hint titles + bodies (HintData assets) ===
         AddSelf("ARMOR SLOTS", "СЛОТИ БРОНІ");
         AddSelf("Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
-            "Шість слотів: Голова, Груди, Руки, Пояс, Ноги, Стопи. Змішуй тири вільно — Power Score сумує кожен вдягнений предмет.");
+            "Шість слотів: голова, груди, руки, пояс, ноги, стопи. Ранги можна змішувати — Сила рахує кожен вдягнений предмет.");
         AddSelf("MELEE", "БЛИЖНІЙ БІЙ");
         AddSelf("Hold <b>LMB</b> to chain swings.", "Тримай <b>ЛКМ</b> для серії ударів.");
         AddSelf("BUILD", "БУДІВНИЦТВО");
@@ -3709,7 +3709,7 @@ public static class LocalizationManager
                 "Броньована еліта — небагато числом, але грізні у бою.");
 
         // === Combat prompts ===
-        AddSelf("[F] EXECUTE", "[F] ДОБИВАННЯ");
+        AddSelf("[F] EXECUTE", "[F] ДОБИТИ");
 
         // === Camp onboarding guide (CampGuideDirector.promptKey) ===
         Add("GUIDE_TALK_ELIAS",         "Talk to Elias",                        "Поговори з Еліасом");
@@ -3796,7 +3796,12 @@ public static class LocalizationManager
         Add("Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
             "Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
             "Діаманти — стала валюта. <b>Винеси їх живим</b> — витрачаються у Крамниці на зброю, броню і мета.");
-        Add("ENCOUNTER CLEARED", "ENCOUNTER CLEARED", "ЗІТКНЕННЯ ЗАЧИЩЕНО");
+        Add("ENCOUNTER CLEARED", "ENCOUNTER CLEARED", "ГРУПУ ЗАЧИЩЕНО");
+        // RegionTotem.cs sets this as the level objective when the pre-gate
+        // ambush triggers. It had no entry at all, so every locale rendered the
+        // raw English key.
+        Add7("CLEAR THE AMBUSH!", "CLEAR THE AMBUSH!", "ВІДБИЙ ЗАСІДКУ!", "ОТБЕЙ ЗАСАДУ!",
+             "¡REPELE LA EMBOSCADA!", "SCHLAG DEN HINTERHALT ZURÜCK!", "REPOUSSE L'EMBUSCADE !", "ODEPRZYJ ZASADZKĘ!");
         Add("Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
             "Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
             "Повне знищення патруля чи табору дає бонусний скарб. Полюй на зіткнення між тотемами щоб накопичувати XP і діаманти.");
@@ -3814,7 +3819,7 @@ public static class LocalizationManager
         Add("Produces <b>LOGS</b> per minute, stored in the Vault. Wood is the cheapest resource — but everything costs some.",
             "Produces <b>LOGS</b> per minute, stored in the Vault. Wood is the cheapest resource — but everything costs some.",
             "Виробляє <b>КОЛОДИ</b> щохвилини, зберігаються у Сховищі. Дерево — найдешевший ресурс, але для всього трохи треба.");
-        Add("WORLD MAP", "WORLD MAP", "СВІТОВА МАПА");
+        Add("WORLD MAP", "WORLD MAP", "МАПА СВІТУ");
         Add("MOVEMENT", "MOVEMENT", "РУХ");
         Add("PASSIVE INCOME", "PASSIVE INCOME", "ПАСИВНИЙ ДОХІД");
         Add("Buildings produce resources while you're playing missions or away from the camp. Check the panel for current rate.",
@@ -4269,7 +4274,7 @@ public static class LocalizationManager
         //    TutorialPanelUI runs through Tr. ──
         Add7("Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
              "Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
-             "Шість слотів: Голова, Груди, Руки, Пояс, Ноги, Ступні. Змішуй тири вільно — Power Score підсумовує кожен вдягнений предмет.",
+             "Шість слотів: голова, груди, руки, пояс, ноги, ступні. Ранги можна змішувати — Сила рахує кожен вдягнений предмет.",
              "Шесть слотов: Голова, Грудь, Руки, Пояс, Ноги, Ступни. Смешивай тиры свободно — Power Score суммирует каждый надетый предмет.",
              "Seis ranuras: Cabeza, Pecho, Brazos, Cinturón, Piernas, Pies. Mezcla niveles libremente: el Power Score suma cada pieza equipada.",
              "Sechs Slots: Kopf, Brust, Arme, Gürtel, Beine, Füße. Mische Stufen frei — Power Score summiert jedes angelegte Teil.",
