@@ -72,8 +72,8 @@ public class TrailerLegionMarch : MonoBehaviour
     // right before the count matters, and a heavy scene makes every one of those
     // slower to judge. Get the shot working at 32 units, then raise these — the
     // recycling belt means the column reads as endless at any count.
-    [Range(4, 60)] public int ranksAlive = 8;
-    [Range(2, 24)] public int unitsPerRank = 4;
+    [Range(4, 60)] public int ranksAlive = 10;
+    [Range(2, 24)] public int unitsPerRank = 6;
     public float rankSpacing = 3.2f;
     public float fileSpacing = 2.1f;
     [Tooltip("A boss walks in place of the centre of every Nth rank, and the rank opens up around it.")]
@@ -87,6 +87,8 @@ public class TrailerLegionMarch : MonoBehaviour
     public float rankJitter = 0.35f;
     [Tooltip("Height of the walking bob. Too much and they bounce like toys.")]
     public float gaitBob = 0.09f;
+    [Tooltip("Degrees added to every unit's facing. Set this if the skeletons march sideways: not every imported model has its forward on +Z, and the fix is a constant, not a different LookRotation.")]
+    public float unitYawOffset = 0f;
 
     [Header("Performance")]
     [Tooltip("Beyond this distance a unit's Animator is switched off. At range nobody can tell, and Animators are the entire cost of a crowd.")]
@@ -110,13 +112,14 @@ public class TrailerLegionMarch : MonoBehaviour
     [Tooltip("Clearance from the EDGE of the column, not from its axis — the rig works this out from the formation's width, so widening the ranks can never put the lens inside them.")]
     public float flankClearance = 3.5f;
     public float lowHeight = 0.55f;
-    public float highHeight = 26f;
+    [Tooltip("Crane height at the top, as a MULTIPLE of the column's length. Absolute metres cannot work: change the unit count and the same height becomes either a steep look straight down or barely a rise at all.")]
+    public float highHeightPerLength = 0.45f;
     [Tooltip("Wide lens for the low shot: it makes the ranks tower.")]
     public float lowFov = 58f;
     [Tooltip("Long lens for the reveal. This compression is what makes the column look endless.")]
     public float highFov = 26f;
-    [Tooltip("How far the camera drifts AHEAD of the oncoming column as it rises, so more of the line fits in frame.")]
-    public float craneBack = 34f;
+    [Tooltip("How far the camera drifts AHEAD of the oncoming column as it rises, as a multiple of the column's length.")]
+    public float craneAheadPerLength = 0.8f;
 
     [Header("Foreground")]
     [Tooltip("Props planted right in front of the lens for the ranks to pass BEHIND. Nothing states depth as cheaply or as strongly as something the subject occludes.")]
@@ -155,8 +158,13 @@ public class TrailerLegionMarch : MonoBehaviour
     private Vector3 dir, right;
     private float columnLength;
     // Metres past the lens a rank travels before it is sent back to the tail.
-    // Only has to clear the frame.
-    private const float recycleBehindCamera = 22f;
+    //
+    // This has to be SMALL compared to the column's length. The column occupies
+    // the stretch from (camera + this) back by columnLength, so a 22 m barrier on
+    // a 25 m column left almost the whole line sitting in FRONT of the camera —
+    // which looks backwards down the road and therefore saw nothing but ground.
+    // It only ever needs to clear the frame.
+    private float RecycleBehindCamera => Mathf.Min(9f, columnLength * 0.22f);
     private Transform camT;
     private ParticleSystem dust;
     // One stripped copy of each prefab, made once and cloned for every unit.
@@ -295,7 +303,7 @@ public class TrailerLegionMarch : MonoBehaviour
                 }
 
                 Vector3 pos = transform.position + dir * z + right * lane;
-                var go = Instantiate(TemplateFor(prefab), pos, Quaternion.LookRotation(dir), transform);
+                var go = Instantiate(TemplateFor(prefab), pos, Quaternion.LookRotation(dir) * Quaternion.Euler(0f, unitYawOffset, 0f), transform);
                 go.SetActive(true);
                 units.Add(MakeUnit(go, isBoss));
             }
@@ -399,11 +407,12 @@ public class TrailerLegionMarch : MonoBehaviour
             // Desynchronise the walk cycle. A crowd in perfect lockstep reads as
             // one object copied, which is the clearest tell of a fake army.
             //
-            // Done by jumping to a random point in the current state, NOT by
-            // Animator.Update(): that forces a full evaluation of over a second of
-            // animation, per unit, and 270 of those in a build is most of why the
-            // shot appeared to hang.
-            u.anim.Play(0, 0, Random.value);
+            // Animator.Play(0, ...) was wrong: a hash of 0 is not "the current
+            // state", and feeding it an invalid state left units in whatever the
+            // controller's default happened to be — which is how an army ends up
+            // running sideways. Stepping the animator by a random fraction of a
+            // second is correct, and at this unit count the cost is nothing.
+            u.anim.Update(Random.Range(0f, 1f));
             u.anim.speed = Random.Range(0.94f, 1.06f);
         }
 
@@ -435,7 +444,7 @@ public class TrailerLegionMarch : MonoBehaviour
             // as soon as the camera moves, and a rank popping out of existence
             // mid-frame ends the illusion instantly. Measured from the lens, the
             // swap is always safely behind it.
-            if (Vector3.Dot(p - camPos, dir) > recycleBehindCamera) p -= dir * columnLength;
+            if (Vector3.Dot(p - camPos, dir) > RecycleBehindCamera) p -= dir * columnLength;
 
             // Gait: a small vertical bob and a slow lateral sway, each on its own
             // phase. Without it the formation slides like a decal.
@@ -453,7 +462,7 @@ public class TrailerLegionMarch : MonoBehaviour
                                        u.groundY + bob,
                                        p.z + right.z * (u.lateral + sway));
             // A heavy, slightly rolling tread rather than a rigid facing.
-            u.t.rotation = Quaternion.LookRotation(dir) * Quaternion.Euler(0f, Mathf.Sin(g * 0.5f) * 2.5f, Mathf.Sin(g) * 1.4f);
+            u.t.rotation = Quaternion.LookRotation(dir) * Quaternion.Euler(0f, unitYawOffset + Mathf.Sin(g * 0.5f) * 2.5f, Mathf.Sin(g) * 1.4f);
 
             // Animators are the entire cost of a crowd, and past a certain range
             // nobody can tell a walk cycle from a pose.
@@ -637,6 +646,16 @@ public class TrailerLegionMarch : MonoBehaviour
         _playing = true;
         UpdateCamera(0f);
 
+        // Where things actually ARE at the top of the shot. Framing misses in
+        // this shot have all been geometry, not art, and one line beats another
+        // round of guessing from a screenshot.
+        float along = Vector3.Dot(camT.position - transform.position, dir);
+        Debug.Log($"[Legion] Shot opens: camera {along:F1} m along the road, " +
+                  $"{Vector3.Dot(camT.position - transform.position, right):F1} m to the side, " +
+                  $"{camT.position.y - SampleGround(camT.position):F1} m up. " +
+                  $"Column is {columnLength:F0} m long and recycles {RecycleBehindCamera:F1} m past the lens, " +
+                  $"so the visible line runs from {-(columnLength - RecycleBehindCamera):F0} m to +{RecycleBehindCamera:F0} m relative to the camera.");
+
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
         TrailerAudio.SilenceStaleBeds();
@@ -733,8 +752,8 @@ public class TrailerLegionMarch : MonoBehaviour
 
         // Drift AHEAD of the oncoming column as the camera climbs, so the line
         // has somewhere to fit as the lens gets longer.
-        float ahead = Mathf.Lerp(0f, craneBack, e);
-        float height = Mathf.Lerp(lowHeight, highHeight, e);
+        float ahead = Mathf.Lerp(0f, columnLength * craneAheadPerLength, e);
+        float height = Mathf.Lerp(lowHeight, columnLength * highHeightPerLength, e);
 
         Vector3 basePos = transform.position + right * side + dir * ahead;
         camT.position = new Vector3(basePos.x, SampleGround(basePos) + height, basePos.z);
@@ -743,7 +762,12 @@ public class TrailerLegionMarch : MonoBehaviour
         // camera and past it: an army marching away is a departure, and a
         // departure is not frightening. Looking further down the column as the
         // camera rises makes the reveal one of DEPTH rather than of more ground.
-        Vector3 aim = transform.position - dir * Mathf.Lerp(6f, columnLength * 0.55f, e);
+        // Measured from the CAMERA, not from the column's origin. The units live
+        // in a stretch defined relative to the lens (that is how recycling works),
+        // so an aim point anchored to the origin drifts out of the column the
+        // moment its length changes — and then the shot is of an empty road.
+        Vector3 aim = camT.position - right * (halfWidth + flankClearance) * 0.6f
+                    - dir * Mathf.Lerp(7f, Mathf.Max(14f, columnLength * 0.7f), e);
         // Boots first: aim BELOW the knee, then tilt up over beat B, then let the
         // crane take it. Height above ground is what decides whether we are
         // looking at legs or at faces.
