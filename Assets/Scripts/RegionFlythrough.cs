@@ -42,8 +42,11 @@ using UnityEngine;
 public class RegionFlythrough : MonoBehaviour
 {
     [Header("Trigger")]
-    [Tooltip("Press this during a region assault to play the flythrough.")]
-    public KeyCode hotkey = KeyCode.F9;
+    // F6, not F9. F9 is already QuickLoad (SaveSlotManager), which is why
+    // pressing it restored a save and played the resource sound instead of
+    // starting anything. F5, F8 and F10 are taken as well.
+    [Tooltip("Press this during a region assault to play the flythrough. EDITOR ONLY — the key does not exist in a build.")]
+    public KeyCode hotkey = KeyCode.F6;
     [Tooltip("Keys that abort it and hand control straight back.")]
     public KeyCode[] cancelKeys = { KeyCode.Escape, KeyCode.Space };
 
@@ -79,8 +82,16 @@ public class RegionFlythrough : MonoBehaviour
 
     public static bool IsPlaying { get; private set; }
 
-    // Auto-installed, so no scene needs wiring and it cannot be lost when a scene
-    // is rebuilt. It does nothing at all until the hotkey is pressed.
+    // EDITOR ONLY.
+    //
+    // This is a capture tool, not a feature: it takes the camera away from the
+    // player and blocks their input, which is exactly what a shipped build must
+    // never let a stray key press do. Compiled out entirely rather than merely
+    // hidden, so there is no key to find and nothing to disable.
+    //
+    // Play() itself stays compiled in every configuration, so a Timeline or an
+    // in-game trigger could still drive it deliberately one day.
+#if UNITY_EDITOR
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
@@ -96,6 +107,7 @@ public class RegionFlythrough : MonoBehaviour
         if (!Input.GetKeyDown(hotkey)) return;
         Play();
     }
+#endif
 
     public void Play()
     {
@@ -105,9 +117,15 @@ public class RegionFlythrough : MonoBehaviour
         var player = FindFirstObjectByType<PlayerController>();
         if (cam == null || player == null)
         {
-            Debug.LogWarning("[Flythrough] Needs a main camera and a player in the scene.");
+            // Named separately, because "needs a camera and a player" does not
+            // tell you which one is missing when you are staring at a scene that
+            // obviously has both.
+            Debug.LogWarning($"[Flythrough] Cannot start: " +
+                             $"{(cam == null ? "no camera tagged MainCamera" : "camera OK")}, " +
+                             $"{(player == null ? "no PlayerController in the scene" : "player OK")}.");
             return;
         }
+        Debug.Log("[Flythrough] Starting.");
         StartCoroutine(Run(cam, player));
     }
 
