@@ -119,8 +119,23 @@ public class TrailerCinematicPolish : MonoBehaviour
         _fade.color = new Color(fadeColor.r, fadeColor.g, fadeColor.b, 0f);
     }
 
-    public void FadeToBlack(float duration) { StartCoroutine(FadeRoutine(1f, duration)); }
-    public void FadeFromBlack(float duration) { StartCoroutine(FadeRoutine(0f, duration)); }
+    public void FadeToBlack(float duration) { _fadeRoutine = StartCoroutine(FadeRoutine(1f, duration)); }
+    public void FadeFromBlack(float duration) { _fadeRoutine = StartCoroutine(FadeRoutine(0f, duration)); }
+
+    // Paint the full-screen overlay any colour, for a flash or a flood.
+    //
+    // Shot 1's lens flare was drawn as quads parented to the camera and never
+    // appeared. Rather than keep debugging invisible geometry, it goes through
+    // this overlay — the same Image that already draws the letterbox fades, on a
+    // canvas that is demonstrably rendering. Reusing a proven path beats
+    // inventing a second one that has to be proven all over again.
+    public void SetFlash(Color c)
+    {
+        if (_fadeRoutine != null) { StopCoroutine(_fadeRoutine); _fadeRoutine = null; }
+        if (_fade != null) _fade.color = c;
+    }
+
+    private Coroutine _fadeRoutine;
 
     private IEnumerator FadeRoutine(float target, float duration)
     {

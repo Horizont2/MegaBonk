@@ -153,10 +153,50 @@ public class TrailerLegionMarch : MonoBehaviour
 
         columnLength = ranksAlive * rankSpacing;
 
+        PurgeForeignEnemies();
         BuildColumn();
         ReportFormation();
+        // Spawners can start again, and managers can be re-created, so this is not
+        // a one-time clean-up.
+        InvokeRepeating(nameof(PurgeForeignEnemies), 1f, 1f);
         if (spawnMarchDust) BuildDust();
         if (autoPlay) Play();
+    }
+
+    // Anything with a live EnemyAI that is not part of this column is not part of
+    // this shot.
+    //
+    // Doing this in the editor at setup time was not enough: the scene is not
+    // necessarily saved, managers re-create themselves, and a spawner switched off
+    // in edit mode can be switched back on by whatever owns it. The skeletons
+    // scattering across the frame with health bars over their heads were never the
+    // column — they were the game running underneath it. So it is enforced at
+    // runtime, and repeatedly, because a spawner that fires once will fire again.
+    private void PurgeForeignEnemies()
+    {
+        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (mb == null || !mb.enabled) continue;
+            switch (mb.GetType().Name)
+            {
+                case "EnemySpawner":
+                case "WorldEncounterDirector":
+                case "RegionAlertDirector":
+                case "EnemyEncounterGroup":
+                case "RegionTotem":
+                    mb.enabled = false;
+                    break;
+            }
+        }
+
+        foreach (var ai in FindObjectsByType<EnemyAI>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (ai == null) continue;
+            // Column units had their EnemyAI destroyed at spawn, so anything still
+            // carrying one came from somewhere else.
+            if (ai.transform.IsChildOf(transform)) continue;
+            Destroy(ai.gameObject);
+        }
     }
 
     // ======================= the column =======================
@@ -225,6 +265,11 @@ public class TrailerLegionMarch : MonoBehaviour
         foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
         {
             if (mb == null || mb is Animator) continue;
+            // Disable BEFORE destroying. Destroy() is deferred to the end of the
+            // frame, and Unity still calls Start() on a component queued for
+            // destruction — which is one frame of AI, VFX spawning and health-bar
+            // setup that nobody asked for.
+            mb.enabled = false;
             Destroy(mb);
         }
 

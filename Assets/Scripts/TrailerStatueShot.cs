@@ -486,7 +486,9 @@ public class TrailerStatueShot : MonoBehaviour
             yield return null;
         }
 
-        polish.FadeToBlack(outFade);
+        // No FadeToBlack here: the pierce has already driven the overlay to solid
+        // black. Fading again would fade black to black and hold the shot open
+        // for no reason.
         IsFinished = true;
     }
 
@@ -849,28 +851,25 @@ public class TrailerStatueShot : MonoBehaviour
 
     // ===================== the ending =====================
     //
-    // The last fracture fires a shaft STRAIGHT DOWN THE BARREL.
+    // The last fracture takes the lens.
     //
-    // Everywhere else in this shot a shaft aimed at the lens would be wrong — it
-    // foreshortens to a dot and reads as nothing. Here that is the point: pointed
-    // at the camera it stops being a shaft and becomes a flare that opens out of a
-    // single burning point until it owns the frame. It floods, burns to white,
-    // then goes black, and the blackout is the cut to the next shot.
+    // Everywhere else in this shot a shaft aimed at the camera would be wrong —
+    // head-on it foreshortens to a dot. Here that is the point: pointed at the
+    // lens it stops being a shaft and becomes a flood that owns the frame. Ember
+    // to white to black, and the blackout IS the cut to the next shot.
     //
-    // Drawn as two QUADS PARENTED TO THE CAMERA rather than as UI. The first
-    // version used a screen-space Canvas and never appeared on screen; rather
-    // than keep guessing at canvas nesting and sort order, this renders through
-    // the camera's own frustum, where there is nothing left to get wrong.
-    private Transform pierceFlare;     // soft disc: the light arriving
-    private Transform pierceBlack;     // solid: the cut
-    private Material pierceFlareMat, pierceBlackMat;
+    // Drawn through TrailerCinematicPolish's overlay rather than as geometry. Two
+    // earlier attempts — a screen-space Canvas of its own, then quads parented to
+    // the camera — both rendered nothing, and the cost of chasing invisible
+    // geometry a third time is worse than the cost of reusing the Image that
+    // already, visibly, draws the letterbox fades every shot.
     private Vector3 pierceOrigin;
 
     private void BuildPierce()
     {
-        // Open from the crack nearest the middle of frame. The flare has to grow
+        // Open from the crack nearest the middle of frame: the flood has to grow
         // out of somewhere the audience is already looking, or it reads as an
-        // unrelated wipe instead of as this light arriving.
+        // unrelated wipe rather than as this light arriving.
         pierceOrigin = center;
         float best = float.MaxValue;
         for (int i = 0; i < shafts.Count; i++)
@@ -881,103 +880,38 @@ public class TrailerStatueShot : MonoBehaviour
             float d = (new Vector2(v.x, v.y) - new Vector2(0.5f, 0.5f)).sqrMagnitude;
             if (d < best) { best = d; pierceOrigin = p; }
         }
-
-        pierceFlareMat = MakeUnlit(additive: false);
-        if (pierceFlareMat.HasProperty("_BaseMap")) pierceFlareMat.SetTexture("_BaseMap", SoftDot());
-        if (pierceFlareMat.HasProperty("_MainTex")) pierceFlareMat.SetTexture("_MainTex", SoftDot());
-        pierceFlare = MakeCameraQuad("PierceFlare", pierceFlareMat, shotCamera.nearClipPlane * 3f);
-
-        // Untextured, so it is a flat opaque field rather than a soft disc — the
-        // blackout has to actually reach the corners of the frame.
-        pierceBlackMat = MakeUnlit(additive: false);
-        // Nearer than the flare: the cut has to land ON TOP of the white.
-        pierceBlack = MakeCameraQuad("PierceBlack", pierceBlackMat, shotCamera.nearClipPlane * 2f);
-        pierceBlack.gameObject.SetActive(false);
-    }
-
-    // A quad riding just in front of the lens. Sized to the frustum at that
-    // distance, so it covers exactly what the camera can see.
-    private Transform MakeCameraQuad(string name, Material mat, float distance)
-    {
-        var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        q.name = name;
-        var col = q.GetComponent<Collider>();
-        if (col != null) Destroy(col);
-
-        var r = q.GetComponent<MeshRenderer>();
-        r.sharedMaterial = mat;
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        r.receiveShadows = false;
-        r.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
-
-        q.transform.SetParent(camT, false);
-        q.transform.localPosition = new Vector3(0f, 0f, Mathf.Max(distance, shotCamera.nearClipPlane * 1.2f));
-        q.transform.localRotation = Quaternion.identity;
-        return q.transform;
-    }
-
-    private void SizeToFrustum(Transform quad, float widthScale)
-    {
-        float d = quad.localPosition.z;
-        float h = 2f * d * Mathf.Tan(shotCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
-        float w = h * shotCamera.aspect;
-        quad.localScale = new Vector3(w * widthScale, h * widthScale, 1f);
     }
 
     private void UpdatePierce(float t)
     {
-        if (pierceFlare == null || burstStartedAt < 0f) return;
+        if (burstStartedAt < 0f) return;
 
         float u = Mathf.Clamp01((t - burstStartedAt) / Mathf.Max(0.05f, pierceDuration));
-
-        // Follow the burning point on screen so the flare grows OUT OF the crack
-        // rather than out of the middle of the display. Offset the quad sideways
-        // by where that point sits in the frustum.
-        Vector3 vp = shotCamera.WorldToViewportPoint(pierceOrigin);
-        float dz = pierceFlare.localPosition.z;
-        float fh = 2f * dz * Mathf.Tan(shotCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
-        float fw = fh * shotCamera.aspect;
-        float ox = vp.z > 0f ? (vp.x - 0.5f) * fw : 0f;
-        float oy = vp.z > 0f ? (vp.y - 0.5f) * fh : 0f;
-        // Slide back to centre as it takes over — by the end it is the frame.
-        float recentre = Mathf.SmoothStep(0f, 1f, u);
-        pierceFlare.localPosition = new Vector3(ox * (1f - recentre), oy * (1f - recentre), dz);
-
-        // Accelerating growth: light forcing its way through stone does not open
-        // at a constant rate, it gives way.
-        SizeToFrustum(pierceFlare, 4.5f * (u * u));
 
         Color c;
         if (u < 0.62f)
         {
+            // Ember rising. Accelerating, because light forcing its way through
+            // stone does not open at a constant rate — it gives way.
             c = Color.Lerp(lightColor, coreColor, u / 0.62f);
-            c.a = Mathf.Clamp01(u / 0.45f);
+            c.a = Mathf.Clamp01((u / 0.62f) * (u / 0.62f)) * 0.95f;
+        }
+        else if (u < 0.80f)
+        {
+            c = Color.Lerp(coreColor, Color.white, (u - 0.62f) / 0.18f);
+            c.a = 1f;
         }
         else
         {
-            c = Color.Lerp(coreColor, Color.white, Mathf.Clamp01((u - 0.62f) / 0.20f));
+            // The cut.
+            c = Color.Lerp(Color.white, Color.black, (u - 0.80f) / 0.20f);
             c.a = 1f;
         }
-        SetQuadColor(pierceFlareMat, c);
 
-        // The cut. Comes in over the last stretch, on top of the white.
-        if (u > 0.80f)
-        {
-            if (!pierceBlack.gameObject.activeSelf) pierceBlack.gameObject.SetActive(true);
-            SizeToFrustum(pierceBlack, 1.05f);
-            SetQuadColor(pierceBlackMat, new Color(0f, 0f, 0f, Mathf.Clamp01((u - 0.80f) / 0.20f)));
-        }
+        TrailerCinematicPolish.GetOrCreate().SetFlash(c);
     }
 
-    private static void SetQuadColor(Material m, Color c)
-    {
-        if (m == null) return;
-        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
-        if (m.HasProperty("_Color")) m.SetColor("_Color", c);
-        m.color = c;
-    }
-
-    private void SpawnDebris()
+    private void SpawnDebris()    private void SpawnDebris()
     {
         if (debrisPrefabs == null || debrisPrefabs.Length == 0 || debrisCount <= 0) return;
 
@@ -1023,7 +957,5 @@ public class TrailerStatueShot : MonoBehaviour
     {
         if (rayMat != null) Destroy(rayMat);
         if (crackMat != null) Destroy(crackMat);
-        if (pierceFlareMat != null) Destroy(pierceFlareMat);
-        if (pierceBlackMat != null) Destroy(pierceBlackMat);
     }
 }
