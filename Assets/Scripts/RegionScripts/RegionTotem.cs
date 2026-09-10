@@ -133,6 +133,62 @@ public class RegionTotem : MonoBehaviour
     // Cleared in RegionManager.OnTotemPurified when the wave ends.
     public static bool AnyActivatingRightNow = false;
 
+    // ---- "Is a totem being captured right now?" -----------------------------
+    //
+    // The one question every ambient-spawn system needs answered, and the reason
+    // it lives here rather than being re-derived by each caller: a capture has
+    // TWO phases, and only one of them is obvious. The purify wave (isActivated
+    // && !isPurified) is the obvious half. The anchor PRE-GATE is the other, and
+    // during it `isActivated` is still false — so anything checking that field
+    // alone was told "no totem fight" through the whole anchor battle, and kept
+    // pouring the region's ambient enemies on top of it.
+    //
+    // Cached for a quarter second: several systems ask this on a per-frame or
+    // per-tick path, while the answer changes a handful of times in a whole run.
+    private static float s_captureCheckedAt = float.NegativeInfinity;
+    private static bool s_captureRunning;
+
+    public static bool AnyCaptureFightRunning
+    {
+        get
+        {
+            float now = Time.time;
+            // now < checkedAt means the clock restarted with a new scene, so the
+            // cached answer belongs to the previous run and has to be dropped.
+            if (now >= s_captureCheckedAt && now - s_captureCheckedAt < 0.25f) return s_captureRunning;
+            s_captureCheckedAt = now;
+
+            s_captureRunning = false;
+            RegionTotem[] all = FindObjectsByType<RegionTotem>(FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                RegionTotem t = all[i];
+                if (t == null) continue;
+                if (t.isActivated && !t.isPurified) { s_captureRunning = true; break; }
+                // The pre-gate only counts while the player is actually AT the
+                // totem. Anchors can be woken and then walked away from, and a
+                // fight nobody is having must not keep the region's ambient
+                // spawns switched off for the rest of the run.
+                if (t._preGateActive && t.PlayerIsWithinPreGate) { s_captureRunning = true; break; }
+            }
+            return s_captureRunning;
+        }
+    }
+
+    // Generous radius so the answer does not flicker on and off as the player
+    // circles the anchors at the edge of the approach ring.
+    private bool PlayerIsWithinPreGate
+    {
+        get
+        {
+            if (player == null) return false;
+            float dx = player.position.x - transform.position.x;
+            float dz = player.position.z - transform.position.z;
+            float r = preGateApproachRadius * 1.6f;
+            return dx * dx + dz * dz <= r * r;
+        }
+    }
+
     private List<GameObject> activeEnemies = new List<GameObject>();
     private Transform player;
 

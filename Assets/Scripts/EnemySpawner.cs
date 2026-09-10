@@ -13,6 +13,24 @@ public class EnemySpawner : MonoBehaviour
 {
     public static bool IsSpawningBlocked = false;
 
+    // How hard the radial "ambient" spawner is allowed to push, 0..1. Owned by
+    // WorldEncounterDirector; 1 is normal, 0 is off.
+    //
+    // This is a SEPARATE knob from IsSpawningBlocked, deliberately. That flag
+    // SELF-HEALS: every two seconds the spawner asks whether a totem is still
+    // mid-fight, and if not it assumes the flag is stale and clears it. That is
+    // right for the totem's own block — a coroutine dying mid-wave must not
+    // silence the map for the rest of the run — and completely wrong for the
+    // encounter director's, which switched the radial spawner off for the whole
+    // mission and had it switched back on two seconds later. The region then ran
+    // the hand-placed patrols AND the radial horde at once, which is why it
+    // stopped giving the player any rest.
+    //
+    // A throttle rather than an on/off switch because a region with the radial
+    // spawner fully off reads as deserted in the gaps between patrols. Turning
+    // it down keeps the world inhabited and gives the encounters room to land.
+    public static float AmbientThrottle = 1f;
+
     [Header("Spawner Settings")]
     [Tooltip("LATE-GAME cap. Early game uses a smaller cap that grows to this (see startCap / capRampMinutes).")]
     public int maxEnemiesOnMap = 35;
@@ -101,6 +119,10 @@ public class EnemySpawner : MonoBehaviour
     private void Start()
     {
         IsSpawningBlocked = false;
+        // Statics outlive a scene load, so a throttle set for last run's region
+        // would otherwise quietly follow the player into the next level. The
+        // director only sets it after a yield, so it always wins over this.
+        AmbientThrottle = 1f;
         worldGen = FindFirstObjectByType<WorldGenerator>();
         BeginPhase(Phase.Relax);
 
@@ -115,12 +137,18 @@ public class EnemySpawner : MonoBehaviour
         // deliberately-higher designer setting.
         if (_isRegionMission)
         {
-            maxEnemiesOnMap = Mathf.Max(maxEnemiesOnMap, 55);
-            startCap        = Mathf.Max(startCap, 18);
-            capRampMinutes  = Mathf.Min(capRampMinutes, 5f);   // fills up faster
-            gracePeriod     = Mathf.Min(gracePeriod, 18f);     // shorter empty opening
-            relaxCapFactor  = Mathf.Max(relaxCapFactor, 0.6f); // RELAX still populated
-            relaxIntervalMult = Mathf.Min(relaxIntervalMult, 3f); // relax not a ghost town
+            // Defended, not relentless. These were pushed hard when regions read
+            // as deserted, but that was before the encounter director started
+            // placing patrols and camps as well. With both running the player
+            // never got a quiet moment, and a fight with no gaps in it stops
+            // registering as a fight at all. Note these are the numbers BEFORE
+            // AmbientThrottle, which the director then scales down again.
+            maxEnemiesOnMap = Mathf.Max(maxEnemiesOnMap, 44);
+            startCap        = Mathf.Max(startCap, 14);
+            capRampMinutes  = Mathf.Min(capRampMinutes, 6f);
+            gracePeriod     = Mathf.Min(gracePeriod, 22f);
+            relaxCapFactor  = Mathf.Max(relaxCapFactor, 0.5f); // RELAX is meant to BE a rest
+            relaxIntervalMult = Mathf.Min(relaxIntervalMult, 3.5f);
         }
     }
 
@@ -132,6 +160,12 @@ public class EnemySpawner : MonoBehaviour
 
     private void Update()
     {
+        if (AmbientThrottle <= 0.001f)
+        {
+            timer = 0f;
+            return;
+        }
+
         if (IsSpawningBlocked)
         {
             timer = 0f;
@@ -191,7 +225,7 @@ public class EnemySpawner : MonoBehaviour
         // Steady interval still tightens slowly over the run (gentler ramp).
         float baseInterval = Mathf.Max(0.4f, baseSpawnInterval / (1f + minutes * 0.12f));
         float intervalMult = useDirector ? PhaseIntervalMult() : 1f;
-        float currentSpawnInterval = baseInterval * intervalMult;
+        float currentSpawnInterval = baseInterval * intervalMult / Mathf.Clamp(AmbientThrottle, 0.05f, 1f);
 
         timer += Time.deltaTime;
         if (timer >= currentSpawnInterval)
@@ -256,21 +290,19 @@ public class EnemySpawner : MonoBehaviour
         float t = capRampMinutes > 0f ? Mathf.Clamp01(minutes / capRampMinutes) : 1f;
         int cap = Mathf.RoundToInt(Mathf.Lerp(startCap, maxEnemiesOnMap, t));
         if (useDirector && phase == Phase.Relax) cap = Mathf.RoundToInt(cap * relaxCapFactor);
+        // The throttle has to bite on the CAP, not only on the spawn interval.
+        // Interval alone just slows down how fast the map fills; the map still
+        // ends up equally full, which is what the player actually feels.
+        cap = Mathf.RoundToInt(cap * Mathf.Clamp01(AmbientThrottle));
         return Mathf.Max(1, cap);
     }
 
-    // Any totem in the scene that is activated but not yet purified?
-    private static bool IsAnyTotemActivating()
-    {
-        RegionTotem[] all = Object.FindObjectsByType<RegionTotem>(FindObjectsSortMode.None);
-        for (int i = 0; i < all.Length; i++)
-        {
-            var t = all[i];
-            if (t == null) continue;
-            if (t.isActivated && !t.isPurified) return true;
-        }
-        return false;
-    }
+    // Is a totem being captured right now? Both halves of a capture count — the
+    // anchor pre-gate as well as the purify wave — which is why this defers to
+    // the totem rather than reading `isActivated` here (that field is still
+    // false during the pre-gate, so the old check said "no" through the whole
+    // anchor fight and let the ambient horde pile onto it).
+    private static bool IsAnyTotemActivating() => RegionTotem.AnyCaptureFightRunning;
 
     // A pack that rushes in from ONE direction — a deliberate wave, not
     // scattered singles. Respects the current cap.
@@ -320,10 +352,14 @@ public class EnemySpawner : MonoBehaviour
     private void TickGroundAmbush(float playerSpeed)
     {
         if (!enableGroundAmbush || !_isRegionMission) return;
-        if (nextGroundAmbush < 0f) { nextGroundAmbush = Time.time + Random.Range(groundAmbushInterval.x, groundAmbushInterval.y); return; }
+        // Ambushes are ambient pressure too, so they stretch out with the same
+        // throttle. Leaving them at full rate would just move the crowding from
+        // the spawn ring to the ground under the player's feet.
+        float ambushGap = 1f / Mathf.Clamp(AmbientThrottle, 0.05f, 1f);
+        if (nextGroundAmbush < 0f) { nextGroundAmbush = Time.time + Random.Range(groundAmbushInterval.x, groundAmbushInterval.y) * ambushGap; return; }
         if (Time.time < nextGroundAmbush) return;
 
-        nextGroundAmbush = Time.time + Random.Range(groundAmbushInterval.x, groundAmbushInterval.y);
+        nextGroundAmbush = Time.time + Random.Range(groundAmbushInterval.x, groundAmbushInterval.y) * ambushGap;
 
         // Only spring the trap when the player is actually on the move and the
         // field isn't already at cap.

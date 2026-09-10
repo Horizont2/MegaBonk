@@ -98,6 +98,13 @@ public class EnemyEncounterGroup : MonoBehaviour
 
         if (!spawned)
         {
+            // Hold everything back while a totem is being captured. Streaming is
+            // distance-driven, and the player fighting a wave at a totem is
+            // standing still inside the activation radius of every encounter
+            // around it — so exactly at the moment the fight peaks, the map
+            // quietly hands it another camp. The group is not lost, only
+            // deferred: this runs again once the totem is purified.
+            if (RegionTotem.AnyCaptureFightRunning) return;
             if (dist <= activationDistance) SpawnGroup();
             return;
         }

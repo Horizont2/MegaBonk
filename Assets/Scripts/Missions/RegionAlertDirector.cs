@@ -76,6 +76,11 @@ public class RegionAlertDirector : MonoBehaviour
     {
         if (alertActive) return false;
         if (Time.time < nextAlertAllowedTime) return false;
+        // A totem capture is already the fight. Layering a region-wide alarm and
+        // its marching reinforcements on top of the wave turns the climax of a
+        // region into an undifferentiated crowd, and the horn stops meaning
+        // anything because it is drowned out by the thing it interrupted.
+        if (RegionTotem.AnyCaptureFightRunning) return false;
 
         alertActive = true;
         alertPosition = position;
@@ -125,6 +130,17 @@ public class RegionAlertDirector : MonoBehaviour
         if (!alertActive) return;
 
         if (Time.time >= alertEndTime)
+        {
+            alertActive = false;
+            nextAlertAllowedTime = Time.time + alertCooldown;
+            return;
+        }
+
+        // A capture started while the alarm was still ringing: call it off. The
+        // patrols already dispatched keep coming — they were sent, and taking
+        // them back would read as the region forgetting mid-stride — but no
+        // further reinforcements march into the totem fight.
+        if (RegionTotem.AnyCaptureFightRunning)
         {
             alertActive = false;
             nextAlertAllowedTime = Time.time + alertCooldown;

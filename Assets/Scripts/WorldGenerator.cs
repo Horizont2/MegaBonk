@@ -626,6 +626,7 @@ public class WorldGenerator : MonoBehaviour
         Time.timeScale = 1f;
         RegionTotem.AnyActivatingRightNow = false;
         EnemySpawner.IsSpawningBlocked = false;
+        EnemySpawner.AmbientThrottle = 1f;   // nor a throttle left over from last run's region
         EnemyAI.GlobalFreeze = false;   // never inherit a stuck victory-freeze
         EnemyAI.SuppressCombatVocals = false;   // nor a stuck trailer mute
         RegionManager.CinematicActive = false;   // nor a stuck victory-cinematic latch

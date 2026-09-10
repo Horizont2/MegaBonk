@@ -50,7 +50,7 @@ public class WorldEncounterDirector : MonoBehaviour
     // each -- more places where something is happening, rather than bigger mobs.
     // Live enemy count stays bounded because groups stream in (see below).
     [Tooltip("Multiplier on encounterCount. 2 = twice as many encounters on the map.")]
-    [Range(0.5f, 4f)] public float densityMultiplier = 2f;
+    [Range(0.5f, 4f)] public float densityMultiplier = 1.5f;
     [Tooltip("Distance at which a group actually spawns its enemies. Keeps 80 encounters from meaning 260 live Animators.")]
     public float encounterActivationDistance = 95f;
 
@@ -85,8 +85,10 @@ public class WorldEncounterDirector : MonoBehaviour
     [Range(0, 12)] public int campClearReward = 5;
 
     [Header("Spawner Integration")]
-    [Tooltip("Блокувати радіальний EnemySpawner, щоб не було безглуздих спавнів навколо гравця")]
+    [Tooltip("Притишити радіальний EnemySpawner, щоб патрулі й табори не змагалися з випадковими мобами навколо гравця")]
     public bool blockRandomSpawnerOnStart = true;
+    [Tooltip("Наскільки притишити радіальний спавнер, поки директор веде регіон. 1 = без змін, 0 = повністю вимкнути.")]
+    [Range(0f, 1f)] public float ambientSpawnerThrottle = 0.6f;
 
     [Header("Conquered Regions")]
     [Tooltip("Чи спавнити патрулі у вже захопленому регіоні (для атмосфери/farming). За замовчуванням вимкнено — у захопленому регіоні мають спавнитися лише звичайні мобі радіальним EnemySpawner'ом.")]
@@ -130,14 +132,19 @@ public class WorldEncounterDirector : MonoBehaviour
             // директор першим ділом вирубав радіальний спавнер (для
             // атмосфери "тільки патрулі"), і якщо ми пропускали патрулі
             // без розблокування — регіон лишався порожнім.
-            EnemySpawner.IsSpawningBlocked = false;
+            EnemySpawner.AmbientThrottle = 1f;
             enabled = false;
             yield break;
         }
 
-        // У non-conquered місіях блокуємо радіальний спавнер щоб не було
-        // хаосу між патрулями та випадковими мобами (стара поведінка).
-        if (!conquered && blockRandomSpawnerOnStart) EnemySpawner.IsSpawningBlocked = true;
+        // У non-conquered місіях притишуємо радіальний спавнер, щоб не було
+        // хаосу між патрулями та випадковими мобами.
+        //
+        // Turned DOWN, not off, and through the throttle rather than through
+        // IsSpawningBlocked — that flag is cleared by the spawner's own
+        // self-heal within two seconds, so the old "block" here lasted exactly
+        // as long as it took the player to reach the first patrol.
+        if (!conquered && blockRandomSpawnerOnStart) EnemySpawner.AmbientThrottle = ambientSpawnerThrottle;
         yield return StartCoroutine(RunDirectorRoutine(conquered));
     }
 
