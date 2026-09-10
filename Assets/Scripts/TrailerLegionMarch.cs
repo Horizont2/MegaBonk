@@ -79,13 +79,15 @@ public class TrailerLegionMarch : MonoBehaviour
     public float groundSampleRate = 6f;
 
     [Header("Shot timing (seconds)")]
-    [Tooltip("Beat A — down in the grass, wide lens. Fear.")]
-    public float lowBeat = 3.4f;
-    [Tooltip("Beat B — the rise. The reveal happens here.")]
-    public float riseBeat = 3.6f;
-    [Tooltip("Beat C — high and long-lens, holding on a column with no end. Grandeur.")]
-    public float wideBeat = 4.2f;
-    public float outFade = 0.9f;
+    [Tooltip("Beat A — on the ground at boot height, aimed at their LEGS. We do not get a face yet.")]
+    public float bootsBeat = 2.6f;
+    [Tooltip("Beat B — the tilt up. The audience is shown what has been walking past them.")]
+    public float tiltBeat = 1.8f;
+    [Tooltip("Beat C — the rise. One unbroken crane, no cut.")]
+    public float riseBeat = 3.8f;
+    [Tooltip("Beat D — high, long lens, held on a column with no end.")]
+    public float holdBeat = 3.4f;
+    public float outFade = 1.1f;
 
     [Header("Camera")]
     public Camera shotCamera;
@@ -99,6 +101,11 @@ public class TrailerLegionMarch : MonoBehaviour
     public float highFov = 26f;
     [Tooltip("How far the camera drifts AHEAD of the oncoming column as it rises, so more of the line fits in frame.")]
     public float craneBack = 34f;
+
+    [Header("Foreground")]
+    [Tooltip("Props planted right in front of the lens for the ranks to pass BEHIND. Nothing states depth as cheaply or as strongly as something the subject occludes.")]
+    public GameObject[] foregroundProps;
+    [Range(0, 6)] public int foregroundCount = 3;
 
     [Header("Atmosphere")]
     public Color dustColor = new Color(0.46f, 0.43f, 0.40f, 0.30f);
@@ -164,6 +171,7 @@ public class TrailerLegionMarch : MonoBehaviour
         // is not a one-time clean-up. Two seconds is plenty; the scan is not free.
         InvokeRepeating(nameof(PurgeForeignEnemies), 2f, 2f);
         if (spawnMarchDust) BuildDust();
+        PlantForeground();
         if (autoPlay) Play();
     }
 
@@ -248,7 +256,7 @@ public class TrailerLegionMarch : MonoBehaviour
                 if (bossRank && !isBoss)
                 {
                     float side = Mathf.Sign(lane == 0f ? 1f : lane);
-                    lane += side * fileSpacing * 0.55f;
+                    lane += side * fileSpacing * 0.9f;
                 }
 
                 Vector3 pos = transform.position + dir * z + right * lane;
@@ -364,7 +372,9 @@ public class TrailerLegionMarch : MonoBehaviour
             u.anim.speed = Random.Range(0.94f, 1.06f);
         }
 
-        if (isBoss) go.transform.localScale *= 1.35f;
+        // Bigger than 'a bit'. At the distances this shot works at, a boss only
+        // reads as outranking the ranks if it is unmistakably taller than them.
+        if (isBoss) go.transform.localScale *= 1.7f;
         return u;
     }
 
@@ -511,6 +521,38 @@ public class TrailerLegionMarch : MonoBehaviour
         dust.Play();
     }
 
+    // Something between the lens and the army.
+    //
+    // Depth on screen is not created by distance, it is created by OCCLUSION.
+    // Ranks passing behind a near object are read as being further away than
+    // ranks in clear air at the same distance, and it costs one prop. Placed on
+    // the camera's side of the column and low, so the boots beat has something
+    // right against the lens and the crane leaves it behind as it climbs.
+    private void PlantForeground()
+    {
+        if (foregroundProps == null || foregroundProps.Length == 0 || foregroundCount <= 0) return;
+
+        float halfWidth = (unitsPerRank - 1) * 0.5f * fileSpacing;
+        float side = halfWidth + flankClearance;
+
+        for (int i = 0; i < foregroundCount; i++)
+        {
+            GameObject prefab = foregroundProps[Random.Range(0, foregroundProps.Length)];
+            if (prefab == null) continue;
+
+            // Just inside the camera's stand-off, spread down the line so the
+            // crane passes them rather than clearing them all at once.
+            Vector3 p = transform.position
+                      + right * (side * Random.Range(0.55f, 0.85f))
+                      + dir * Random.Range(-6f, 14f);
+            p.y = SampleGround(p);
+
+            var go = Instantiate(prefab, p, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), transform);
+            go.transform.localScale *= Random.Range(0.9f, 1.4f);
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+        }
+    }
+
     // ======================= camera =======================
 
     public void Play()
@@ -550,7 +592,7 @@ public class TrailerLegionMarch : MonoBehaviour
         }
         StartCoroutine(BossFootfalls());
 
-        float total = lowBeat + riseBeat + wideBeat;
+        float total = bootsBeat + tiltBeat + riseBeat + holdBeat;
         while (shotTime < total)
         {
             shotTime += Time.unscaledDeltaTime;
@@ -594,9 +636,28 @@ public class TrailerLegionMarch : MonoBehaviour
         // One continuous move through three framings. Cutting between them would
         // give the audience a chance to reset; a single rise makes them watch the
         // army get bigger without being allowed to look away.
+        // Four beats, and the ORDER is the whole point.
+        //
+        //  BOOTS. The camera is in the grass, aimed at their legs. Withholding the
+        //  faces is what makes them threatening: the audience is given the scale
+        //  of the thing before they are given its identity, and something you have
+        //  measured but not seen is worse than something you have seen.
+        //
+        //  TILT. Now look up. The reveal is of WHAT has been walking past, and it
+        //  lands because the previous beat refused it.
+        //
+        //  RISE. One unbroken crane. A cut here would let the audience reset.
+        //
+        //  HOLD. Stay on it. Trailers usually cut a beat too early; an army with no
+        //  end needs time on screen for "no end" to register.
+        float tilt = t < bootsBeat ? 0f
+                   : Mathf.Clamp01((t - bootsBeat) / Mathf.Max(0.01f, tiltBeat));
+        tilt = tilt * tilt * (3f - 2f * tilt);
+
         float rise;
-        if (t < lowBeat) rise = 0f;
-        else if (t < lowBeat + riseBeat) rise = Mathf.Clamp01((t - lowBeat) / riseBeat);
+        float riseStart = bootsBeat + tiltBeat;
+        if (t < riseStart) rise = 0f;
+        else if (t < riseStart + riseBeat) rise = Mathf.Clamp01((t - riseStart) / riseBeat);
         else rise = 1f;
 
         // Smootherstep, so the crane has no detectable start or stop.
@@ -620,8 +681,12 @@ public class TrailerLegionMarch : MonoBehaviour
         // camera and past it: an army marching away is a departure, and a
         // departure is not frightening. Looking further down the column as the
         // camera rises makes the reveal one of DEPTH rather than of more ground.
-        Vector3 aim = transform.position - dir * Mathf.Lerp(8f, columnLength * 0.55f, e);
-        aim.y = SampleGround(aim) + Mathf.Lerp(1.4f, 2.5f, e);
+        Vector3 aim = transform.position - dir * Mathf.Lerp(6f, columnLength * 0.55f, e);
+        // Boots first: aim BELOW the knee, then tilt up over beat B, then let the
+        // crane take it. Height above ground is what decides whether we are
+        // looking at legs or at faces.
+        float aimHeight = Mathf.Lerp(Mathf.Lerp(0.35f, 2.1f, tilt), 2.6f, e);
+        aim.y = SampleGround(aim) + aimHeight;
         camT.rotation = Quaternion.LookRotation((aim - camT.position).normalized);
 
         // The lens goes LONG as it rises. This is the shot: telephoto compression

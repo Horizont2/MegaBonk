@@ -62,7 +62,10 @@ public class WaterBody : MonoBehaviour
     public static WaterBody Attach(GameObject go, float offset = 0f)
     {
         if (go == null) return null;
-        var w = go.GetComponent<WaterBody>() ?? go.AddComponent<WaterBody>();
+        // Not '??' — that bypasses UnityEngine.Object's == overload, so a
+        // destroyed component reads as non-null and the next access throws.
+        var w = go.GetComponent<WaterBody>();
+        if (w == null) w = go.AddComponent<WaterBody>();
         w.surfaceOffset = offset;
         return w;
     }

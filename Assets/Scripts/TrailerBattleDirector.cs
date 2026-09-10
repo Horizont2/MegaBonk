@@ -309,7 +309,8 @@ public class TrailerBattleDirector : MonoBehaviour
             var ai = go.GetComponent<EnemyAI>();
             if (ai != null) ai.suppressDrops = true;   // no pickups in a trailer shot
 
-            var f = go.GetComponent<TrailerFighter>() ?? go.AddComponent<TrailerFighter>();
+            var f = go.GetComponent<TrailerFighter>();
+            if (f == null) f = go.AddComponent<TrailerFighter>();
             f.hero = _hero;
             f.targetPosition = pos;
             _horde.Add(f);

@@ -949,7 +949,12 @@ public class TrailerStatueShot : MonoBehaviour
                 }
             }
 
-            var rb = chunk.GetComponent<Rigidbody>() ?? chunk.AddComponent<Rigidbody>();
+            // NOT '??'. The null-coalescing operator compares against real null
+            // and bypasses UnityEngine.Object's == overload, so a destroyed or
+            // absent component slips through as "not null" and the next line
+            // throws MissingComponentException.
+            var rb = chunk.GetComponent<Rigidbody>();
+            if (rb == null) rb = chunk.AddComponent<Rigidbody>();
             rb.mass = 0.4f;
             Vector3 away = (from - center).normalized + Vector3.up * Random.Range(0.3f, 0.9f);
             rb.linearVelocity = away * Random.Range(4f, 9f) + Random.insideUnitSphere * 1.5f;

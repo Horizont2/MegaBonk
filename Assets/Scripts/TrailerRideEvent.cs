@@ -307,7 +307,8 @@ public class TrailerRideEvent : MonoBehaviour
         // Stay planted for the rest of the shot: the get-up left his legs buried
         // until the idle popped him back out, because nothing held him on the
         // surface between the beats.
-        var clamp = _riderGO.GetComponent<TrailerGroundClamp>() ?? _riderGO.gameObject.AddComponent<TrailerGroundClamp>();
+        var clamp = _riderGO.GetComponent<TrailerGroundClamp>();
+        if (clamp == null) clamp = _riderGO.gameObject.AddComponent<TrailerGroundClamp>();
         clamp.footOffset = riderFootOffset;
         clamp.snapNow = true;
 
@@ -416,7 +417,8 @@ public class TrailerRideEvent : MonoBehaviour
         // PlayerController. Without them the controller never leaves its default
         // 'Empty' state, which has no motion, so the rig shows its bind pose.
         var hold = _riderGO != null ? _riderGO.gameObject : _riderAnimator.gameObject;
-        var holder = hold.GetComponent<TrailerAnimatorHold>() ?? hold.AddComponent<TrailerAnimatorHold>();
+        var holder = hold.GetComponent<TrailerAnimatorHold>();
+        if (holder == null) holder = hold.AddComponent<TrailerAnimatorHold>();
         holder.animator = _riderAnimator;
 
         GoToIdle(_riderAnimator, riderIdleStates, 0f);
@@ -490,7 +492,8 @@ public class TrailerRideEvent : MonoBehaviour
 
     private static TrailerCutsceneAnim GetOrAdd(GameObject go, Animator anim)
     {
-        var c = go.GetComponent<TrailerCutsceneAnim>() ?? go.AddComponent<TrailerCutsceneAnim>();
+        var c = go.GetComponent<TrailerCutsceneAnim>();
+        if (c == null) c = go.AddComponent<TrailerCutsceneAnim>();
         if (anim != null) c.animator = anim;
         return c;
     }

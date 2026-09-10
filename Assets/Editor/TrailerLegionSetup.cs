@@ -132,6 +132,10 @@ public static class TrailerLegionSetup
         march.bossPrefabs = LoadBossPrefabs();
         march.shotCamera = cam;
         march.marchDirection = Vector3.forward;
+        // Dead trees double as the foreground the column passes behind.
+        march.foregroundProps = AssetDatabase.FindAssets("t:GameObject", new[] { DeadTreeDir })
+            .Select(g => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g)))
+            .Where(g => g != null).ToArray();
 
         MarkDirty();
         if (!showDialog) return rig;

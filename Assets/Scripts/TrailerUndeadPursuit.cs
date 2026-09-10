@@ -1,5 +1,13 @@
 using UnityEngine;
 
+// NOTE: every animator write here goes through the *Safe extensions.
+//
+// The skeleton controller has no 'Speed' parameter, and a raw SetFloat on a
+// missing parameter logs a warning EVERY FRAME, per skeleton. With a horde on
+// screen that is thousands of console lines a second, and Unity's console is
+// slow enough that this alone locks the editor solid — it looks exactly like an
+// engine hang, and it was diagnosed as one twice before the console was read.
+
 // Cinematic undead pursuit for the trailer. Each skeleton starts BURIED just
 // under the ground. When the horse has passed it (the skeleton is behind the
 // rider and within range) it ERUPTS from the earth and RUNS after him — selling
@@ -42,7 +50,7 @@ public class TrailerUndeadPursuit : MonoBehaviour
         _anim = GetComponentInChildren<Animator>();
         _ground = transform.position;
         transform.position = _ground - Vector3.up * riseDepth;   // sink underground
-        if (_anim != null) _anim.SetBool("isMoving", false);
+        if (_anim != null) _anim.SetBoolSafe("isMoving", false);
         _lane = Random.Range(-lateralSpread, lateralSpread);
         _ride = Object.FindFirstObjectByType<TrailerHorseRide>();
     }
@@ -82,7 +90,7 @@ public class TrailerUndeadPursuit : MonoBehaviour
                 if (k >= 1f)
                 {
                     _state = State.Chasing;
-                    if (_anim != null) { _anim.SetBool("isMoving", true); _anim.SetFloat("Speed", chaseSpeed); }
+                    if (_anim != null) { _anim.SetBoolSafe("isMoving", true); _anim.SetFloatSafe("Speed", chaseSpeed); }
                 }
                 else if (_riseT <= Time.deltaTime && AudioManager.Instance != null)
                 {
@@ -121,7 +129,7 @@ public class TrailerUndeadPursuit : MonoBehaviour
                 if (speed > 0.01f && to.sqrMagnitude > 0.0001f)
                     transform.position += to.normalized * speed * Time.deltaTime;
 
-                if (_anim != null) _anim.SetFloat("Speed", speed);
+                if (_anim != null) _anim.SetFloatSafe("Speed", speed);
                 Face();
                 if (TryGround(transform.position, out float gy)) { var p = transform.position; p.y = gy; transform.position = p; }
                 break;
