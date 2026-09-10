@@ -38,10 +38,23 @@ public static class SceneLoader
     {
         private static FallbackRunner s_instance;
         private static bool s_running;
+        private static float s_startedAt;
 
         public static void Run(string sceneName)
         {
-            if (s_running) return;
+            // Same trap as LoadingManager's isLoading: s_running is cleared on
+            // the last line of the coroutine, so a load that dies part-way
+            // latches it true and every later transition returns right here in
+            // silence. A transition that has not completed in 90 seconds is
+            // dead, not slow — take it over rather than stranding the player.
+            if (s_running)
+            {
+                float running = Time.unscaledTime - s_startedAt;
+                if (running < 90f) return;
+                Debug.LogWarning($"[SceneLoader] Previous fallback load has been running {running:F1}s — treating it as dead and retrying with '{sceneName}'.");
+                s_running = false;
+            }
+            s_startedAt = Time.unscaledTime;
             if (s_instance == null)
             {
                 var go = new GameObject("[SceneLoader.Fallback]");

@@ -29,7 +29,7 @@ MonoBehaviour:
   enemyHpMultiplier: 1.1
   enemyDamageMultiplier: 1.05
   combatMode: 0
-  enemyStrength: 130
+  enemyStrength: 65
   autoBattleDiamondReward: 40
   regionTotemPrefab: {fileID: 0}
   locationYOffset: 0

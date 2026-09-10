@@ -40,6 +40,18 @@ public class MercenaryRoster : MonoBehaviour
     // this, and the hire buttons grey out at the cap.
     public int maxArmySize = 5;
 
+    // The squad the post-first-region camp guide asks the player to raise, and
+    // the number Elias funds. One constant so the guide step, the size of his
+    // purse and the region it is meant to beat cannot drift apart — three
+    // places that must agree or the mission quietly stops being true.
+    public const int GuideSquadSize = 3;
+
+    // Lifetime hires. Deliberately NOT the living roster count: a player who
+    // loses a unit in the field has still done what the objective asked, and
+    // an objective that un-completes itself over a battlefield casualty reads
+    // as the game taking back something it already granted.
+    public const string PP_HIRED_TOTAL = "MercHiredTotal";
+
     public bool IsAtCapacity => CountAliveTotal() >= maxArmySize;
 
     // Runtime state — do NOT edit in inspector at runtime, use the API.
@@ -178,6 +190,9 @@ public class MercenaryRoster : MonoBehaviour
         {
             PlayerPrefs.SetInt("MercFirstHired", 1);
         }
+        // ...and the 'raise a company of three' step counts every hire ever
+        // made. See PP_HIRED_TOTAL for why this is not the roster count.
+        PlayerPrefs.SetInt(PP_HIRED_TOTAL, PlayerPrefs.GetInt(PP_HIRED_TOTAL, 0) + 1);
         SaveRoster();
         OnRosterChanged?.Invoke();
 

@@ -3802,6 +3802,59 @@ public static class LocalizationManager
         Add("GUIDE_HIRE_MERCS",         "Hire a mercenary at the Barracks",     "Найми найманця в Казармах");
         Add("GUIDE_SEND_ARMY",          "Send an army to an auto-battle region", "Пошли армію в регіон авто-битви");
         Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
+
+        // === The post-first-region mercenary arc =========================
+        //
+        // {0} in GUIDE_HIRE_SQUAD is MercenaryRoster.GuideSquadSize, which is
+        // 3. The Slavic translations use the 2-4 plural form accordingly — if
+        // that constant ever moves to 1 or past 4, these lines need revisiting,
+        // which is exactly the kind of thing a plain hardcoded "3" would have
+        // hidden instead of flagged.
+        Add7("GUIDE_HIRE_SQUAD",
+             "Hire {0} mercenaries at the Barracks",
+             "Найми {0} найманців у Казармах",
+             "Найми {0} наёмников в Казармах",
+             "Contrata {0} mercenarios en el Cuartel",
+             "Heuere {0} Söldner in der Kaserne an",
+             "Engage {0} mercenaires à la Caserne",
+             "Najmij {0} najemników w Koszarach");
+
+        // {0} = diamonds granted, {1} = how many swords that buys.
+        Add7("ELIAS_WARCHEST_GIVE",
+             "Elias: Take these {0} diamonds. Enough for {1} good swords — send them to the Thicket and let them earn it.",
+             "Еліас: Візьми ці {0} діамантів. Вистачить на {1} добрі мечі — пошли їх у Хащі, хай відпрацюють.",
+             "Элиас: Возьми эти {0} алмазов. Хватит на {1} добрых меча — отправь их в Чащу, пусть отработают.",
+             "Elias: Toma estos {0} diamantes. Bastan para {1} buenas espadas: mándalas a la Espesura y que se lo ganen.",
+             "Elias: Nimm diese {0} Diamanten. Genug für {1} gute Klingen — schick sie ins Dickicht, sie sollen es verdienen.",
+             "Elias : Prends ces {0} diamants. De quoi payer {1} bonnes lames — envoie-les dans le Fourré, qu'elles le méritent.",
+             "Elias: Weź te {0} diamentów. Starczy na {1} dobre miecze — poślij je w Gąszcz, niech zapracują.");
+
+        Add7("Elias: One province back. That changes what we can attempt next.",
+             "Elias: One province back. That changes what we can attempt next.",
+             "Еліас: Одна провінція повернута. Це змінює те, за що ми можемо взятися далі.",
+             "Элиас: Одна провинция возвращена. Это меняет то, за что мы можем взяться дальше.",
+             "Elias: Una provincia recuperada. Eso cambia lo que podemos intentar ahora.",
+             "Elias: Eine Provinz zurück. Das ändert, was wir als Nächstes wagen können.",
+             "Elias : Une province reprise. Cela change ce que nous pouvons tenter ensuite.",
+             "Elias: Jedna prowincja odzyskana. To zmienia to, czego możemy się teraz podjąć.");
+
+        Add7("Elias: The Whispering Thicket is next on my charts, and it is no place to walk into alone.",
+             "Elias: The Whispering Thicket is next on my charts, and it is no place to walk into alone.",
+             "Еліас: Наступні на моїх картах — Шепітні Хащі, і туди не ходять поодинці.",
+             "Элиас: Следующая на моих картах — Шепчущая Чаща, и туда не ходят в одиночку.",
+             "Elias: La Espesura Susurrante es la siguiente en mis mapas, y no es lugar para entrar solo.",
+             "Elias: Als Nächstes steht das Flüsternde Dickicht auf meinen Karten — kein Ort, den man allein betritt.",
+             "Elias : Le Fourré Murmurant est le suivant sur mes cartes, et ce n'est pas un lieu où l'on entre seul.",
+             "Elias: Następny na moich mapach jest Szepczący Gąszcz, a tam nie chodzi się samemu.");
+
+        Add7("Elias: So don't. Raise the barracks, put coin in willing hands, and send them in your stead.",
+             "Elias: So don't. Raise the barracks, put coin in willing hands, and send them in your stead.",
+             "Еліас: То й не ходи. Постав казарми, вклади монету в охочі руки — і пошли їх замість себе.",
+             "Элиас: Так и не ходи. Подними казармы, вложи монету в охотные руки — и пошли их вместо себя.",
+             "Elias: Pues no vayas. Levanta el cuartel, pon monedas en manos dispuestas y mándalos en tu lugar.",
+             "Elias: Dann tu es nicht. Richte die Kaserne her, gib Münzen in willige Hände und schick sie an deiner statt.",
+             "Elias : Alors n'y va pas. Monte la caserne, mets des pièces dans des mains volontaires, et envoie-les à ta place.",
+             "Elias: To nie chodź. Postaw koszary, włóż monety w chętne ręce i poślij ich zamiast siebie.");
         Add("GUIDE_STEP_DONE",          "Objective complete!",                   "Ціль виконано!");
         Add("GUIDE_PLATE_TITLE",        "Camp Task",                             "Завдання табору");
         Add("GUIDE_BUILD_STORAGE",      "Build the Storage Vault",               "Побудуй Схов Табору");
