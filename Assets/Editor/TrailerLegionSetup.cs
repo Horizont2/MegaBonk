@@ -48,7 +48,7 @@ public static class TrailerLegionSetup
     private const int   Height = 45;
     private const int   HeightRes = 513;
     private const int   AlphaRes = 512;
-    private const int   DetailRes = 512;
+    private const int   DetailRes = 256;
 
     // The march runs up the middle along +Z.
     private const float RoadHalfWidth = 13f;
@@ -329,10 +329,18 @@ public static class TrailerLegionSetup
         terrain.treeBillboardDistance = 160f;
         terrain.heightmapPixelError = 3f;
 
-        ShapeLand(data);
-        PaintLand(data);
-        PlantTrees(terrain, data);
-        PlantGrass(data);
+        try
+        {
+            EditorUtility.DisplayProgressBar("Shot 2", "Shaping the land...", 0.15f);
+            ShapeLand(data);
+            EditorUtility.DisplayProgressBar("Shot 2", "Painting the road and the blight...", 0.40f);
+            PaintLand(data);
+            EditorUtility.DisplayProgressBar("Shot 2", "Planting dead woodland...", 0.70f);
+            PlantTrees(terrain, data);
+            EditorUtility.DisplayProgressBar("Shot 2", "Seeding grass...", 0.88f);
+            PlantGrass(data);
+        }
+        finally { EditorUtility.ClearProgressBar(); }
 
         EditorUtility.SetDirty(data);
         AssetDatabase.SaveAssets();
@@ -494,6 +502,10 @@ public static class TrailerLegionSetup
             if (td == null || td.detailPrototypes == null || td.detailPrototypes.Length == 0) continue;
             if (best == null || td.detailPrototypes.Length > best.Length) best = td.detailPrototypes;
         }
+        // Cap it. Each prototype is a whole extra pass over the detail grid, and
+        // the game's terrain can carry a dozen — which turns a two-second build
+        // into a minute-long stall that reads as the editor hanging.
+        if (best != null && best.Length > 3) best = best.Take(3).ToArray();
         return best;
     }
 
@@ -534,35 +546,45 @@ public static class TrailerLegionSetup
 
         int res = data.detailResolution;
         int layerCount = data.detailPrototypes.Length;
+
+        // How much grass each cell wants, worked out ONCE. It used to be
+        // recomputed inside the per-layer loop, so every extra grass type paid for
+        // the whole grid again.
+        var life = new float[res, res];
+        for (int z = 0; z < res; z++)
+        for (int x = 0; x < res; x++)
+        {
+            float nx = (float)x / (res - 1);
+            float nz = (float)z / (res - 1);
+
+            float distFromAxis = Mathf.Abs(nx - 0.5f) * Size;
+            // The road is bare. That bareness is only legible because there is
+            // grass right up to its edge.
+            if (distFromAxis < RoadHalfWidth) { life[z, x] = 0f; continue; }
+            float openness = Mathf.SmoothStep(RoadHalfWidth, RoadHalfWidth + 25f, distFromAxis);
+
+            // Same blight gradient as the splatmap, so ground cover and ground
+            // colour tell the same story instead of contradicting each other.
+            float blight = Mathf.Clamp01(Mathf.SmoothStep(0.35f, 1f, nz)
+                                         + (Mathf.PerlinNoise(nx * 9f, nz * 9f) - 0.5f) * 0.35f);
+            life[z, x] = openness * (1f - blight * 0.85f);
+        }
+
         for (int layer = 0; layer < layerCount; layer++)
         {
             var d = new int[res, res];
             for (int z = 0; z < res; z++)
             for (int x = 0; x < res; x++)
             {
+                if (life[z, x] <= 0f) continue;
                 float nx = (float)x / (res - 1);
                 float nz = (float)z / (res - 1);
-
-                float distFromAxis = Mathf.Abs(nx - 0.5f) * Size;
-                // The road is bare. That bareness is only legible because there is
-                // grass right up to its edge.
-                if (distFromAxis < RoadHalfWidth) continue;
-                float openness = Mathf.SmoothStep(RoadHalfWidth, RoadHalfWidth + 25f, distFromAxis);
-
-                // Same blight gradient as the splatmap, so ground cover and ground
-                // colour tell the same story instead of contradicting each other.
-                float blight = Mathf.Clamp01(Mathf.SmoothStep(0.35f, 1f, nz)
-                                             + (Mathf.PerlinNoise(nx * 9f, nz * 9f) - 0.5f) * 0.35f);
-                float life = openness * (1f - blight * 0.85f);
-
-                // Density, not presence. The old gate only let grass through where
-                // a noise sample cleared a threshold AND then placed 1-5 blades, so
-                // the fields came out as a few lonely sprigs on bare dirt. Grass is
-                // the ground cover here: it should be continuous, and thin out
-                // because the land is dying, not because a noise test failed.
+                // Density, not presence. Grass is the ground cover here: it should
+                // be continuous, and thin out because the land is dying rather than
+                // because a noise test failed.
                 float clump = 0.55f + 0.45f * Mathf.PerlinNoise(nx * 14f + layer * 30f, nz * 14f);
-                float density = life * clump;
-                if (density > 0.08f) d[z, x] = Mathf.RoundToInt(Mathf.Lerp(2f, 14f, density));
+                float density = life[z, x] * clump / layerCount;
+                if (density > 0.05f) d[z, x] = Mathf.RoundToInt(Mathf.Lerp(2f, 12f, density));
             }
             data.SetDetailLayer(0, 0, layer, d);
         }

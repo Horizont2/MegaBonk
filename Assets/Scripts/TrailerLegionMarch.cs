@@ -136,6 +136,12 @@ public class TrailerLegionMarch : MonoBehaviour
     private const float recycleBehindCamera = 22f;
     private Transform camT;
     private ParticleSystem dust;
+    // One stripped copy of each prefab, made once and cloned for every unit.
+    // Walking a deep prefab for components and destroying them is the expensive
+    // part of building a crowd; doing it per unit meant paying it 270 times
+    // instead of four.
+    private readonly Dictionary<GameObject, GameObject> templates = new Dictionary<GameObject, GameObject>();
+    private Transform templateRoot;
     private float shotTime;
 
     private void Start()
@@ -246,7 +252,8 @@ public class TrailerLegionMarch : MonoBehaviour
                 }
 
                 Vector3 pos = transform.position + dir * z + right * lane;
-                var go = Instantiate(prefab, pos, Quaternion.LookRotation(dir), transform);
+                var go = Instantiate(TemplateFor(prefab), pos, Quaternion.LookRotation(dir), transform);
+                go.SetActive(true);
                 units.Add(MakeUnit(go, isBoss));
             }
         }
@@ -265,36 +272,72 @@ public class TrailerLegionMarch : MonoBehaviour
                   $"(expected ~{(unitsPerRank - 1) * fileSpacing:F1} x {columnLength:F1}). March dir {dir}.");
     }
 
-    private Unit MakeUnit(GameObject go, bool isBoss)
+    // A prefab with everything that could move, tick, spawn or draw UI already
+    // removed. Kept inactive so nothing on it ever runs; clones of it are the
+    // marching units.
+    private GameObject TemplateFor(GameObject prefab)
     {
-        // Strip EVERY behaviour except the Animator.
-        //
-        // Disabling the components I happened to think of is not good enough: a
-        // prefab this deep carries AI, health, loot, audio, VFX and UI drivers, and
-        // any one of them left running will move a unit, re-enable a health bar, or
-        // spawn something. This crowd exists to be POSED BY THIS SCRIPT and nothing
-        // else, so the rule is a whitelist rather than a blacklist.
+        if (templates.TryGetValue(prefab, out GameObject cached) && cached != null) return cached;
+
+        if (templateRoot == null)
+        {
+            var holder = new GameObject("Templates");
+            holder.transform.SetParent(transform, false);
+            holder.SetActive(false);          // nothing inside ever wakes up
+            templateRoot = holder.transform;
+        }
+
+        GameObject t = Instantiate(prefab, templateRoot);
+        Strip(t);
+        templates[prefab] = t;
+        return t;
+    }
+
+    // Strip EVERY behaviour except the Animator.
+    //
+    // Disabling the components I happened to think of is not good enough: a
+    // prefab this deep carries AI, health, loot, audio, VFX and UI drivers, and
+    // any one left running will move a unit, re-enable a health bar or spawn
+    // something. This crowd exists to be POSED BY THIS SCRIPT and nothing else,
+    // so the rule is a whitelist.
+    // DestroyImmediate, not Destroy, and deliberately so: Destroy is deferred to
+    // the end of the frame, and the template is cloned in the SAME frame it is
+    // built — so every unit would inherit the components that were merely queued
+    // for removal. This is the one case where the immediate form is the correct
+    // one rather than the lazy one.
+    private static void Strip(GameObject go)
+    {
         foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
         {
             if (mb == null || mb is Animator) continue;
-            // Disable BEFORE destroying. Destroy() is deferred to the end of the
-            // frame, and Unity still calls Start() on a component queued for
-            // destruction — which is one frame of AI, VFX spawning and health-bar
-            // setup that nobody asked for.
             mb.enabled = false;
-            Destroy(mb);
+            DestroyImmediate(mb);
         }
 
-        // Health bars and any other world-space UI go entirely — disabling the
-        // Canvas leaves its children to be switched back on by anything that
-        // survived, and destroying is cheaper to be sure of.
+        // World-space UI: health bars and the like. Destroying the object rather
+        // than disabling the Canvas, so nothing can switch it back on.
         foreach (var cv in go.GetComponentsInChildren<Canvas>(true))
-            if (cv != null) Destroy(cv.gameObject);
+            if (cv != null) DestroyImmediate(cv.gameObject);
+
+        // Minimap markers. They live on the MinimapOnly layer and are invisible to
+        // the gameplay camera, but the trailer camera has no culling mask set, so
+        // it renders them — which is why coloured pips floated over the ranks.
+        int minimapLayer = LayerMask.NameToLayer("MinimapOnly");
+        if (minimapLayer >= 0)
+        {
+            var marked = new List<GameObject>();
+            foreach (var tr in go.GetComponentsInChildren<Transform>(true))
+                if (tr != null && tr.gameObject.layer == minimapLayer) marked.Add(tr.gameObject);
+            foreach (var m in marked) if (m != null) DestroyImmediate(m);
+        }
 
         foreach (var c in go.GetComponentsInChildren<Collider>(true)) c.enabled = false;
         foreach (var cc in go.GetComponentsInChildren<CharacterController>(true)) cc.enabled = false;
         foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) { rb.isKinematic = true; rb.useGravity = false; }
+    }
 
+    private Unit MakeUnit(GameObject go, bool isBoss)
+    {
         var u = new Unit
         {
             t = go.transform,
@@ -311,8 +354,14 @@ public class TrailerLegionMarch : MonoBehaviour
             u.anim.applyRootMotion = false;
             u.anim.SetBoolSafe("isMoving", true);
             // Desynchronise the walk cycle. A crowd in perfect lockstep reads as
-            // one object copied, which is the single clearest tell of a fake army.
-            u.anim.Update(Random.Range(0f, 1.2f));
+            // one object copied, which is the clearest tell of a fake army.
+            //
+            // Done by jumping to a random point in the current state, NOT by
+            // Animator.Update(): that forces a full evaluation of over a second of
+            // animation, per unit, and 270 of those in a build is most of why the
+            // shot appeared to hang.
+            u.anim.Play(0, 0, Random.value);
+            u.anim.speed = Random.Range(0.94f, 1.06f);
         }
 
         if (isBoss) go.transform.localScale *= 1.35f;
