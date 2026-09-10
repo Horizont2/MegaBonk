@@ -563,6 +563,11 @@ public class TrailerLegionMarch : MonoBehaviour
 
     private IEnumerator PlayShot()
     {
+        // Armed before anything else: a spam loop during the BUILD is exactly the
+        // case that took a machine down, and by the time the shot is playing it
+        // would already be too late.
+        TrailerLogGuard.Arm();
+
         // A stray zero or slow timeScale left by the previous shot would stop
         // anything here that is not on unscaled time.
         if (Time.timeScale < 0.99f) Time.timeScale = 1f;

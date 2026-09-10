@@ -426,6 +426,7 @@ public class TrailerStatueShot : MonoBehaviour
 
     private IEnumerator PlayShot()
     {
+        TrailerLogGuard.Arm();
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
         TrailerAudio.SilenceStaleBeds();
