@@ -41,6 +41,15 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class TrailerLegionMarch : MonoBehaviour
 {
+    [Header("Sequencing")]
+    [Tooltip("OFF when this shot is chained after another — the sequencer starts it on cue instead of it firing the moment its rig switches on.")]
+    public bool autoPlay = true;
+
+    // Read by TrailerShotChain to know when to move on. A shot that cannot say
+    // when it is done can only be followed by a guessed delay, and a guessed
+    // delay drifts the moment any beat is retuned.
+    public bool IsFinished { get; private set; }
+
     [Header("Who marches")]
     public GameObject[] rankPrefabs;
     public GameObject[] bossPrefabs;
@@ -147,7 +156,7 @@ public class TrailerLegionMarch : MonoBehaviour
         BuildColumn();
         ReportFormation();
         if (spawnMarchDust) BuildDust();
-        StartCoroutine(PlayShot());
+        if (autoPlay) Play();
     }
 
     // ======================= the column =======================
@@ -398,6 +407,12 @@ public class TrailerLegionMarch : MonoBehaviour
 
     // ======================= camera =======================
 
+    public void Play()
+    {
+        if (IsFinished) return;
+        StartCoroutine(PlayShot());
+    }
+
     private IEnumerator PlayShot()
     {
         var polish = TrailerCinematicPolish.GetOrCreate();
@@ -426,6 +441,7 @@ public class TrailerLegionMarch : MonoBehaviour
         }
 
         polish.FadeToBlack(outFade);
+        IsFinished = true;
     }
 
     // The bosses get their own, slower footfall. A heavy step at a different

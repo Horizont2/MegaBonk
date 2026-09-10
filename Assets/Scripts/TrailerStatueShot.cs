@@ -45,6 +45,15 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class TrailerStatueShot : MonoBehaviour
 {
+    [Header("Sequencing")]
+    [Tooltip("OFF when this shot is chained after another — the sequencer starts it on cue instead of it firing the moment its rig switches on.")]
+    public bool autoPlay = true;
+
+    // Read by TrailerShotChain to know when to move on. A shot that cannot say
+    // when it is done can only be followed by a guessed delay, and a guessed
+    // delay drifts the moment any beat is retuned.
+    public bool IsFinished { get; private set; }
+
     [Header("Scene")]
     public Transform statue;
     public Camera shotCamera;
@@ -150,7 +159,9 @@ public class TrailerStatueShot : MonoBehaviour
     public string crackSound = AudioID.Trailer_StoneCrack;
     public string burstSound = AudioID.Trailer_StoneBurst;
     public string rubbleSound = AudioID.Trailer_Rubble;
-    public string riserSound = AudioID.Trailer_Riser;
+    // Reuses the trailer's existing riser event rather than declaring a second
+    // id for the same FMOD path.
+    public string riserSound = AudioID.Trailer_RiserToStrike;
 
     // ---- runtime ----
     private Transform camT;
@@ -211,7 +222,7 @@ public class TrailerStatueShot : MonoBehaviour
 
         BuildMaterials();
         BuildStatueDust();
-        StartCoroutine(PlayShot());
+        if (autoPlay) Play();
     }
 
     // Where the push should STOP.
@@ -407,6 +418,12 @@ public class TrailerStatueShot : MonoBehaviour
 
     // ======================= the shot =======================
 
+    public void Play()
+    {
+        if (IsFinished) return;
+        StartCoroutine(PlayShot());
+    }
+
     private IEnumerator PlayShot()
     {
         var polish = TrailerCinematicPolish.GetOrCreate();
@@ -470,6 +487,7 @@ public class TrailerStatueShot : MonoBehaviour
         }
 
         polish.FadeToBlack(outFade);
+        IsFinished = true;
     }
 
     // ======================= camera =======================

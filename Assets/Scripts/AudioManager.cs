@@ -69,7 +69,6 @@ public static class AudioID
     public const string Trailer_StoneCrack = "Trailer/Stone Crack";
     public const string Trailer_StoneBurst = "Trailer/Stone Burst";
     public const string Trailer_Rubble = "Trailer/Rubble";
-    public const string Trailer_Riser = "Trailer/Riser";
     public const string Trailer_WarHorn = "Trailer/War Horn";
     public const string Trailer_MarchLoop = "Trailer/March Loop";
     public const string Trailer_BoneRattle = "Trailer/Bone Rattle";
@@ -216,7 +215,6 @@ public class AudioManager : MonoBehaviour
     public SoundGroup trailerStoneCrack;
     public SoundGroup trailerStoneBurst;
     public SoundGroup trailerRubble;
-    public SoundGroup trailerRiser;
     public SoundGroup trailerWarHorn;
     public SoundGroup trailerMarchLoop;
     public SoundGroup trailerBoneRattle;
@@ -765,7 +763,6 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Trailer_StoneCrack, trailerStoneCrack);
         sfxDictionary.Add(AudioID.Trailer_StoneBurst, trailerStoneBurst);
         sfxDictionary.Add(AudioID.Trailer_Rubble, trailerRubble);
-        sfxDictionary.Add(AudioID.Trailer_Riser, trailerRiser);
         sfxDictionary.Add(AudioID.Trailer_WarHorn, trailerWarHorn);
         sfxDictionary.Add(AudioID.Trailer_MarchLoop, trailerMarchLoop);
         sfxDictionary.Add(AudioID.Trailer_BoneRattle, trailerBoneRattle);

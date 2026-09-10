@@ -55,17 +55,24 @@ public static class TrailerLegionSetup
     private const float RoadFeather = 16f;
 
     [MenuItem("Tools/Lore Trailer/Setup Shot 2 (the legion marches)")]
-    public static void Setup()
+    public static void Setup() { Build(Vector3.zero, parkOthers: true, showDialog: true); }
+
+    // Built at an offset when it is part of the full trailer, so shot 1's statue
+    // and this terrain are never occupying the same ground. They are never live
+    // at the same time, but overlapping sets make the scene view unreadable and
+    // invite exactly the kind of "why is the camera inside the terrain" hunt this
+    // trailer has already had enough of.
+    public static GameObject Build(Vector3 worldOrigin, bool parkOthers, bool showDialog)
     {
         var rankPrefabs = LoadRankPrefabs();
         if (rankPrefabs.Length == 0)
         {
             EditorUtility.DisplayDialog("Shot 2", "No skeleton prefabs found under Assets/Prefabs. Nothing to march.", "OK");
-            return;
+            return null;
         }
 
         Undo.SetCurrentGroupName("Setup Trailer Shot 2");
-        ParkOtherTrailerRigs();
+        if (parkOthers) ParkOtherTrailerRigs();
         SilenceGameplaySpawners();
 
         foreach (var old in TrailerFind.AllByName(RigName))
@@ -73,8 +80,9 @@ public static class TrailerLegionSetup
 
         var rig = new GameObject(RigName);
         Undo.RegisterCreatedObjectUndo(rig, "create legion rig");
+        rig.transform.position = worldOrigin;
 
-        Terrain terrain = BuildTerrain(rig.transform, out Vector3 terrainOrigin);
+        Terrain terrain = BuildTerrain(rig.transform, worldOrigin, out Vector3 terrainOrigin);
         Vector3 columnStart = terrainOrigin + new Vector3(Size * 0.5f, 0f, Size * 0.30f);
         columnStart.y = terrain.SampleHeight(columnStart) + terrain.transform.position.y;
 
@@ -123,9 +131,11 @@ public static class TrailerLegionSetup
         march.shotCamera = cam;
         march.marchDirection = Vector3.forward;
 
+        MarkDirty();
+        if (!showDialog) return rig;
+
         Selection.activeGameObject = rig;
         SceneView.lastActiveSceneView?.FrameSelected();
-        MarkDirty();
 
         EditorUtility.DisplayDialog("Shot 2 ready",
             "Built LoreTrailer_Legion_Rig: terrain, painted ground, dead trees, fog and the marching column.\n\n" +
@@ -143,11 +153,12 @@ public static class TrailerLegionSetup
             "    frame rate suffers; at range nobody can tell a walk cycle from a pose.\n" +
             "  • bossEveryNRanks — ranks part around each boss, which is what says it outranks them.",
             "OK");
+        return rig;
     }
 
     // ======================= terrain =======================
 
-    private static Terrain BuildTerrain(Transform parent, out Vector3 origin)
+    private static Terrain BuildTerrain(Transform parent, Vector3 worldOrigin, out Vector3 origin)
     {
         var data = new TerrainData
         {
@@ -171,7 +182,7 @@ public static class TrailerLegionSetup
         go.name = "Legion_Terrain";
         Undo.RegisterCreatedObjectUndo(go, "create terrain");
         go.transform.SetParent(parent, true);
-        go.transform.position = new Vector3(-Size * 0.5f, 0f, -Size * 0.5f);
+        go.transform.position = worldOrigin + new Vector3(-Size * 0.5f, 0f, -Size * 0.5f);
         origin = go.transform.position;
 
         var terrain = go.GetComponent<Terrain>();

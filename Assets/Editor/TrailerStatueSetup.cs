@@ -23,19 +23,21 @@ public static class TrailerStatueSetup
     private const string RockDir = "Assets/Locations/fbx2";
 
     [MenuItem("Tools/Lore Trailer/Setup Shot 1 (statue breaks open)")]
-    public static void Setup()
+    public static void Setup() { Build(parkOthers: true, showDialog: true); }
+
+    public static GameObject Build(bool parkOthers, bool showDialog)
     {
         var statueAsset = AssetDatabase.LoadAssetAtPath<GameObject>(StatuePath);
         if (statueAsset == null)
         {
             EditorUtility.DisplayDialog("Shot 1",
                 $"Couldn't find the statue at:\n{StatuePath}\n\nPoint the tool at another mesh or restore that asset.", "OK");
-            return;
+            return null;
         }
 
         Undo.SetCurrentGroupName("Setup Trailer Shot 1");
 
-        ParkOtherTrailerRigs();
+        if (parkOthers) ParkOtherTrailerRigs();
         RebuildRig(out GameObject rig);
 
         // --- Statue -----------------------------------------------------------
@@ -82,9 +84,11 @@ public static class TrailerStatueSetup
         shot.shotCamera = cam;
         shot.debrisPrefabs = LoadRocks();
 
+        MarkSceneDirty();
+        if (!showDialog) return rig;
+
         Selection.activeGameObject = rig;
         SceneView.lastActiveSceneView?.FrameSelected();
-        MarkSceneDirty();
 
         EditorUtility.DisplayDialog("Shot 1 ready",
             "Built LoreTrailer_Statue_Rig.\n\n" +
@@ -104,6 +108,7 @@ public static class TrailerStatueSetup
             "  • handheldBase / handheldAtPeak — the camera should get less steady as the stone fails\n\n" +
             "It wants a DARK scene: the light out of the statue should be the brightest thing in frame.",
             "OK");
+        return rig;
     }
 
     private static void ParkOtherTrailerRigs()
