@@ -68,7 +68,7 @@ public class TrailerShotChain : MonoBehaviour
                 yield return new WaitForSecondsRealtime(seamHold);
             }
 
-            rig.SetActive(true);
+            SetRigLive(rig, true);
             // A frame for Start() on everything inside the rig to run before we
             // go looking for the director and ask it to play.
             yield return null;
@@ -77,6 +77,16 @@ public class TrailerShotChain : MonoBehaviour
             // plays. In a clean trailer scene this finds nothing and costs a scan.
             TrailerSceneSanity.ClearTheField(rig.transform);
 
+            // Wake the NEXT shot now, silent and blind, so it can assemble itself
+            // while this one plays.
+            //
+            // Building it after the cut instead meant the audience sat through
+            // several seconds of black while a few hundred prefabs were
+            // instantiated. Hidden behind a fade is not the same as not being
+            // there, and a black hole in the middle of a trailer is the most
+            // expensive kind of dead air.
+            if (i + 1 < shotRigs.Length) PrewarmNext(shotRigs[i + 1]);
+
             yield return RunShot(rig);
 
             rig.SetActive(false);
@@ -84,6 +94,29 @@ public class TrailerShotChain : MonoBehaviour
 
         Debug.Log("[TrailerChain] Sequence complete.");
         TrailerLogGuard.Disarm();
+    }
+
+    // A rig that is ON but neither seen nor heard: its objects exist and its
+    // scripts run, but its camera and listener stay off so the shot that is
+    // actually playing keeps the frame and the audio to itself.
+    private static void PrewarmNext(GameObject rig)
+    {
+        if (rig == null || rig.activeSelf) return;
+
+        rig.SetActive(true);
+        SetRigLive(rig, false);
+
+        var legion = rig.GetComponentInChildren<TrailerLegionMarch>(true);
+        if (legion != null) legion.Prepare();
+    }
+
+    private static void SetRigLive(GameObject rig, bool live)
+    {
+        if (rig == null) return;
+        if (live && !rig.activeSelf) rig.SetActive(true);
+
+        foreach (var cam in rig.GetComponentsInChildren<Camera>(true)) cam.enabled = live;
+        foreach (var lis in rig.GetComponentsInChildren<AudioListener>(true)) lis.enabled = live;
     }
 
     private IEnumerator RunShot(GameObject rig)

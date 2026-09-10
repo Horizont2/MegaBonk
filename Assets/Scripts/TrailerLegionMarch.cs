@@ -50,6 +50,16 @@ public class TrailerLegionMarch : MonoBehaviour
     // delay drifts the moment any beat is retuned.
     public bool IsFinished { get; private set; }
 
+    // Set once the column exists. The sequencer builds this shot while the
+    // PREVIOUS one is still playing, so the hand-over has nothing left to wait
+    // for. Building it after the cut meant several seconds of black screen —
+    // technically hidden, which is not the same as not being there.
+    public bool IsReady { get; private set; }
+    private bool _preparing;
+    // The column exists during the PREVIOUS shot, so it must not march, animate or
+    // sample ground until this shot is actually on screen.
+    private bool _playing;
+
     [Header("Who marches")]
     public GameObject[] rankPrefabs;
     public GameObject[] bossPrefabs;
@@ -173,6 +183,7 @@ public class TrailerLegionMarch : MonoBehaviour
         if (spawnMarchDust) BuildDust();
         PlantForeground();
         if (autoPlay) Play();
+        else Prepare();      // chained: get the column ready while shot 1 plays
     }
 
     // Anything with a live EnemyAI that is not part of this column is not part of
@@ -380,6 +391,8 @@ public class TrailerLegionMarch : MonoBehaviour
 
     private void Update()
     {
+        if (!_playing) return;
+
         float dt = Time.unscaledDeltaTime;
         float step = marchSpeed * dt;
         Vector3 camPos = camT != null ? camT.position : transform.position;
@@ -561,24 +574,39 @@ public class TrailerLegionMarch : MonoBehaviour
         StartCoroutine(PlayShot());
     }
 
+    // Build the column without playing the shot. Safe to call more than once.
+    public void Prepare()
+    {
+        if (IsReady || _preparing || !enabled) return;
+        _preparing = true;
+        StartCoroutine(PrepareRoutine());
+    }
+
+    private IEnumerator PrepareRoutine()
+    {
+        TrailerLogGuard.Arm();
+        float t0 = Time.realtimeSinceStartup;
+        yield return BuildColumnRoutine();
+        IsReady = true;
+        Debug.Log($"[Legion] Column of {units.Count} built in {Time.realtimeSinceStartup - t0:F2}s.");
+    }
+
     private IEnumerator PlayShot()
     {
-        // Armed before anything else: a spam loop during the BUILD is exactly the
-        // case that took a machine down, and by the time the shot is playing it
-        // would already be too late.
         TrailerLogGuard.Arm();
 
         // A stray zero or slow timeScale left by the previous shot would stop
         // anything here that is not on unscaled time.
         if (Time.timeScale < 0.99f) Time.timeScale = 1f;
 
-        // Build BEFORE the fade-in. The screen is black at this point, so the
-        // frames the column costs to assemble are frames nobody is looking at.
-        float t0 = Time.realtimeSinceStartup;
-        yield return BuildColumnRoutine();
-        Debug.Log($"[Legion] Column of {units.Count} built in {Time.realtimeSinceStartup - t0:F2}s. " +
-                  $"If the shot is slow but this number is small, the cost is RENDERING, not the build — " +
-                  $"lower ranksAlive/unitsPerRank, or the terrain's tree and detail distances.");
+        // Normally the sequencer had this built during the previous shot and this
+        // returns immediately. Standalone, it builds here.
+        if (!IsReady) { Prepare(); while (!IsReady) yield return null; }
+
+        // Frame the opening BEFORE the fade lifts, or the first visible frame is
+        // whatever the camera happened to be pointing at.
+        _playing = true;
+        UpdateCamera(0f);
 
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();

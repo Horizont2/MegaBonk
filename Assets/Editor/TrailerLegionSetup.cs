@@ -101,6 +101,11 @@ public static class TrailerLegionSetup
         cam.nearClipPlane = 0.1f;
         cam.farClipPlane = 900f;      // the column has to be visible to the horizon
         camGO.AddComponent<AudioListener>();
+        // A sane starting pose. TrailerLegionMarch repositions it on frame one,
+        // but an unplaced camera sits at the rig origin — which here is under the
+        // terrain, and an accidental frame of that is a black frame.
+        camGO.transform.position = columnStart + new Vector3(14f, 1.6f, 26f);
+        camGO.transform.LookAt(columnStart + Vector3.up * 1.2f);
 
         // --- light + fog ----------------------------------------------------
         var sunGO = new GameObject("Overcast");
