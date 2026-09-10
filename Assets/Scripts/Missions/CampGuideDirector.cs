@@ -68,6 +68,10 @@ public class CampGuideDirector : MonoBehaviour
     [Header("Polling")]
     public float progressCheckInterval = 1.0f;
 
+    [Header("Diagnostics")]
+    [Tooltip("Log which scene object every guide step resolved to, once at start. Targets are discovered by type and by fuzzy name matching, so this is the fastest way to see WHY a trail is pointing somewhere unexpected. One block of text per camp load — safe to leave on.")]
+    public bool logResolvedTargets = true;
+
     private GameObject waypointMarker;
     private Transform player;
     private int currentStepIndex = -1;
@@ -319,6 +323,52 @@ public class CampGuideDirector : MonoBehaviour
         steps.Add(new GuideStep { promptKey = "GUIDE_REACH_CITY",     target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 21 });
         // 14. Final push: the Throne (R24)
         steps.Add(new GuideStep { promptKey = "GUIDE_FINAL_PUSH",     target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 24 });
+
+        if (logResolvedTargets) LogResolvedTargets();
+        WarnOnDuplicateBuildingIDs();
+    }
+
+    // Every step, what it resolved to, and where that is.
+    //
+    // "The trail goes to the wrong place" is otherwise a guessing game: the
+    // targets are discovered by component type and by fuzzy name matching
+    // against whatever is in the scene, so a renamed object or a prefab reused
+    // as decoration can silently hand a step the wrong transform. One line per
+    // step turns that into a fact you can read.
+    private void LogResolvedTargets()
+    {
+        var sb = new System.Text.StringBuilder("[CampGuide] Resolved step targets:\n");
+        for (int i = 0; i < steps.Count; i++)
+        {
+            GuideStep s = steps[i];
+            sb.Append($"  {i}. {s.promptKey}  key={s.playerPrefsKey}>={s.requiredValue}  ->  ");
+            sb.AppendLine(s.target == null
+                ? "(no target — prompt only)"
+                : $"'{s.target.name}' at {s.target.position}");
+        }
+        Debug.Log(sb.ToString());
+    }
+
+    // Two CampBuildings sharing a buildingID share their save key, because
+    // CampBuilding derives it as "SaveBld_" + buildingID. Building one then
+    // marks the other built, and any guide step keyed on that ID credits for
+    // the wrong structure. Cheap to check, invisible until it bites.
+    private void WarnOnDuplicateBuildingIDs()
+    {
+        var seen = new Dictionary<string, CampBuilding>();
+        foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (b == null || string.IsNullOrEmpty(b.buildingID)) continue;
+            if (seen.TryGetValue(b.buildingID, out var first))
+            {
+                Debug.LogWarning($"[CampGuide] '{b.name}' and '{first.name}' both use buildingID " +
+                                 $"'{b.buildingID}', so they share the save key SaveBld_{b.buildingID} — " +
+                                 "building either one marks both built, and guide steps keyed on it will " +
+                                 "credit for the wrong building. Give them distinct IDs.");
+                continue;
+            }
+            seen[b.buildingID] = b;
+        }
     }
 
     // Notice-board / shop lookups by component-type-or-name. Keeps the
@@ -392,13 +442,50 @@ public class CampGuideDirector : MonoBehaviour
     // transform.position sends the trail past the visual building. We use
     // the combined renderer-bounds centre (XZ) instead, snapped to the
     // NavMesh so the path actually terminates on walkable ground next to
-    // the building. Cached per-target (bounds don't move in camp).
-    private readonly Dictionary<Transform, Vector3> aimCache = new Dictionary<Transform, Vector3>();
+    // the building.
+    //
+    // Cached, but the cache remembers WHERE the target stood when it was
+    // computed and drops itself when the target moves. "Bounds don't move in
+    // camp" is true of buildings and false of the one target that is a person:
+    // Elias patrols. His entry was computed the first time the guide looked at
+    // him and then never again, so his beacon and his trail stayed pinned to
+    // the spot by his hut where he happened to be standing at scene load,
+    // while the man himself walked off. For a building the comparison is
+    // against a value that never changes, so nothing is recomputed.
+    private readonly Dictionary<Transform, (Vector3 from, Vector3 aim)> aimCache =
+        new Dictionary<Transform, (Vector3, Vector3)>();
+
+    // A path worth DRAWING — which is a stricter thing than a path that exists.
+    //
+    // NavMesh.CalculatePath returns true for a PARTIAL path: the destination
+    // was unreachable, so it hands back the route to the closest polygon it
+    // could get to and reports success. The old check took that at face value
+    // and drew the ribbon anyway, so whenever an objective sat off the baked
+    // NavMesh — behind a fence, on ground added after the last bake — the guide
+    // confidently drew a gold trail to somewhere that was not the objective and
+    // gave the player no hint it had given up. A trail that lies is worse than
+    // no trail: the beacon over the target and the screen-edge arrow both read
+    // straight off the world position and cannot be wrong, so when the route is
+    // in doubt those are left to do the job alone.
+    private bool TryPathTo(Vector3 aim)
+    {
+        if (!NavMesh.CalculatePath(player.position, aim, guideFilter, scratchPath)) return false;
+        if (scratchPath.status != NavMeshPathStatus.PathComplete) return false;
+        if (scratchPath.corners.Length < 2) return false;
+
+        // Belt and braces: even a "complete" path ends at the navmesh polygon
+        // nearest the destination, which is not the destination if the
+        // destination was never on the mesh.
+        Vector3 end = scratchPath.corners[scratchPath.corners.Length - 1];
+        return (new Vector2(end.x - aim.x, end.z - aim.z)).sqrMagnitude <= 9f;   // within 3 m
+    }
 
     private Vector3 GetAimPoint(Transform target)
     {
         if (target == null) return Vector3.zero;
-        if (aimCache.TryGetValue(target, out var cached)) return cached;
+        if (aimCache.TryGetValue(target, out var cached)
+            && (cached.from - target.position).sqrMagnitude < 0.25f)
+            return cached.aim;
 
         Vector3 aim = target.position;
 
@@ -425,7 +512,7 @@ public class CampGuideDirector : MonoBehaviour
         if (NavMesh.SamplePosition(aim, out NavMeshHit hit, 8f, NavMesh.AllAreas))
             aim = hit.position;
 
-        aimCache[target] = aim;
+        aimCache[target] = (target.position, aim);
         return aim;
     }
 
@@ -521,8 +608,7 @@ public class CampGuideDirector : MonoBehaviour
         {
             trailTimer = 0f;
             var target = steps[currentStepIndex].target;
-            if (target != null && NavMesh.CalculatePath(player.position, GetAimPoint(target), guideFilter, scratchPath)
-                && scratchPath.corners.Length >= 2)
+            if (target != null && TryPathTo(GetAimPoint(target)))
             {
                 RebuildSmoothTrail(scratchPath.corners);
             }
