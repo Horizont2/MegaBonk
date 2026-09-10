@@ -66,8 +66,14 @@ public class TrailerLegionMarch : MonoBehaviour
 
     [Header("Formation")]
     [Tooltip("Ranks kept alive at once. Because ranks recycle, this is a BUDGET, not the length of the army — raise it only if the tail is visibly short before the fog takes it.")]
-    [Range(4, 60)] public int ranksAlive = 20;
-    [Range(2, 24)] public int unitsPerRank = 8;
+    // Deliberately small to start with.
+    //
+    // The environment, the camera move and the formation's shape all need to be
+    // right before the count matters, and a heavy scene makes every one of those
+    // slower to judge. Get the shot working at 32 units, then raise these — the
+    // recycling belt means the column reads as endless at any count.
+    [Range(4, 60)] public int ranksAlive = 8;
+    [Range(2, 24)] public int unitsPerRank = 4;
     public float rankSpacing = 3.2f;
     public float fileSpacing = 2.1f;
     [Tooltip("A boss walks in place of the centre of every Nth rank, and the rank opens up around it.")]
@@ -161,20 +167,38 @@ public class TrailerLegionMarch : MonoBehaviour
     private Transform templateRoot;
     private float shotTime;
 
-    private void Start()
+    private bool _initialised;
+
+    // Called from Start AND from Prepare, because the sequencer prepares this shot
+    // the moment its rig is switched on — which is BEFORE Unity runs Start. Built
+    // without this, the column used a zero march direction: every position landed
+    // on top of the last one and LookRotation threw on a zero vector, once per
+    // unit. That is the black screen and the console flood in one.
+    private bool EnsureInit()
     {
+        if (_initialised) return true;
+
         if (rankPrefabs == null || rankPrefabs.Length == 0)
-        { Debug.LogWarning("[Legion] No rank prefabs assigned."); enabled = false; return; }
+        { Debug.LogWarning("[Legion] No rank prefabs assigned."); enabled = false; return false; }
 
         shotCamera = shotCamera != null ? shotCamera : Camera.main;
-        if (shotCamera == null) { Debug.LogWarning("[Legion] No camera."); enabled = false; return; }
+        if (shotCamera == null) { Debug.LogWarning("[Legion] No camera."); enabled = false; return false; }
         camT = shotCamera.transform;
 
         dir = marchDirection.sqrMagnitude < 0.001f ? Vector3.forward : marchDirection.normalized;
-        dir.y = 0f; dir.Normalize();
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 0.001f) dir = Vector3.forward;
+        dir.Normalize();
         right = Vector3.Cross(Vector3.up, dir).normalized;
 
         columnLength = ranksAlive * rankSpacing;
+        _initialised = true;
+        return true;
+    }
+
+    private void Start()
+    {
+        if (!EnsureInit()) return;
 
         PurgeForeignEnemies();
         // Spawners can start again and managers can re-create themselves, so this
@@ -571,13 +595,15 @@ public class TrailerLegionMarch : MonoBehaviour
     public void Play()
     {
         if (IsFinished) return;
+        if (!EnsureInit()) { IsFinished = true; return; }
         StartCoroutine(PlayShot());
     }
 
     // Build the column without playing the shot. Safe to call more than once.
     public void Prepare()
     {
-        if (IsReady || _preparing || !enabled) return;
+        if (IsReady || _preparing) return;
+        if (!EnsureInit()) return;
         _preparing = true;
         StartCoroutine(PrepareRoutine());
     }

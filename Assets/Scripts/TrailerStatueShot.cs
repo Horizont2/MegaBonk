@@ -86,6 +86,8 @@ public class TrailerStatueShot : MonoBehaviour
 
     [Header("Fracture")]
     [Range(1, 8)] public int seedCracks = 4;
+    [Tooltip("Hard ceiling on fissures. Each one carries a realtime point light, and past a dozen they stop adding anything visible while the shadow atlas starts thrashing.")]
+    [Range(2, 24)] public int maxCracks = 10;
     [Tooltip("Seconds between fracture advances at the start. Cracks accelerate as pressure builds.")]
     public float stepIntervalStart = 0.16f;
     public float stepIntervalEnd = 0.035f;
@@ -645,7 +647,13 @@ public class TrailerStatueShot : MonoBehaviour
 
         // Everything has arrested but the burst has not arrived — open a new
         // fracture so the stone never goes quiet mid-build.
-        if (live == 0 && tension < 0.95f) SeedCrack();
+        //
+        // CAPPED. Cracks arrest at edges constantly, so this fired on almost every
+        // step and each new crack brings its own point light: the shot was ending
+        // up with over a hundred realtime lights, which blows the shadow atlas and
+        // is most of why the whole editor crawled. A dozen fissures is already
+        // more than the frame can show.
+        if (live == 0 && tension < 0.95f && cracks.Count < maxCracks) SeedCrack();
     }
 
     // Chips fly from wherever the fracture is actually advancing, so the debris
@@ -945,7 +953,10 @@ public class TrailerStatueShot : MonoBehaviour
                 if (pick != null) from = pick.Tip;
             }
 
-            GameObject chunk = Instantiate(prefab, from, Random.rotation);
+            // Parented to the rig. Spawned at the scene root they survive the rig
+            // being switched off, and the hierarchy fills with LProck(Clone) that
+            // nothing owns and nothing cleans up.
+            GameObject chunk = Instantiate(prefab, from, Random.rotation, transform);
             chunk.transform.localScale *= Random.Range(0.07f, 0.26f);
 
             // Imported rock meshes carry no collider, so without this every chunk
