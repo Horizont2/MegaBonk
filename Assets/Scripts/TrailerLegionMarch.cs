@@ -111,7 +111,8 @@ public class TrailerLegionMarch : MonoBehaviour
     public Camera shotCamera;
     [Tooltip("Clearance from the EDGE of the column, not from its axis — the rig works this out from the formation's width, so widening the ranks can never put the lens inside them.")]
     public float flankClearance = 3.5f;
-    public float lowHeight = 0.55f;
+    [Tooltip("Camera height for the opening beat, in metres. Hip height, not ankle height: at half a metre a level look frames mostly grass, which is what 'the camera just showed the ground' actually was.")]
+    public float lowHeight = 0.95f;
     [Tooltip("Crane height at the top, as a MULTIPLE of the column's length. Absolute metres cannot work: change the unit count and the same height becomes either a steep look straight down or barely a rise at all.")]
     public float highHeightPerLength = 0.45f;
     [Tooltip("Wide lens for the low shot: it makes the ranks tower.")]
@@ -646,15 +647,7 @@ public class TrailerLegionMarch : MonoBehaviour
         _playing = true;
         UpdateCamera(0f);
 
-        // Where things actually ARE at the top of the shot. Framing misses in
-        // this shot have all been geometry, not art, and one line beats another
-        // round of guessing from a screenshot.
-        float along = Vector3.Dot(camT.position - transform.position, dir);
-        Debug.Log($"[Legion] Shot opens: camera {along:F1} m along the road, " +
-                  $"{Vector3.Dot(camT.position - transform.position, right):F1} m to the side, " +
-                  $"{camT.position.y - SampleGround(camT.position):F1} m up. " +
-                  $"Column is {columnLength:F0} m long and recycles {RecycleBehindCamera:F1} m past the lens, " +
-                  $"so the visible line runs from {-(columnLength - RecycleBehindCamera):F0} m to +{RecycleBehindCamera:F0} m relative to the camera.");
+        ReportOpeningFrame();
 
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
@@ -714,71 +707,84 @@ public class TrailerLegionMarch : MonoBehaviour
 
     private void UpdateCamera(float t)
     {
-        // One continuous move through three framings. Cutting between them would
-        // give the audience a chance to reset; a single rise makes them watch the
-        // army get bigger without being allowed to look away.
-        // Four beats, and the ORDER is the whole point.
+        // ==== the four beats ====
         //
-        //  BOOTS. The camera is in the grass, aimed at their legs. Withholding the
-        //  faces is what makes them threatening: the audience is given the scale
-        //  of the thing before they are given its identity, and something you have
-        //  measured but not seen is worse than something you have seen.
+        //  A LEGS. Beside the road, at hip height, looking level down the line.
+        //    The audience gets the scale of the thing before its identity, and
+        //    something you have measured but not seen is worse than something you
+        //    have seen.
         //
-        //  TILT. Now look up. The reveal is of WHAT has been walking past, and it
-        //  lands because the previous beat refused it.
+        //  B TILT. Look up. The reveal lands because the previous beat refused it.
         //
-        //  RISE. One unbroken crane. A cut here would let the audience reset.
+        //  C RISE. One unbroken crane. A cut here would let the audience reset.
         //
-        //  HOLD. Stay on it. Trailers usually cut a beat too early; an army with no
-        //  end needs time on screen for "no end" to register.
+        //  D HOLD. Stay on it — an army with no end needs time on screen for "no
+        //    end" to register, and trailers habitually cut a beat early.
         float tilt = t < bootsBeat ? 0f
                    : Mathf.Clamp01((t - bootsBeat) / Mathf.Max(0.01f, tiltBeat));
         tilt = tilt * tilt * (3f - 2f * tilt);
 
-        float rise;
         float riseStart = bootsBeat + tiltBeat;
-        if (t < riseStart) rise = 0f;
-        else if (t < riseStart + riseBeat) rise = Mathf.Clamp01((t - riseStart) / riseBeat);
-        else rise = 1f;
-
-        // Smootherstep, so the crane has no detectable start or stop.
+        float rise = t < riseStart ? 0f
+                   : Mathf.Clamp01((t - riseStart) / Mathf.Max(0.01f, riseBeat));
+        // Smootherstep: no detectable start or stop to the crane.
         float e = rise * rise * rise * (rise * (rise * 6f - 15f) + 10f);
 
-        // Stand clear of the formation's actual edge rather than a hand-typed
-        // distance from its axis. A wider rank would otherwise walk through the
-        // lens, and nobody would think to look at flankOffset to find out why.
+        // ==== where the camera stands ====
+        //
+        // Clear of the formation's real edge, never a hand-typed distance from its
+        // axis: widen the ranks and a fixed number walks them through the lens.
         float halfWidth = (unitsPerRank - 1) * 0.5f * fileSpacing;
-        float side = (halfWidth + flankClearance) * Mathf.Lerp(1f, 2.4f, e);
-
-        // Drift AHEAD of the oncoming column as the camera climbs, so the line
-        // has somewhere to fit as the lens gets longer.
-        float ahead = Mathf.Lerp(0f, columnLength * craneAheadPerLength, e);
+        float side = (halfWidth + flankClearance) * Mathf.Lerp(1f, 2.2f, e);
+        float ahead = columnLength * craneAheadPerLength * e;
         float height = Mathf.Lerp(lowHeight, columnLength * highHeightPerLength, e);
 
         Vector3 basePos = transform.position + right * side + dir * ahead;
         camT.position = new Vector3(basePos.x, SampleGround(basePos) + height, basePos.z);
 
-        // Look BACK down the line, at the ranks coming on. The army walks at the
-        // camera and past it: an army marching away is a departure, and a
-        // departure is not frightening. Looking further down the column as the
-        // camera rises makes the reveal one of DEPTH rather than of more ground.
-        // Measured from the CAMERA, not from the column's origin. The units live
-        // in a stretch defined relative to the lens (that is how recycling works),
-        // so an aim point anchored to the origin drifts out of the column the
-        // moment its length changes — and then the shot is of an empty road.
-        Vector3 aim = camT.position - right * (halfWidth + flankClearance) * 0.6f
-                    - dir * Mathf.Lerp(7f, Mathf.Max(14f, columnLength * 0.7f), e);
-        // Boots first: aim BELOW the knee, then tilt up over beat B, then let the
-        // crane take it. Height above ground is what decides whether we are
-        // looking at legs or at faces.
-        float aimHeight = Mathf.Lerp(Mathf.Lerp(0.35f, 2.1f, tilt), 2.6f, e);
-        aim.y = SampleGround(aim) + aimHeight;
+        // ==== what it looks at ====
+        //
+        // A point ON THE ROAD'S AXIS, a set distance BEHIND the camera. Both parts
+        // matter and both were wrong before: an aim anchored to the column's
+        // origin drifts out of the line as soon as the column's length changes,
+        // and an aim off the axis frames the verge. Measured this way the shot is
+        // pointed at the marching lane by construction, at any unit count.
+        float camAlong = Vector3.Dot(camT.position - transform.position, dir);
+        float lookBack = Mathf.Lerp(9f, Mathf.Max(18f, columnLength * 0.75f), e);
+
+        Vector3 aim = transform.position + dir * (camAlong - lookBack);
+        // Height decides whether this is a shot of legs or of faces.
+        aim.y = SampleGround(aim) + Mathf.Lerp(Mathf.Lerp(0.9f, 1.9f, tilt), 2.4f, e);
+
         camT.rotation = Quaternion.LookRotation((aim - camT.position).normalized);
 
-        // The lens goes LONG as it rises. This is the shot: telephoto compression
-        // stacks the ranks into one another so the column reads far denser and
-        // longer than the unit count. The identical army on a wide lens from the
-        // same height would look thin.
+        // The lens goes LONG as it rises. Telephoto compression stacks the ranks
+        // into one another so the column reads far denser and longer than the unit
+        // count; the same army on a wide lens from the same height looks thin.
         shotCamera.fieldOfView = Mathf.Lerp(lowFov, highFov, e);
+    }
+
+    // A one-line answer to "why is it framing nothing".
+    //
+    // Every framing failure in this shot has been geometry, and each one cost a
+    // play-test and a screenshot to find. These are the numbers that would have
+    // identified all of them immediately.
+    private void ReportOpeningFrame()
+    {
+        float along = Vector3.Dot(camT.position - transform.position, dir);
+        float lateral = Vector3.Dot(camT.position - transform.position, right);
+        float halfWidth = (unitsPerRank - 1) * 0.5f * fileSpacing;
+
+        Debug.Log(
+            $"[Legion] OPENING FRAME\n" +
+            $"  camera: {along:F1} m along the road, {lateral:F1} m to the side, " +
+            $"{camT.position.y - SampleGround(camT.position):F1} m up, {shotCamera.fieldOfView:F0}° lens\n" +
+            $"  column: {units.Count} units, {halfWidth * 2f:F1} m wide, {columnLength:F0} m long, " +
+            $"recycling {RecycleBehindCamera:F1} m past the lens\n" +
+            $"  so the visible line runs from {-(columnLength - RecycleBehindCamera):F0} m to " +
+            $"+{RecycleBehindCamera:F0} m relative to the camera, and the camera is aimed " +
+            $"{9f:F0} m back down that line.\n" +
+            $"  If the frame is empty: the aim distance must fall INSIDE the visible line, " +
+            $"and the camera must stand clear of {halfWidth:F1} m (half the formation's width).");
     }
 }
