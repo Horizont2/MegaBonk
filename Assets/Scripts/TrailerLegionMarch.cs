@@ -208,7 +208,7 @@ public class TrailerLegionMarch : MonoBehaviour
 
         if (u.anim != null)
         {
-            u.anim.cullingMode = AnimatorCullingMode.CullCompletelyOffscreen;
+            u.anim.cullingMode = AnimatorCullingMode.CullCompletely;
             u.anim.applyRootMotion = false;
             u.anim.SetBoolSafe("isMoving", true);
             // Desynchronise the walk cycle. A crowd in perfect lockstep reads as
