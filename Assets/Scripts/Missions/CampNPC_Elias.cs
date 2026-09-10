@@ -96,6 +96,7 @@ public class CampNPC_Elias : MonoBehaviour
 
         if (lodgeLvl == 1 && PlayerPrefs.GetInt("Elias_Intro", 0) == 0) return true;
         if (lodgeLvl == 2 && PlayerPrefs.GetInt("Elias_TableBuilt", 0) == 0) return true;
+        if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_WarChest", 0) == 0) return true;
         if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_Lore1", 0) == 0) return true;
         if (conqueredCount >= 4 && PlayerPrefs.GetInt("Elias_Lore2", 0) == 0) return true;
         if (lodgeLvl == 3 && PlayerPrefs.GetInt("Elias_DesertBuilt", 0) == 0) return true;
@@ -164,6 +165,24 @@ public class CampNPC_Elias : MonoBehaviour
             yield return StartCoroutine(ShowSubtitle("Elias: Interact with the table to plan your assaults. We need those territories back.", 4.5f));
             PlayerPrefs.SetInt("Elias_TableBuilt", 1);
         }
+        // The war chest. Deliberately sits BEFORE the Lore1 beat so the first
+        // thing Elias does after the player's first conquest is hand them the
+        // means to take the next region — the guide plate has just sent them
+        // here for exactly this, and a lore aside instead of the promised purse
+        // would read as the quest lying.
+        else if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_WarChest", 0) == 0)
+        {
+            int purse = WarChestAmount();
+            yield return StartCoroutine(ShowSubtitle("Elias: One province back. That changes what we can attempt next.", 3.5f));
+            yield return StartCoroutine(ShowSubtitle("Elias: The Whispering Thicket is next on my charts, and it is no place to walk into alone.", 4.5f));
+            yield return StartCoroutine(ShowSubtitle("Elias: So don't. Raise the barracks, put coin in willing hands, and send them in your stead.", 4.5f));
+            // Grant BEFORE the closing line, so the toast lands while he is
+            // still talking about it rather than after he has finished.
+            if (ResourceManager.Instance != null) ResourceManager.Instance.AddDiamonds(purse);
+            yield return StartCoroutine(ShowSubtitle(
+                LocalizationManager.Tr("ELIAS_WARCHEST_GIVE", purse, MercenaryRoster.GuideSquadSize), 5f));
+            PlayerPrefs.SetInt("Elias_WarChest", 1);
+        }
         else if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_Lore1", 0) == 0)
         {
             yield return StartCoroutine(ShowSubtitle("Elias: You survived your first conquest. I knew you had the spark.", 3.5f));
@@ -223,6 +242,33 @@ public class CampNPC_Elias : MonoBehaviour
         if (board != null) board.UpdateMarkerState();
 
         if (isPlayerInRange && GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_TALK_ELIAS"));
+    }
+
+    // What Elias hands over after the first region, in diamonds.
+    //
+    // Read from the actual price list rather than typed in, because the whole
+    // promise of this quest is "this is enough". A designer retuning the
+    // militia's hire cost would otherwise silently turn the purse into not
+    // quite enough, and the failure would surface as a player stuck one
+    // purchase short of an objective the game had just handed them.
+    //
+    // Only archetypes the player can actually hire at a fresh barracks count —
+    // pricing the gift off a Knight they cannot recruit yet would be worse than
+    // useless. One spare hire beyond the squad size is the cushion.
+    private int WarChestAmount()
+    {
+        int cheapest = 0;
+        var roster = MercenaryRoster.Instance;
+        if (roster != null && roster.catalogue != null)
+        {
+            foreach (var d in roster.catalogue)
+            {
+                if (d == null || d.minBarracksLevel > 1) continue;
+                if (cheapest == 0 || d.baseHireCost < cheapest) cheapest = d.baseHireCost;
+            }
+        }
+        if (cheapest <= 0) cheapest = 25;   // the militia's authored price
+        return cheapest * (MercenaryRoster.GuideSquadSize + 1);
     }
 
     private IEnumerator ShowSubtitle(string text, float stayDuration)

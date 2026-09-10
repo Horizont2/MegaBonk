@@ -88,14 +88,57 @@ public static class BattleResolver
         }
     }
 
+    // Nothing is ever a certainty. A sliver of doubt is what keeps the
+    // pre-battle screen a decision instead of a formality.
+    public const float MaxWinChance = 0.95f;
+
+    // The single source of truth for "will this army win".
+    //
+    // This used to be written out twice — once in Preview, once in Resolve —
+    // as `1 - enemy / (army * 1.2)`, and that formula had two problems.
+    //
+    // It contradicted the risk band displayed right beside it. ClassifyRisk
+    // calls an evenly matched fight "Even"; the formula gave an evenly matched
+    // fight a 17% chance. A player told the odds were even lost five times out
+    // of six, and no amount of retuning the region numbers could fix a
+    // disagreement between the label and the maths behind it.
+    //
+    // And it had no reachable top. Because the enemy term only ever divides,
+    // the curve approaches 1 without arriving: an army at TEN times the
+    // garrison's strength still read 88%. Its own comment claimed 100% at
+    // 1.2x, which the code never did. That is why a starter company could not
+    // take anything at all, whatever it was pointed at.
+    //
+    // The replacement maps the ratio the player is shown onto the odds the
+    // player gets: half the garrison's strength is hopeless, an even match is
+    // a coin flip, half again as strong is as close to certain as this game
+    // ever promises. Tactic bonuses ride on top.
+    public static float WinChance(int armyScore, int enemyStrength, CampaignTactic tactic)
+    {
+        if (armyScore <= 0) return 0f;
+        if (enemyStrength <= 0) return MaxWinChance;
+
+        float ratio = armyScore / (float)enemyStrength;
+        float chance = Mathf.InverseLerp(0.5f, 1.5f, ratio) + TacticWinChanceBonus(tactic);
+        return Mathf.Clamp(chance, 0f, MaxWinChance);
+    }
+
+    // The band the player is shown, derived from the odds the player will
+    // actually get rather than from a second, independent set of thresholds.
+    // Those thresholds were the other half of the disagreement described above:
+    // whatever the win curve does, a label computed separately from it will
+    // drift out of step with it again the first time either is retuned.
+    //
+    // Read at the neutral tactic on purpose — the band describes the FIGHT, and
+    // a tactic is then something the player brings to it.
     public static RiskBand ClassifyRisk(int armyScore, int enemyScore)
     {
         if (armyScore <= 0) return RiskBand.Suicidal;
-        float ratio = (float)enemyScore / armyScore;
-        if (ratio < 0.3f) return RiskBand.Overwhelming;
-        if (ratio < 0.7f) return RiskBand.Favourable;
-        if (ratio < 1.3f) return RiskBand.Even;
-        if (ratio < 2.0f) return RiskBand.Risky;
+        float chance = WinChance(armyScore, enemyScore, CampaignTactic.Assault);
+        if (chance >= 0.90f) return RiskBand.Overwhelming;
+        if (chance >= 0.70f) return RiskBand.Favourable;
+        if (chance >= 0.40f) return RiskBand.Even;
+        if (chance >= 0.15f) return RiskBand.Risky;
         return RiskBand.Suicidal;
     }
 
@@ -123,10 +166,10 @@ public static class BattleResolver
         // legible without a text tooltip.
         float ratio = armyScore > 0 ? (float)enemyStrength / armyScore : 999f;
         float baseShare = Mathf.Clamp01(ratio * 0.6f);
-        // Approximate win chance same way Resolve does, for band centring.
-        float winChance = armyScore > 0
-            ? Mathf.Clamp01((1f - (float)enemyStrength / (armyScore * 1.2f)) + TacticWinChanceBonus(tactic))
-            : 0f;
+        // Exactly what Resolve will use — not an approximation of it. The two
+        // being separately written was how the preview and the outcome came to
+        // disagree in the first place.
+        float winChance = WinChance(armyScore, enemyStrength, tactic);
         float winShare  = Mathf.Clamp01(baseShare * TacticCasualtyMultiplier(tactic, true));
         float lossShare = Mathf.Clamp01((baseShare + 0.35f) * TacticCasualtyMultiplier(tactic, false));
         int total = army.Count;
@@ -170,17 +213,13 @@ public static class BattleResolver
             return r;
         }
 
-        // Win check: score ratio + tactic bonus + small RNG bias to keep
-        // close battles unpredictable. Ceiling tightened to 1.2× so cheap
-        // Militia spam doesn't trivialise mid/late regions — you need a
-        // stronger composition to guarantee wins.
-        // At armyScore == enemyScore*1.2 → 100% win (Assault); at ratio
-        // 1:1 → ~17% win. Ambush +3%, Siege +7% on top.
-        float baseWinChance = Mathf.Clamp01(1f - (float)enemyStrength / (armyScore * 1.2f));
-        baseWinChance = Mathf.Clamp01(baseWinChance + TacticWinChanceBonus(tactic));
+        // Win check: the shared curve, plus a small RNG bias so battles near
+        // the middle of it stay unpredictable and a preview never reads as a
+        // promise. See WinChance for why the old inline formula is gone.
+        float baseWinChance = WinChance(armyScore, enemyStrength, tactic);
         float roll = (float)rng.NextDouble();
         float bias = ((float)rng.NextDouble() - 0.5f) * 0.2f;
-        r.won = roll < (baseWinChance + bias);
+        r.won = roll < Mathf.Clamp01(baseWinChance + bias);
 
         // Casualty math — win/loss-aware tactic multiplier so Ambush truly
         // punishes a lost gamble and Siege stays cheap either way.

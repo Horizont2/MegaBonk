@@ -21,6 +21,13 @@ public class CampGuideDirector : MonoBehaviour
         [Tooltip("Short label shown to the player, e.g. 'Talk to Elias'. Passed through Tr.")]
         public string promptKey = "GUIDE_TALK_ELIAS";
 
+        [Tooltip("Optional number substituted into the prompt's {0}. Leave at -1 for prompts with no placeholder.")]
+        // Exists so a step like 'hire 3 mercenaries' can take its number from
+        // the same constant the objective is actually checked against, instead
+        // of having it typed into eight translated strings where it would
+        // silently stop matching the moment the squad size is retuned.
+        public int promptArg = -1;
+
         [Tooltip("Where to point. LineRenderer + waypoint marker follow this transform.")]
         public Transform target;
 
@@ -158,10 +165,11 @@ public class CampGuideDirector : MonoBehaviour
         {
             if (!missionPlate.gameObject.activeSelf) missionPlate.gameObject.SetActive(true);
             if (initial) missionPlate.animateAppearance = true; // slide-in on first show
-            missionPlate.Setup(
-                LocalizationManager.Tr("GUIDE_PLATE_TITLE"),
-                LocalizationManager.Tr(steps[currentStepIndex].promptKey),
-                0, 1);
+            GuideStep step = steps[currentStepIndex];
+            string body = step.promptArg >= 0
+                ? LocalizationManager.Tr(step.promptKey, step.promptArg)
+                : LocalizationManager.Tr(step.promptKey);
+            missionPlate.Setup(LocalizationManager.Tr("GUIDE_PLATE_TITLE"), body, 0, 1);
         }
         else
         {
@@ -262,25 +270,54 @@ public class CampGuideDirector : MonoBehaviour
         steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "MapOpenedOnce",         requiredValue = 1 });
         // 4. Conquer the first (hand-built) region — R1 Old Lumberyard
         steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 1 });
-        // 5. Build the storage vault so more resource capacity unlocks.
+
+        // ---- The mercenary arc ------------------------------------------
+        //
+        // This block used to sit at the far end of the chain, behind the
+        // storage vault and the notice board. That put the game's second
+        // region — which is an auto-battle region and CANNOT be raided in
+        // person — behind three errands the player had no reason to connect
+        // to it. Whichever order they wandered in, the map offered them a
+        // territory they had no army for and no prompt explaining why.
+        //
+        // So the arc now follows the first conquest immediately, and it reads
+        // as one continuous thought: Elias funds you, you spend it, you send
+        // the company, the province falls. The errands keep their order behind
+        // it — they are useful, they are just not urgent.
+
+        // 5. Elias has news, and a purse — see CampNPC_Elias's war-chest beat
+        steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS_AGAIN", target = eliasT,  playerPrefsKey = "Elias_WarChest",        requiredValue = 1 });
+        // 6. Make sure the barracks stands. BarracksBuilding seeds itself to
+        //    level 1 on first visit, so for most players this credits at once
+        //    — it is here for the save where it has not.
+        //
+        //    Only added when a barracks was actually found. Its key is only
+        //    ever written by the building itself, so on a camp scene without
+        //    one the step could never complete — and now that it sits on the
+        //    critical path, an uncompletable step would wedge the whole guide
+        //    short of the objective this arc exists to deliver.
+        if (barracksT != null)
+            steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = barracksKey,         requiredValue = 1 });
+        // 7. Raise the company Elias just paid for. Counts lifetime hires, and
+        //    takes both the number it asks for and the number it checks from
+        //    the one constant, so the objective and its text cannot disagree.
+        steps.Add(new GuideStep { promptKey = "GUIDE_HIRE_SQUAD",     target = barracksT, playerPrefsKey = MercenaryRoster.PP_HIRED_TOTAL, requiredValue = MercenaryRoster.GuideSquadSize, promptArg = MercenaryRoster.GuideSquadSize });
+        // 8. Send them at the second region
+        steps.Add(new GuideStep { promptKey = "GUIDE_SEND_ARMY",      target = mapT,      playerPrefsKey = "MercFirstDeployed",     requiredValue = 1 });
+
+        // ---- Camp errands, in their original order ----------------------
+        // 9. Build the storage vault so more resource capacity unlocks.
         //    Key derived from the real building above, not hardcoded.
         steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_STORAGE",  target = storageT,  playerPrefsKey = storageKey,  requiredValue = 1 });
-        // 6. Check the notice board for daily missions (extra income)
+        // 10. Check the notice board for daily missions (extra income)
         steps.Add(new GuideStep { promptKey = "GUIDE_NOTICE_BOARD",   target = noticeT,   playerPrefsKey = "HasInteractedWithBoard", requiredValue = 1 });
-        // 7. Build the barracks — unlocks the mercenary system.
-        //    Key derived from the real building above, not hardcoded.
-        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = barracksKey,      requiredValue = 1 });
-        // 8. Hire your first mercenary (any type — Roster.CountAliveTotal>=1)
-        steps.Add(new GuideStep { promptKey = "GUIDE_HIRE_MERC",      target = barracksT, playerPrefsKey = "MercFirstHired",        requiredValue = 1 });
-        // 9. Send an army to an auto-battle region
-        steps.Add(new GuideStep { promptKey = "GUIDE_SEND_ARMY",      target = mapT,      playerPrefsKey = "MercFirstDeployed",     requiredValue = 1 });
-        // 10. Visit the Shop and spend a diamond on gear
+        // 11. Visit the Shop and spend a diamond on gear
         steps.Add(new GuideStep { promptKey = "GUIDE_VISIT_SHOP",     target = shopT,     playerPrefsKey = "ShopFirstPurchase",     requiredValue = 1 });
-        // 11. Reach the mid-game location (R8 Sunken Outpost — 3rd hand-built)
+        // 12. Reach the mid-game location (R8 Sunken Outpost — 3rd hand-built)
         steps.Add(new GuideStep { promptKey = "GUIDE_MIDGAME_REGION", target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 8 });
-        // 12. Reach the city (R22 — pre-final hand-built)
+        // 13. Reach the city (R22 — pre-final hand-built)
         steps.Add(new GuideStep { promptKey = "GUIDE_REACH_CITY",     target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 21 });
-        // 13. Final push: the Throne (R24)
+        // 14. Final push: the Throne (R24)
         steps.Add(new GuideStep { promptKey = "GUIDE_FINAL_PUSH",     target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 24 });
     }
 
