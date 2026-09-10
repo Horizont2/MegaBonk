@@ -516,9 +516,15 @@ public class TrailerStatueShot : MonoBehaviour
         float shove = 0f, fovKick = 0f;
         if (post >= 0f)
         {
+            // Attack THEN decay. Both of these used to reach full value at
+            // post == 0, which is an instantaneous 1.6 m jump in position and a
+            // 7-degree step in focal length on a single frame — a teleport and a
+            // lens change, read together as the camera lurching into the statue.
+            // A blast still arrives fast; it does not arrive in zero time.
+            float attack = 1f - Mathf.Exp(-post * 26f);
             float knock = Mathf.Exp(-post * 3.2f);
-            shove = blastShove * (0.45f + 0.55f * knock);
-            fovKick = 7f * Mathf.Exp(-post * 2.6f);
+            shove = blastShove * attack * (0.45f + 0.55f * knock);
+            fovKick = 7f * attack * Mathf.Exp(-post * 2.6f);
         }
 
         Vector3 pos = new Vector3(center.x + Mathf.Cos(az) * (dist + shove),

@@ -154,11 +154,9 @@ public class TrailerLegionMarch : MonoBehaviour
         columnLength = ranksAlive * rankSpacing;
 
         PurgeForeignEnemies();
-        BuildColumn();
-        ReportFormation();
-        // Spawners can start again, and managers can be re-created, so this is not
-        // a one-time clean-up.
-        InvokeRepeating(nameof(PurgeForeignEnemies), 1f, 1f);
+        // Spawners can start again and managers can re-create themselves, so this
+        // is not a one-time clean-up. Two seconds is plenty; the scan is not free.
+        InvokeRepeating(nameof(PurgeForeignEnemies), 2f, 2f);
         if (spawnMarchDust) BuildDust();
         if (autoPlay) Play();
     }
@@ -201,10 +199,22 @@ public class TrailerLegionMarch : MonoBehaviour
 
     // ======================= the column =======================
 
-    private void BuildColumn()
+    // Built across frames, not in one.
+    //
+    // 270 prefabs instantiated in a single frame — each walked for components,
+    // stripped, and given an Animator evaluation to desynchronise its gait — is
+    // several seconds of main-thread work. That is not a hitch, it is a freeze,
+    // and from outside it is indistinguishable from the engine hanging. It also
+    // happens while the screen is still black at the head of the shot, so
+    // spreading it out costs nothing anybody can see.
+    private IEnumerator BuildColumnRoutine()
     {
+        const int RanksPerFrame = 2;
+
         for (int r = 0; r < ranksAlive; r++)
         {
+            if (r > 0 && r % RanksPerFrame == 0) yield return null;
+
             bool bossRank = bossPrefabs != null && bossPrefabs.Length > 0 && (r % bossEveryNRanks == 0);
             float z = -r * rankSpacing;
 
@@ -240,6 +250,8 @@ public class TrailerLegionMarch : MonoBehaviour
                 units.Add(MakeUnit(go, isBoss));
             }
         }
+
+        ReportFormation();
     }
 
     // If the column ever comes out as a heap again, this says so in one line
@@ -460,6 +472,10 @@ public class TrailerLegionMarch : MonoBehaviour
 
     private IEnumerator PlayShot()
     {
+        // Build BEFORE the fade-in. The screen is black at this point, so the
+        // frames the column costs to assemble are frames nobody is looking at.
+        yield return BuildColumnRoutine();
+
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
         TrailerAudio.SilenceStaleBeds();
