@@ -117,6 +117,10 @@ public static class TrailerLegionSetup
         sun.color = new Color(0.62f, 0.64f, 0.70f);
         sun.intensity = 0.85f;
         sun.shadows = LightShadows.Soft;
+        // Shadows only where they are visible. A directional light shadowing a
+        // 500-metre terrain full of trees is the single most expensive thing in
+        // this shot, and past the near ground nobody can see a shadow anyway.
+        QualitySettings.shadowDistance = 55f;
         sunGO.transform.rotation = Quaternion.Euler(24f, 200f, 0f);
 
         RenderSettings.fog = true;
@@ -207,7 +211,7 @@ public static class TrailerLegionSetup
             // Both verges, running the length of the march. Gapped and jittered:
             // an unbroken line reads as a wall, and a wall reads as level geometry
             // rather than as something a farmer put there.
-            for (float z = origin.z + 40f; z < origin.z + Size - 40f; z += 11f)
+            for (float z = origin.z + 40f; z < origin.z + Size - 40f; z += 18f)
             {
                 foreach (float side in new[] { -1f, 1f })
                 {
@@ -229,7 +233,7 @@ public static class TrailerLegionSetup
 
         if (rocks.Length > 0)
         {
-            for (int i = 0; i < 60; i++)
+            for (int i = 0; i < 25; i++)
             {
                 float x = cx + (Random.value < 0.5f ? -1f : 1f) * Random.Range(RoadHalfWidth, RoadHalfWidth + 45f);
                 float z = origin.z + Random.Range(30f, Size - 30f);
@@ -261,12 +265,12 @@ public static class TrailerLegionSetup
         main.startSize = 34f;          // few, huge and faint beats many small and busy
         main.startColor = new Color(0.66f, 0.67f, 0.70f, 0.10f);
         main.gravityModifier = 0f;
-        main.maxParticles = 90;
+        main.maxParticles = 35;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.prewarm = true;           // already lying there when the shot opens
 
         var em = ps.emission;
-        em.rateOverTime = 7f;
+        em.rateOverTime = 3f;
 
         var sh = ps.shape;
         sh.shapeType = ParticleSystemShapeType.Box;
@@ -339,16 +343,16 @@ public static class TrailerLegionSetup
 
         var terrain = go.GetComponent<Terrain>();
         terrain.drawInstanced = true;
-        terrain.detailObjectDistance = 90f;
-        terrain.detailObjectDensity = 0.7f;
+        terrain.detailObjectDistance = 70f;
+        terrain.detailObjectDensity = 0.5f;
         terrain.treeDistance = 350f;
         // Full-mesh trees only very close. Dead trees are all branches, so a
         // generous billboard distance means thousands of high-poly meshes drawn at
         // once — which does not look like a performance setting being wrong, it
         // looks like the engine hanging.
-        terrain.treeBillboardDistance = 40f;
-        terrain.treeMaximumFullLODCount = 25;
-        terrain.heightmapPixelError = 5f;
+        terrain.treeBillboardDistance = 30f;
+        terrain.treeMaximumFullLODCount = 15;
+        terrain.heightmapPixelError = 8f;
 
         try
         {
@@ -467,7 +471,7 @@ public static class TrailerLegionSetup
         data.treePrototypes = prefabs.Select(p => new TreePrototype { prefab = p }).ToArray();
 
         var instances = new List<TreeInstance>(2000);
-        for (int i = 0; i < 1400; i++)
+        for (int i = 0; i < 600; i++)
         {
             float nx = Random.value, nz = Random.value;
 

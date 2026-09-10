@@ -468,7 +468,7 @@ public class TrailerLegionMarch : MonoBehaviour
         {
             dust.transform.position = transform.position;
             var em = dust.emission;
-            em.rateOverTime = 55f;
+            em.rateOverTime = 14f;
         }
     }
 
@@ -504,7 +504,10 @@ public class TrailerLegionMarch : MonoBehaviour
         main.startSize = 3.5f;
         main.startColor = dustColor;
         main.gravityModifier = -0.01f;
-        main.maxParticles = 400;
+        // Few and large beats many and small for haze, and every one of these is
+        // a full-screen-ish transparent quad — overdraw is what actually costs
+        // here, not particle count arithmetic.
+        main.maxParticles = 90;
         main.useUnscaledTime = true;
 
         var sh = dust.shape;

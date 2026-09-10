@@ -89,7 +89,12 @@ public class TrailerShotChain : MonoBehaviour
 
             yield return RunShot(rig);
 
-            rig.SetActive(false);
+            // Keep the LAST rig alive. Switching every rig off at the end leaves
+            // the scene with no camera at all, and Unity draws "No cameras
+            // rendering" over the final frame — which reads as a crash rather
+            // than as an ending. The shot has already faded itself to black; that
+            // black is the ending, and something has to still be rendering it.
+            if (i + 1 < shotRigs.Length) rig.SetActive(false);
         }
 
         Debug.Log("[TrailerChain] Sequence complete.");

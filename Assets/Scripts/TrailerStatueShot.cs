@@ -107,18 +107,18 @@ public class TrailerStatueShot : MonoBehaviour
     // blue-violet with a low red channel, which stays spectral rather than pink.
     public Color lightColor = new Color(0.60f, 0.085f, 0.04f, 1f);
     public Color coreColor = new Color(1f, 0.52f, 0.20f, 1f);
-    public float lightIntensity = 45f;
+    public float lightIntensity = 22f;
     [Tooltip("Shaft length in metres before occlusion trims it.")]
     public float rayLength = 24f;
-    public float rayWidth = 0.42f;
+    public float rayWidth = 0.26f;
     [Tooltip("How far the shafts lean toward the camera when a crack opens, 0 = straight out of the stone. They keep that direction for the rest of the shot; the sweep comes from the camera moving past them.")]
     [Range(0f, 1f)] public float rayLeanToCamera = 0.5f;
     [Tooltip("Keep this low. Fast, deep flicker is what makes shafts look like a disco rig; a menacing light barely moves and only breathes.")]
     [Range(0f, 1f)] public float rayFlicker = 0.10f;
     [Tooltip("How far the shafts push toward the hot core colour. Additive blending SUMS overlapping shafts, so anything high here saturates every channel and the light turns white — which is exactly what stops it looking dangerous. Keep it low and let only the crack mouths burn.")]
-    [Range(0f, 1f)] public float rayHeat = 0.30f;
+    [Range(0f, 1f)] public float rayHeat = 0.18f;
     [Tooltip("Peak opacity of a single shaft. Low, because they stack: six faint shafts crossing read far darker and more solid than six bright ones, which just blow out to white.")]
-    [Range(0.05f, 1f)] public float rayOpacity = 0.42f;
+    [Range(0.05f, 1f)] public float rayOpacity = 0.22f;
     [Tooltip("Flicker speed. Slow is ominous, fast is a fault in a strip light.")]
     public float flickerSpeed = 1.4f;
     [Tooltip("Motes drifting through each shaft. This is what makes a shaft look volumetric rather than printed.")]
