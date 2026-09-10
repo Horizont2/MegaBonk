@@ -193,7 +193,11 @@ public class RegionManager : MonoBehaviour
             // times" bug.
             if (_finalPurificationStarted) return;
             _finalPurificationStarted = true;
-            RegionExitWatchdog.Arm(60f);
+            // Longer than the cinematic can plausibly run. The watchdog now
+            // escalates to a hard scene load rather than firing once and giving
+            // up, so a false positive would cut a legitimate cutscene short —
+            // worth erring on the generous side.
+            RegionExitWatchdog.Arm(100f);
             StartCoroutine(FinalRegionPurificationRoutine(purifiedTotem.transform.position));
         }
     }
@@ -211,6 +215,8 @@ public class RegionManager : MonoBehaviour
     {
         private static RegionExitWatchdog s_instance;
         private float _deadline;
+        private int _attempts;
+        private float _nextAttempt;
 
         public static void Arm(float seconds)
         {
@@ -221,6 +227,8 @@ public class RegionManager : MonoBehaviour
                 s_instance = go.AddComponent<RegionExitWatchdog>();
             }
             s_instance._deadline = Time.unscaledTime + seconds;
+            s_instance._attempts = 0;
+            s_instance._nextAttempt = 0f;
             s_instance.enabled = true;
         }
 
@@ -229,14 +237,37 @@ public class RegionManager : MonoBehaviour
             string active = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             if (active == "CampScene") { enabled = false; return; }
             if (Time.unscaledTime < _deadline) return;
+            if (Time.unscaledTime < _nextAttempt) return;
 
-            enabled = false;
-            Debug.LogWarning("[RegionManager] Victory sequence never returned to camp within its deadline — forcing the load so the player isn't stranded in a conquered region.");
+            // It used to fire once and switch itself off, which made it useless
+            // against the failure it exists for: SceneLoader hands off to
+            // LoadingManager, and LoadingManager was silently dropping the
+            // request whenever its isLoading latch was stuck up. The watchdog
+            // "did its job", disabled itself, and the player stayed stranded.
+            // So it now VERIFIES — it keeps watching until the scene actually
+            // changes, and escalates if the polite route is not working.
+            _attempts++;
+            _nextAttempt = Time.unscaledTime + 6f;
+
             // Whatever stalled may well have been a zero timeScale.
             if (Time.timeScale < 0.01f) Time.timeScale = 1f;
             CinematicActive = false;
             EnemyAI.GlobalFreeze = false;
-            SceneLoader.LoadScene("CampScene");
+
+            if (_attempts <= 2)
+            {
+                Debug.LogWarning($"[RegionManager] Victory sequence never returned to camp (attempt {_attempts}) — forcing the load so the player isn't stranded in a conquered region.");
+                SceneLoader.LoadScene("CampScene");
+                return;
+            }
+
+            // Last resort: a hard, synchronous load. No fade, no loading art,
+            // nothing that can be latched or swallowed. It looks abrupt, and an
+            // abrupt return to camp is enormously better than a region the
+            // player can only leave by killing the process.
+            Debug.LogError("[RegionManager] Still in the region after repeated load attempts — hard-loading CampScene.");
+            enabled = false;
+            UnityEngine.SceneManagement.SceneManager.LoadScene("CampScene");
         }
     }
 
@@ -552,6 +583,12 @@ public class RegionManager : MonoBehaviour
         yield return StartCoroutine(WaitOrSkip(5f));
 
         if (dnc != null) dnc.isWeatherLocked = false;
+        // Leaves a mark in the log at the exact hand-over point. If a report of
+        // "it never went back to camp" ever comes in again, this line says
+        // straight away whether the cinematic finished and the load was
+        // requested, or whether the routine died before ever getting here —
+        // which are two completely different bugs.
+        Debug.Log("[RegionManager] Victory sequence finished — requesting CampScene.");
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.HidePrompt();
@@ -651,6 +688,13 @@ public class RegionManager : MonoBehaviour
         {
             GlobalHUD.Instance.HideCinematicBars();
             GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+        }
+        else
+        {
+            // The main victory routine already had this fallback; skipping the
+            // cinematic went down this branch instead and simply ended with no
+            // scene load at all if the HUD singleton was gone.
+            SceneLoader.LoadScene("CampScene");
         }
         yield break;
     }

@@ -30,6 +30,22 @@ public class LoadingManager : MonoBehaviour
     public bool isLoading { get; private set; } = false;
     private Coroutine hintCoroutine;
 
+    // What is being loaded, and since when. Needed to tell "a load is genuinely
+    // still working" from "the latch was left up by a load that died" — see
+    // LoadScene. Nothing else may write these.
+    private string loadingSceneName;
+    private float loadStartedAt;
+    private AsyncOperation pendingLoad;
+
+    // A scene load that has not finished in this long is not slow, it is dead.
+    // Generous on purpose: a region load includes full world generation.
+    private const float StaleLoadSeconds = 90f;
+
+    // Ceiling on the world-generation wait inside LoadRoutine. Past it the
+    // loading screen comes down anyway: a half-built world the player can see
+    // and quit from beats a loading screen that never ends.
+    private const float GenerationTimeoutSeconds = 120f;
+
     private void Awake()
     {
         if (Instance == null)
@@ -56,7 +72,37 @@ public class LoadingManager : MonoBehaviour
 
     public void LoadScene(string sceneName)
     {
-        if (isLoading) return;
+        if (isLoading)
+        {
+            // Do NOT swallow the request in silence.
+            //
+            // isLoading used to be cleared only on the very last line of
+            // LoadRoutine, so anything that stopped that coroutine short — a
+            // null AsyncOperation because the scene was missing from Build
+            // Settings, a world generation that never reported done, the
+            // coroutine being stopped — left this latched true for the rest of
+            // the session. Every later transition then returned right here
+            // without so much as a log line. That is how a won region could play
+            // its whole victory cinematic, show the title card, and then simply
+            // never hand the player back to camp: both the normal
+            // FadeAndLoadScene AND the region's own stranded-player watchdog
+            // called straight into this early return.
+            bool sameTarget = loadingSceneName == sceneName;
+            float running = Time.unscaledTime - loadStartedAt;
+            if (sameTarget && running < StaleLoadSeconds) return;   // genuinely still working
+
+            Debug.LogWarning($"[LoadingManager] Asked for '{sceneName}' while a load of " +
+                             $"'{loadingSceneName}' has been running {running:F1}s. Treating that one as " +
+                             "dead and taking over.");
+
+            // Release the old async op before starting another one. It is parked
+            // on allowSceneActivation = false, and leaving it parked while a
+            // second load starts is what turns a recoverable stall into a hang.
+            if (pendingLoad != null) { pendingLoad.allowSceneActivation = true; pendingLoad = null; }
+            StopAllCoroutines();
+            hintCoroutine = null;
+            isLoading = false;
+        }
 
         if (loadingSprites != null && loadingSprites.Length > 0 && loadingArt != null)
         {
@@ -69,6 +115,8 @@ public class LoadingManager : MonoBehaviour
     private IEnumerator LoadRoutine(string sceneName)
     {
         isLoading = true;
+        loadingSceneName = sceneName;
+        loadStartedAt = Time.unscaledTime;
 
         // Note: we do NOT flip PlayerController.isControlBlocked here.
         // PlayerController's Update reads LoadingManager.Instance.isLoading
@@ -99,6 +147,20 @@ public class LoadingManager : MonoBehaviour
         Application.backgroundLoadingPriority = ThreadPriority.Low;
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);
+        if (asyncLoad == null)
+        {
+            // Almost always a scene missing from Build Settings. Without this
+            // check the next line threw, the coroutine died, and isLoading
+            // stayed up forever — every transition for the rest of the session
+            // silently did nothing, far away from the real cause.
+            Debug.LogError($"[LoadingManager] LoadSceneAsync returned null for '{sceneName}'. Is it in Build Settings?");
+            if (loadingCanvasGroup != null) { loadingCanvasGroup.alpha = 0f; loadingCanvasGroup.gameObject.SetActive(false); }
+            if (blackFadeGroup != null) { blackFadeGroup.alpha = 0f; blackFadeGroup.gameObject.SetActive(false); }
+            if (hintCoroutine != null) { StopCoroutine(hintCoroutine); hintCoroutine = null; }
+            isLoading = false;
+            yield break;
+        }
+        pendingLoad = asyncLoad;
         asyncLoad.allowSceneActivation = false;
 
         // Чекаємо готовності сцени на 90%
@@ -115,6 +177,7 @@ public class LoadingManager : MonoBehaviour
         // Активуємо сцену
         asyncLoad.allowSceneActivation = true;
         while (!asyncLoad.isDone) yield return null;
+        pendingLoad = null;
 
         Application.backgroundLoadingPriority = ThreadPriority.Normal;
 
@@ -124,8 +187,20 @@ public class LoadingManager : MonoBehaviour
         {
             int highestDisplayPercent = 50; // ФІКС 2: Додаємо змінну-пам'ять для відсотків
 
+            // Bounded. An unbounded wait here is not just a long loading screen:
+            // isLoading never comes down, so once generation stalls the game can
+            // never change scene again for the rest of the session.
+            float genDeadline = Time.unscaledTime + GenerationTimeoutSeconds;
             while (!WorldGenerator.IsGenerationDone)
             {
+                if (Time.unscaledTime > genDeadline)
+                {
+                    Debug.LogError($"[LoadingManager] World generation did not finish within " +
+                                   $"{GenerationTimeoutSeconds}s in '{sceneName}'. Dropping the loading screen " +
+                                   "anyway so the session is not stuck on it.");
+                    break;
+                }
+
                 int currentRealPercent = Mathf.FloorToInt(50f + (Mathf.Clamp01(WorldGenerator.CurrentProgress) * 50f));
 
                 // Прогрес на екрані може ТІЛЬКИ зростати
