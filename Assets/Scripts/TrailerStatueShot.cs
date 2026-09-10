@@ -421,6 +421,17 @@ public class TrailerStatueShot : MonoBehaviour
     public void Play()
     {
         if (IsFinished) return;
+        if (!enabled)
+        {
+            // Start() switches this off when the statue or camera is missing.
+            // Without saying so, the sequencer simply waits out its timeout and
+            // reports "never finished", which describes the symptom and not the
+            // cause.
+            Debug.LogWarning("[StatueShot] Asked to play but the component is disabled — " +
+                             "statue or camera was missing at Start. Re-run Setup Shot 1.");
+            IsFinished = true;
+            return;
+        }
         StartCoroutine(PlayShot());
     }
 

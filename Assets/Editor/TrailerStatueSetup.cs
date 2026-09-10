@@ -37,7 +37,14 @@ public static class TrailerStatueSetup
 
         Undo.SetCurrentGroupName("Setup Trailer Shot 1");
 
-        if (parkOthers) ParkOtherTrailerRigs();
+        if (parkOthers)
+        {
+            ParkOtherTrailerRigs();
+            // Switch off the earlier trailer's directors as well. Parking rigs by
+            // name misses everything that is not under one of them, and this
+            // scene has an entire previous cinematic scattered through it.
+            TrailerSceneSanity.ClearTheField(null);
+        }
         RebuildRig(out GameObject rig);
 
         // --- Statue -----------------------------------------------------------

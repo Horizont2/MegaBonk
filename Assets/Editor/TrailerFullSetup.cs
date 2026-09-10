@@ -1,43 +1,68 @@
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
-// Builds the whole trailer so far and chains the shots together.
+// Builds the whole trailer, in a scene of its own.
 //
-//   Tools ▸ Lore Trailer ▸ Setup FULL TRAILER (shot 1 → shot 2)
+//   Tools ▸ Lore Trailer ▸ Setup FULL TRAILER (own scene)
 //
-// Each shot stays a self-contained rig with its own camera, lighting, fog and
-// set. The sequencer's only job is to keep exactly one of them live and to hand
-// over when a shot says it is done.
+// ==== WHY ITS OWN SCENE ====
 //
-// Shot 2 is built a long way from the origin. The two rigs are never on at the
-// same time, so they could overlap harmlessly — but a statue standing inside a
-// terrain makes the scene view unreadable, and this trailer has already spent
-// enough time on "why is the camera inside something".
+// The new shots were being built into Trailer_Lvl_1, which already held an ENTIRE
+// earlier trailer: a master sequence director, nine undead-pursuit skeletons, a
+// horse and rider, a foliage recolouring pass over 1406 renderers, rain,
+// lightning, terrain seasons and a second audio listener — all live, all running
+// alongside the new work.
+//
+// That one fact accounts for nearly every symptom chased for days: a horse
+// galloping under every shot; thousands of console warnings a second from an old
+// component writing to an animator parameter the skeletons do not have, which was
+// enough to lock a laptop hard; shot 1 never reporting that it had finished,
+// because another director was contending for the camera and the timescale; and
+// the lag that looked like the new scene being too heavy and was not.
+//
+// A cinematic needs a controlled stage. Building one inside another one is the
+// mistake, and no amount of defensive code inside the shots fixes it properly —
+// so the trailer now gets an empty scene, and everything in it is there because
+// this tool put it there.
 public static class TrailerFullSetup
 {
     private const string ChainName = "LoreTrailer_Sequence";
+    private const string ScenePath = "Assets/Scenes/Trailer_Shots.unity";
 
     // Far enough apart that neither set can be mistaken for part of the other in
     // the scene view, and well inside float precision.
     private static readonly Vector3 Shot2Origin = new Vector3(2000f, 0f, 0f);
 
-    [MenuItem("Tools/Lore Trailer/Setup FULL TRAILER (shot 1 → shot 2)")]
+    [MenuItem("Tools/Lore Trailer/Setup FULL TRAILER (own scene)")]
     public static void Setup()
     {
-        Undo.SetCurrentGroupName("Setup Full Trailer");
+        if (!EditorUtility.DisplayDialog("Build the trailer scene",
+                "This creates a NEW, EMPTY scene for the trailer and builds both shots into it.\n\n" +
+                $"It will be saved as {ScenePath}.\n\n" +
+                "Your current scene will be closed — you will be asked to save it first if it has changes.\n\n" +
+                "The trailer needs a stage of its own: built into a scene that already contains another " +
+                "cinematic, the two fight over the camera, the audio listener and the timescale.",
+                "Build it", "Cancel"))
+            return;
 
-        foreach (var old in TrailerFind.AllByName(ChainName))
-            if (old != null) Undo.DestroyObjectImmediate(old);
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
-        // parkOthers: false — each builder would otherwise switch the other one
-        // off as it goes, and the last one built would be the only one left on.
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+        // An empty scene has no lighting settings worth speaking of, and each shot
+        // sets its own fog and ambient anyway — but skybox-less flat black is a
+        // better neutral than whatever the last scene left behind.
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+        RenderSettings.skybox = null;
+
         GameObject shot1 = TrailerStatueSetup.Build(parkOthers: false, showDialog: false);
         GameObject shot2 = TrailerLegionSetup.Build(Shot2Origin, parkOthers: false, showDialog: false);
 
         if (shot1 == null || shot2 == null)
         {
             EditorUtility.DisplayDialog("Full trailer",
-                "One of the shots could not be built — see the console. Nothing was chained.", "OK");
+                "One of the shots could not be built — see the console. The scene has been created but is incomplete.", "OK");
             return;
         }
 
@@ -49,7 +74,6 @@ public static class TrailerFullSetup
         if (s2 != null) s2.autoPlay = false;
 
         var chainGO = new GameObject(ChainName);
-        Undo.RegisterCreatedObjectUndo(chainGO, "create trailer sequence");
         var chain = chainGO.AddComponent<TrailerShotChain>();
         chain.shotRigs = new[] { shot1, shot2 };
 
@@ -58,17 +82,17 @@ public static class TrailerFullSetup
         shot1.SetActive(false);
         shot2.SetActive(false);
 
+        EditorSceneManager.SaveScene(scene, ScenePath);
         Selection.activeGameObject = chainGO;
-        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
-            UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 
-        EditorUtility.DisplayDialog("Full trailer ready",
-            "Built both shots and chained them under 'LoreTrailer_Sequence'.\n\n" +
+        EditorUtility.DisplayDialog("Trailer scene ready",
+            $"Built {ScenePath} with both shots chained under '{ChainName}'.\n\n" +
             "Press Play — shot 1 runs, ends on the shaft taking the lens, and shot 2 starts from black.\n\n" +
-            "The sequencer waits for each shot to REPORT that it is done rather than counting seconds, " +
-            "so retuning any beat inside a shot cannot drift the hand-over.\n\n" +
-            "To work on one shot alone, use the individual Setup Shot 1 / Shot 2 items — those park " +
-            "everything else and leave the shot playing on its own.",
+            "THIS SCENE IS THE TRAILER. Keep it clean: anything else added here will compete with the " +
+            "shots for the camera, the audio listener and the timescale, which is exactly what made the " +
+            "previous attempts stall and spam the console.\n\n" +
+            "To work on one shot alone, open this scene and use Setup Shot 1 / Setup Shot 2 — those park " +
+            "everything else and leave the one shot playing.",
             "OK");
     }
 }

@@ -73,12 +73,17 @@ public class TrailerShotChain : MonoBehaviour
             // go looking for the director and ask it to play.
             yield return null;
 
+            // Nothing else may be driving cameras, audio or animators while a shot
+            // plays. In a clean trailer scene this finds nothing and costs a scan.
+            TrailerSceneSanity.ClearTheField(rig.transform);
+
             yield return RunShot(rig);
 
             rig.SetActive(false);
         }
 
         Debug.Log("[TrailerChain] Sequence complete.");
+        TrailerLogGuard.Disarm();
     }
 
     private IEnumerator RunShot(GameObject rig)
