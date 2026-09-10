@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 // Trailer, shot 1 (0:00-0:10) — the king's statue breaks open.
 //
@@ -54,9 +55,7 @@ public class TrailerStatueShot : MonoBehaviour
     public float establish = 2.6f;
     [Tooltip("From first fracture to full burst.")]
     public float buildDuration = 4.8f;
-    public float burstHold = 1.3f;
-    public float settle = 1.6f;
-    public float outFade = 0.8f;
+    public float outFade = 0.4f;
 
     [Header("Camera Move")]
     public float startDistance = 15f;
@@ -106,6 +105,10 @@ public class TrailerStatueShot : MonoBehaviour
     [Range(0f, 1f)] public float rayLeanToCamera = 0.5f;
     [Tooltip("Keep this low. Fast, deep flicker is what makes shafts look like a disco rig; a menacing light barely moves and only breathes.")]
     [Range(0f, 1f)] public float rayFlicker = 0.10f;
+    [Tooltip("How far the shafts push toward the hot core colour. Additive blending SUMS overlapping shafts, so anything high here saturates every channel and the light turns white — which is exactly what stops it looking dangerous. Keep it low and let only the crack mouths burn.")]
+    [Range(0f, 1f)] public float rayHeat = 0.30f;
+    [Tooltip("Peak opacity of a single shaft. Low, because they stack: six faint shafts crossing read far darker and more solid than six bright ones, which just blow out to white.")]
+    [Range(0.05f, 1f)] public float rayOpacity = 0.42f;
     [Tooltip("Flicker speed. Slow is ominous, fast is a fault in a strip light.")]
     public float flickerSpeed = 1.4f;
     [Tooltip("Motes drifting through each shaft. This is what makes a shaft look volumetric rather than printed.")]
@@ -116,25 +119,27 @@ public class TrailerStatueShot : MonoBehaviour
     [Range(0, 60)] public int debrisCount = 22;
     [Tooltip("Statue tremor at full tension, in metres.")]
     public float tremorAtPeak = 0.055f;
-    [Tooltip("Hide the statue on the burst flash. A single mesh cannot really shatter, so it is swapped for debris behind the flare.")]
-    public bool vanishOnBurst = true;
-    [Tooltip("Rubble left standing where the statue was, so the aftermath frame has a subject instead of a hole.")]
-    [Range(0, 40)] public int rubbleCount = 16;
-
+    [Tooltip("Hide the statue mid-burst. Left OFF now that the shot ends on the flare — there is no aftermath frame to hide an intact statue in, so the swap would only pop.")]
+    public bool vanishOnBurst = false;
     [Header("Framing")]
     [Tooltip("Work out the end distance from the statue's actual size instead of trusting endDistance. A hand-typed distance frames whatever the statue's scale happens to be.")]
     public bool autoFrame = true;
     [Tooltip("How much of the frame height the statue's upper body should fill when the push finishes.")]
     [Range(0.3f, 1.1f)] public float framingHeightFraction = 0.78f;
 
-    [Header("Aftermath")]
-    [Tooltip("How hard the blast shoves the camera backwards, in metres.")]
-    public float blastShove = 2.8f;
-    [Tooltip("How far the camera cranes up afterwards to show what is left.")]
-    public float postRise = 2.6f;
-    [Tooltip("The column of dark light that stands where the statue was. This is the image the next shot cuts from.")]
-    public float beamHeight = 45f;
-    public float beamWidth = 1.8f;
+    [Header("Ending — the shaft takes the lens")]
+    // The shot ends ON the burst, not after it.
+    //
+    // Everything that came after — the camera shoved back, craning up onto rubble
+    // and a column of light — was a second, weaker shot glued to the end of a good
+    // one, and it is why the camera kept finishing somewhere odd looking at
+    // nothing. A trailer's opening beat should hand over at its peak. So the last
+    // fracture fires a shaft straight down the barrel: it floods the lens, burns
+    // out to white, and collapses to black. The blackout IS the cut.
+    [Tooltip("Seconds from the burst to full black. This whole window is the transition to the next shot.")]
+    public float pierceDuration = 1.15f;
+    [Tooltip("How hard the blast shoves the camera back as the shaft hits, in metres.")]
+    public float blastShove = 1.6f;
 
     [Header("Audio")]
     public string groanSound = AudioID.Region_Shockwave;
@@ -159,8 +164,6 @@ public class TrailerStatueShot : MonoBehaviour
     private float pushSeconds;      // how long the approach lasts — the dolly stops when the statue does
     private float burstStartedAt = -1f;
     private float resolvedEndDistance;
-    private LineRenderer beam;
-    private ParticleSystem beamMotes;
 
     private class Shaft
     {
@@ -299,6 +302,33 @@ public class TrailerStatueShot : MonoBehaviour
         chipBurst.Play();
     }
 
+    // A particle material with no texture draws each particle as a hard-edged
+    // QUAD. That is the whole reason the dust and chips looked like flying
+    // Minecraft blocks — nothing to do with the meshes, everything to do with a
+    // missing sprite. Generated once here so the component stays drop-in.
+    private static Texture2D s_softDot;
+    private static Texture2D SoftDot()
+    {
+        if (s_softDot != null) return s_softDot;
+
+        const int N = 64;
+        s_softDot = new Texture2D(N, N, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp };
+        var px = new Color32[N * N];
+        float c = (N - 1) * 0.5f;
+        for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++)
+        {
+            float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;
+            // Squared falloff: a linear ramp still shows a visible disc edge.
+            float a = Mathf.Clamp01(1f - d);
+            a *= a;
+            px[y * N + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+        }
+        s_softDot.SetPixels32(px);
+        s_softDot.Apply(true);
+        return s_softDot;
+    }
+
     private ParticleSystem MakeParticles(string name, Transform parent, Color tint)
     {
         var go = new GameObject(name);
@@ -315,10 +345,45 @@ public class TrailerStatueShot : MonoBehaviour
         em.enabled = true;
         em.rateOverTime = 0f;
 
+        // Shrink and fade out rather than blinking out of existence at the end
+        // of the lifetime, which is the other half of the "cheap particles" look.
+        var sol = ps.sizeOverLifetime;
+        sol.enabled = true;
+        sol.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+            new Keyframe(0f, 0.35f), new Keyframe(0.25f, 1f), new Keyframe(1f, 0.15f)));
+
+        var col = ps.colorOverLifetime;
+        col.enabled = true;
+        var grad = new Gradient();
+        grad.SetKeys(
+            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0f, 1f) });
+        col.color = new ParticleSystem.MinMaxGradient(grad);
+
+        // Tumble, so chips read as fragments rather than as sprites sliding.
+        var rot = ps.rotationOverLifetime;
+        rot.enabled = true;
+        rot.z = new ParticleSystem.MinMaxCurve(-180f, 180f);
+
         var pr = ps.GetComponent<ParticleSystemRenderer>();
         Shader psh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
         if (psh == null) psh = Shader.Find("Sprites/Default");
-        if (psh != null) pr.material = new Material(psh);
+        if (psh != null)
+        {
+            var mat = new Material(psh);
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", SoftDot());
+            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", SoftDot());
+            if (mat.HasProperty("_Surface"))
+            {
+                mat.SetFloat("_Surface", 1f);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+            pr.material = mat;
+        }
         else pr.enabled = false;
 
         return ps;
@@ -331,7 +396,7 @@ public class TrailerStatueShot : MonoBehaviour
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
 
-        float total = establish + buildDuration + burstHold + settle;
+        float total = establish + buildDuration + pierceDuration;
         float t = 0f;
         bool burst = false;
         float nextCrackStep = establish;
@@ -354,7 +419,7 @@ public class TrailerStatueShot : MonoBehaviour
             UpdateCamera(t, total, dt);
             UpdateStatue(dt);
             UpdateShafts(t);
-            UpdateBeam(t);
+            UpdatePierce(t);
 
             if (!burst && t >= establish && t < establish + buildDuration && t >= nextCrackStep)
             {
@@ -401,25 +466,20 @@ public class TrailerStatueShot : MonoBehaviour
         float dist = Mathf.Lerp(startDistance, resolvedEndDistance, e);
         float h = Mathf.Lerp(startHeight, endHeight, e);
 
-        // --- aftermath -----------------------------------------------------
-        // Once the stone goes, the shot stops being about approaching and starts
-        // being about what is left. The camera is shoved back by the blast, never
-        // fully recovers, and cranes up to put the column of light in frame — the
-        // image the next shot cuts away from.
+        // The blast shoves the lens back for the fraction of a second before the
+        // light takes the frame. There is no "afterwards" any more — the shot
+        // hands over at its peak.
         float post = burstStartedAt >= 0f ? t - burstStartedAt : -1f;
-        float shove = 0f, rise = 0f, fovKick = 0f;
+        float shove = 0f, fovKick = 0f;
         if (post >= 0f)
         {
-            // Fast punch out, slow partial recovery: a camera knocked back and
-            // steadied by hand, not one on a return spring.
             float knock = Mathf.Exp(-post * 3.2f);
             shove = blastShove * (0.45f + 0.55f * knock);
-            rise = postRise * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((post - 0.25f) / 1.6f));
-            fovKick = 9f * Mathf.Exp(-post * 2.4f);
+            fovKick = 7f * Mathf.Exp(-post * 2.6f);
         }
 
         Vector3 pos = new Vector3(center.x + Mathf.Cos(az) * (dist + shove),
-                                  bounds.min.y + h + rise,
+                                  bounds.min.y + h,
                                   center.z + Mathf.Sin(az) * (dist + shove));
 
         // Perlin handheld, incommensurate per axis so it never visibly repeats,
@@ -438,17 +498,10 @@ public class TrailerStatueShot : MonoBehaviour
 
         camT.position = pos + camT.right * shake.x + camT.up * shake.y + camT.forward * shake.z + recoilOffset;
 
-        // Damped aim. During the push it settles on the head and shoulders — the
-        // part of the statue the shot is about. Afterwards it climbs the beam,
-        // which both gives the camera somewhere to be and says the thing that got
-        // out went upward.
+        // Damped aim, settling on the head and shoulders — the part of the statue
+        // the shot is actually about.
         float subjectY = bounds.max.y - bounds.size.y * SubjectFraction * 0.5f;
         Vector3 desired = new Vector3(center.x, Mathf.Lerp(center.y, subjectY, e), center.z);
-        if (post >= 0f)
-        {
-            float climb = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((post - 0.4f) / 1.8f));
-            desired.y = Mathf.Lerp(subjectY, bounds.min.y + beamHeight * 0.28f, climb);
-        }
         lookTarget = Vector3.Lerp(lookTarget, desired, 1f - Mathf.Exp(-lookDamping * dt));
 
         Quaternion look = Quaternion.LookRotation((lookTarget - camT.position).normalized);
@@ -637,7 +690,7 @@ public class TrailerStatueShot : MonoBehaviour
     {
         // The shafts come out of cracks in a statue that is about to stop
         // existing. Once it goes they have no source, so they hand over to the
-        // vertical beam rather than hanging in the air pouring out of nothing.
+        // lens flare rather than hanging in the air pouring out of nothing.
         float handover = burstStartedAt < 0f
             ? 1f
             : Mathf.Clamp01(1f - (t - burstStartedAt - 0.35f) / 0.9f);
@@ -657,8 +710,8 @@ public class TrailerStatueShot : MonoBehaviour
             // near enough to strobe.
             float flick = 1f + (Mathf.PerlinNoise(s.phase, t * flickerSpeed) - 0.5f) * 2f * rayFlicker;
 
-            s.glow.intensity = lightIntensity * grow * (0.3f + tension) * flick * handover;
-            s.glow.color = Color.Lerp(lightColor, coreColor, tension * 0.5f);
+            s.glow.intensity = lightIntensity * grow * (0.25f + 0.75f * tension) * flick * handover;
+            s.glow.color = Color.Lerp(lightColor, coreColor, rayHeat * tension);
 
             Vector3 origin = s.Origin(statue);
             // Direction was decided when the crack opened and does not change.
@@ -680,13 +733,17 @@ public class TrailerStatueShot : MonoBehaviour
             // reads as a bad effect rather than as light.
             s.line.widthMultiplier = rayWidth * s.widthScale * grow * (0.6f + 0.6f * tension) * handover;
 
-            Color hot = Color.Lerp(lightColor, coreColor, 0.3f + 0.5f * tension);
-            hot.a = grow * (0.30f + 0.70f * tension) * handover;
-            s.line.startColor = hot;
-            Color tail = hot; tail.a = 0f;
+            // Hot only at the mouth, and only a little. The far end stays the deep
+            // ember, so a shaft reads as light escaping from something burning
+            // rather than as a white bar drawn across the frame.
+            Color mouth = Color.Lerp(lightColor, coreColor, rayHeat * (0.5f + 0.5f * tension));
+            mouth.a = grow * rayOpacity * (0.45f + 0.55f * tension) * handover;
+            s.line.startColor = mouth;
+
+            Color tail = lightColor; tail.a = 0f;
             s.line.endColor = tail;
 
-            // Motes ride the beam. This is the single biggest contributor to a
+            // Motes ride the shaft. This is the single biggest contributor to a
             // shaft looking volumetric instead of printed on the screen.
             if (s.motes != null)
             {
@@ -708,7 +765,7 @@ public class TrailerStatueShot : MonoBehaviour
             AudioManager.Instance.PlaySFX3D(burstSound, center);
 
         polish.ImpactPunch(1f, 0.7f);
-        polish.TimeRamp(0.32f, burstHold, 0.04f, 0.45f);
+        polish.TimeRamp(0.32f, pierceDuration * 0.6f, 0.04f, 0.45f);
         Kick(center, 2.4f);
 
         // Widen every fracture at once — the stone gives up as one.
@@ -716,8 +773,7 @@ public class TrailerStatueShot : MonoBehaviour
             if (cracks[i] != null) cracks[i].SetHeat(1f, crackWidthScale * 3.2f);
 
         SpawnDebris();
-        SpawnRubble();
-        BuildBeam();
+        BuildPierce();
         if (chipBurst != null) chipBurst.Emit(120);
 
         // Hide the mesh under the flare. A single mesh cannot really shatter, so
@@ -742,103 +798,95 @@ public class TrailerStatueShot : MonoBehaviour
         }
     }
 
-    // The column of dark light standing where the statue was.
+    // ===================== the ending =====================
     //
-    // Without it the aftermath frame is a hole: the statue is gone, the shafts
-    // have nothing to come from, and the camera is pointed at dust. The beam gives
-    // the shot a subject for its last seconds and states plainly that whatever was
-    // sealed in the stone is now loose — which is the sentence this shot exists to
-    // say, and the image the next one can cut away from.
-    private void BuildBeam()
+    // The last fracture fires a shaft STRAIGHT DOWN THE BARREL.
+    //
+    // Everywhere else in this shot a shaft aimed at the lens would be wrong — it
+    // foreshortens to a dot and reads as nothing. Here that is exactly the point:
+    // pointed at the camera it stops being a shaft and becomes a flare that opens
+    // out of a single burning point until it owns the frame. It floods, burns to
+    // white, then collapses to black, and the blackout is the cut to the next
+    // shot. The shot hands over at its peak instead of dribbling to a stop.
+    private Image pierceFlare;
+    private Vector3 pierceOrigin;
+    private Canvas pierceCanvas;
+
+    private void BuildPierce()
     {
-        var go = new GameObject("Beam");
+        // Pick the crack nearest the middle of frame — the flare has to open from
+        // somewhere the audience is already looking, or it reads as an unrelated
+        // wipe rather than as this light arriving.
+        pierceOrigin = center;
+        float best = float.MaxValue;
+        for (int i = 0; i < shafts.Count; i++)
+        {
+            Vector3 p = shafts[i].Origin(statue);
+            Vector3 v = shotCamera.WorldToViewportPoint(p);
+            if (v.z <= 0f) continue;
+            float d = (new Vector2(v.x, v.y) - new Vector2(0.5f, 0.5f)).sqrMagnitude;
+            if (d < best) { best = d; pierceOrigin = p; }
+        }
+
+        var go = new GameObject("PierceFlare");
         go.transform.SetParent(transform, false);
+        pierceCanvas = go.AddComponent<Canvas>();
+        pierceCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        pierceCanvas.sortingOrder = 32000;   // over the letterbox and everything else
 
-        beam = go.AddComponent<LineRenderer>();
-        beam.useWorldSpace = true;
-        beam.positionCount = 2;
-        beam.material = rayMat;
-        beam.numCapVertices = 4;
-        beam.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        beam.receiveShadows = false;
-        // Fat at the base, tapering as it climbs — a column that keeps one width
-        // reads as a cylinder, not as light escaping under pressure.
-        beam.widthCurve = new AnimationCurve(
-            new Keyframe(0f, 1f), new Keyframe(0.35f, 0.75f), new Keyframe(1f, 0.28f));
-        beam.widthMultiplier = 0f;
+        var imgGO = new GameObject("Flare");
+        imgGO.transform.SetParent(go.transform, false);
+        pierceFlare = imgGO.AddComponent<Image>();
+        pierceFlare.raycastTarget = false;
 
-        beamMotes = MakeParticles("BeamMotes", go.transform, coreColor);
-        var mm = beamMotes.main;
-        mm.startLifetime = 3.2f;
-        mm.startSpeed = 5.5f;
-        mm.startSize = 0.09f;
-        mm.gravityModifier = -0.05f;
-        mm.maxParticles = 300;
-        var ms = beamMotes.shape;
-        ms.shapeType = ParticleSystemShapeType.Cone;
-        ms.angle = 4f;
-        ms.radius = beamWidth * 0.35f;
-        beamMotes.transform.position = new Vector3(center.x, bounds.min.y, center.z);
-        beamMotes.transform.rotation = Quaternion.LookRotation(Vector3.up);
-        beamMotes.Play();
+        var sprite = Sprite.Create(SoftDot(), new Rect(0, 0, SoftDot().width, SoftDot().height),
+                                   new Vector2(0.5f, 0.5f));
+        pierceFlare.sprite = sprite;
+        pierceFlare.color = new Color(lightColor.r, lightColor.g, lightColor.b, 0f);
     }
 
-    private void UpdateBeam(float t)
+    private void UpdatePierce(float t)
     {
-        if (beam == null || burstStartedAt < 0f) return;
+        if (pierceFlare == null || burstStartedAt < 0f) return;
 
-        float age = t - burstStartedAt;
-        // Punches up hard, then keeps climbing slowly. Something breaking out
-        // does not ease in.
-        float grow = 1f - Mathf.Exp(-age * 6f);
-        float flick = 1f + (Mathf.PerlinNoise(91f, t * flickerSpeed * 0.7f) - 0.5f) * 2f * rayFlicker * 0.6f;
+        float u = Mathf.Clamp01((t - burstStartedAt) / Mathf.Max(0.05f, pierceDuration));
 
-        Vector3 basePos = new Vector3(center.x, bounds.min.y, center.z);
-        beam.SetPosition(0, basePos);
-        beam.SetPosition(1, basePos + Vector3.up * beamHeight * grow);
-        beam.widthMultiplier = beamWidth * grow * flick;
+        // Track the burning point on screen, so the flare grows OUT OF the crack
+        // rather than out of the middle of the display.
+        Vector3 sp = shotCamera.WorldToScreenPoint(pierceOrigin);
+        var rt = pierceFlare.rectTransform;
+        rt.anchorMin = rt.anchorMax = Vector2.zero;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = new Vector2(sp.x, sp.y);
 
-        Color hot = Color.Lerp(lightColor, coreColor, 0.55f);
-        hot.a = grow;
-        beam.startColor = hot;
-        Color top = lightColor; top.a = 0f;
-        beam.endColor = top;
+        // Accelerating growth. Light forcing its way through stone does not open
+        // at a constant rate; it gives way.
+        float diag = Mathf.Sqrt(Screen.width * Screen.width + Screen.height * Screen.height);
+        float size = diag * 3.2f * (u * u);
+        rt.sizeDelta = new Vector2(size, size);
 
-        if (beamMotes != null)
+        // Ember -> hot white -> black. The white is the moment the frame is lost;
+        // the black is the cut.
+        Color c;
+        if (u < 0.62f)
         {
-            var em = beamMotes.emission;
-            em.rateOverTime = 110f * grow;
+            c = Color.Lerp(lightColor, coreColor, u / 0.62f);
+            c.a = Mathf.Clamp01(u / 0.45f);
         }
+        else if (u < 0.82f)
+        {
+            c = Color.Lerp(coreColor, Color.white, (u - 0.62f) / 0.20f);
+            c.a = 1f;
+        }
+        else
+        {
+            c = Color.Lerp(Color.white, Color.black, (u - 0.82f) / 0.18f);
+            c.a = 1f;
+        }
+        pierceFlare.color = c;
     }
 
-    // Debris that stays. The flying chunks are gone in a couple of seconds, and
-    // an aftermath with nothing on the ground reads as the statue having been
-    // deleted rather than destroyed.
-    private void SpawnRubble()
-    {
-        if (debrisPrefabs == null || debrisPrefabs.Length == 0 || rubbleCount <= 0) return;
-
-        float spread = Mathf.Max(0.8f, bounds.extents.x * 0.9f);
-        for (int i = 0; i < rubbleCount; i++)
-        {
-            GameObject prefab = debrisPrefabs[Random.Range(0, debrisPrefabs.Length)];
-            if (prefab == null) continue;
-
-            Vector2 off = Random.insideUnitCircle * spread;
-            Vector3 pos = new Vector3(center.x + off.x, bounds.min.y + Random.Range(0.1f, 1.2f), center.z + off.y);
-
-            GameObject chunk = Instantiate(prefab, pos, Random.rotation);
-            chunk.transform.localScale *= Random.Range(0.12f, 0.42f);
-
-            var rb = chunk.GetComponent<Rigidbody>() ?? chunk.AddComponent<Rigidbody>();
-            rb.mass = 1.4f;
-            rb.linearVelocity = Random.insideUnitSphere * 1.2f;
-            rb.angularVelocity = Random.insideUnitSphere * 2.5f;
-            // No Destroy: this pile is the set dressing for the rest of the shot.
-        }
-    }
-
-    private void SpawnDebris()
+    private void SpawnDebris()    private void SpawnDebris()
     {
         if (debrisPrefabs == null || debrisPrefabs.Length == 0 || debrisCount <= 0) return;
 
@@ -856,6 +904,19 @@ public class TrailerStatueShot : MonoBehaviour
 
             GameObject chunk = Instantiate(prefab, from, Random.rotation);
             chunk.transform.localScale *= Random.Range(0.07f, 0.26f);
+
+            // Imported rock meshes carry no collider, so without this every chunk
+            // falls straight through the ground instead of tumbling and settling.
+            if (chunk.GetComponentInChildren<Collider>() == null)
+            {
+                var mf = chunk.GetComponentInChildren<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null)
+                {
+                    var mc = mf.gameObject.AddComponent<MeshCollider>();
+                    mc.sharedMesh = mf.sharedMesh;
+                    mc.convex = true;
+                }
+            }
 
             var rb = chunk.GetComponent<Rigidbody>() ?? chunk.AddComponent<Rigidbody>();
             rb.mass = 0.4f;
