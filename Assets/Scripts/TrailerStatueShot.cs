@@ -911,7 +911,7 @@ public class TrailerStatueShot : MonoBehaviour
         TrailerCinematicPolish.GetOrCreate().SetFlash(c);
     }
 
-    private void SpawnDebris()    private void SpawnDebris()
+    private void SpawnDebris()
     {
         if (debrisPrefabs == null || debrisPrefabs.Length == 0 || debrisCount <= 0) return;
 
