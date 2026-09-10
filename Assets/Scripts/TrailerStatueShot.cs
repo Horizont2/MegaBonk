@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
 // Trailer, shot 1 (0:00-0:10) — the king's statue breaks open.
 //
@@ -126,6 +125,8 @@ public class TrailerStatueShot : MonoBehaviour
     public bool autoFrame = true;
     [Tooltip("How much of the frame height the statue's upper body should fill when the push finishes.")]
     [Range(0.3f, 1.1f)] public float framingHeightFraction = 0.78f;
+    [Tooltip("Metres of clearance kept between the lens and the statue's widest point. The framing maths solves for composition and knows nothing about how wide the stone is, so without this it will happily park the camera inside it.")]
+    public float clearance = 2.5f;
 
     [Header("Ending — the shaft takes the lens")]
     // The shot ends ON the burst, not after it.
@@ -222,12 +223,22 @@ public class TrailerStatueShot : MonoBehaviour
         float subjectHeight = bounds.size.y * SubjectFraction;
         float d = subjectHeight / (2f * Mathf.Max(0.05f, framingHeightFraction)
                                    * Mathf.Tan(endFov * 0.5f * Mathf.Deg2Rad));
-        // Never end up inside the statue, however aggressive the framing asks to be.
-        return Mathf.Max(d, bounds.extents.magnitude * 0.75f);
+        return Mathf.Max(d, MinOrbitRadius);
     }
 
     // The part of the statue the shot is actually about: head and shoulders.
     private const float SubjectFraction = 0.45f;
+
+    // The closest the lens may ever get to the statue's axis.
+    //
+    // The framing maths solves for how the subject SITS in frame and knows
+    // nothing about how wide the statue is, so on a broad or heavily-scaled
+    // statue it happily asks for a distance that is inside the stone. Measured
+    // off the actual horizontal footprint so it holds whatever the statue is, and
+    // applied to the LIVE distance every frame rather than only to the end value
+    // — otherwise the push could still clip a shoulder on the way in.
+    private float MinOrbitRadius =>
+        new Vector2(bounds.extents.x, bounds.extents.z).magnitude + clearance;
 
     private static Bounds ComputeBounds(Transform root)
     {
@@ -463,7 +474,7 @@ public class TrailerStatueShot : MonoBehaviour
         float e = u * u * u * (u * (u * 6f - 15f) + 10f);
 
         float az = (baseAzimuth + Mathf.Lerp(0f, orbitDrift, e)) * Mathf.Deg2Rad;
-        float dist = Mathf.Lerp(startDistance, resolvedEndDistance, e);
+        float dist = Mathf.Max(Mathf.Lerp(startDistance, resolvedEndDistance, e), MinOrbitRadius);
         float h = Mathf.Lerp(startHeight, endHeight, e);
 
         // The blast shoves the lens back for the fraction of a second before the
@@ -803,20 +814,25 @@ public class TrailerStatueShot : MonoBehaviour
     // The last fracture fires a shaft STRAIGHT DOWN THE BARREL.
     //
     // Everywhere else in this shot a shaft aimed at the lens would be wrong — it
-    // foreshortens to a dot and reads as nothing. Here that is exactly the point:
-    // pointed at the camera it stops being a shaft and becomes a flare that opens
-    // out of a single burning point until it owns the frame. It floods, burns to
-    // white, then collapses to black, and the blackout is the cut to the next
-    // shot. The shot hands over at its peak instead of dribbling to a stop.
-    private Image pierceFlare;
+    // foreshortens to a dot and reads as nothing. Here that is the point: pointed
+    // at the camera it stops being a shaft and becomes a flare that opens out of a
+    // single burning point until it owns the frame. It floods, burns to white,
+    // then goes black, and the blackout is the cut to the next shot.
+    //
+    // Drawn as two QUADS PARENTED TO THE CAMERA rather than as UI. The first
+    // version used a screen-space Canvas and never appeared on screen; rather
+    // than keep guessing at canvas nesting and sort order, this renders through
+    // the camera's own frustum, where there is nothing left to get wrong.
+    private Transform pierceFlare;     // soft disc: the light arriving
+    private Transform pierceBlack;     // solid: the cut
+    private Material pierceFlareMat, pierceBlackMat;
     private Vector3 pierceOrigin;
-    private Canvas pierceCanvas;
 
     private void BuildPierce()
     {
-        // Pick the crack nearest the middle of frame — the flare has to open from
-        // somewhere the audience is already looking, or it reads as an unrelated
-        // wipe rather than as this light arriving.
+        // Open from the crack nearest the middle of frame. The flare has to grow
+        // out of somewhere the audience is already looking, or it reads as an
+        // unrelated wipe instead of as this light arriving.
         pierceOrigin = center;
         float best = float.MaxValue;
         for (int i = 0; i < shafts.Count; i++)
@@ -828,21 +844,46 @@ public class TrailerStatueShot : MonoBehaviour
             if (d < best) { best = d; pierceOrigin = p; }
         }
 
-        var go = new GameObject("PierceFlare");
-        go.transform.SetParent(transform, false);
-        pierceCanvas = go.AddComponent<Canvas>();
-        pierceCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        pierceCanvas.sortingOrder = 32000;   // over the letterbox and everything else
+        pierceFlareMat = MakeUnlit(additive: false);
+        if (pierceFlareMat.HasProperty("_BaseMap")) pierceFlareMat.SetTexture("_BaseMap", SoftDot());
+        if (pierceFlareMat.HasProperty("_MainTex")) pierceFlareMat.SetTexture("_MainTex", SoftDot());
+        pierceFlare = MakeCameraQuad("PierceFlare", pierceFlareMat, shotCamera.nearClipPlane * 3f);
 
-        var imgGO = new GameObject("Flare");
-        imgGO.transform.SetParent(go.transform, false);
-        pierceFlare = imgGO.AddComponent<Image>();
-        pierceFlare.raycastTarget = false;
+        // Untextured, so it is a flat opaque field rather than a soft disc — the
+        // blackout has to actually reach the corners of the frame.
+        pierceBlackMat = MakeUnlit(additive: false);
+        // Nearer than the flare: the cut has to land ON TOP of the white.
+        pierceBlack = MakeCameraQuad("PierceBlack", pierceBlackMat, shotCamera.nearClipPlane * 2f);
+        pierceBlack.gameObject.SetActive(false);
+    }
 
-        var sprite = Sprite.Create(SoftDot(), new Rect(0, 0, SoftDot().width, SoftDot().height),
-                                   new Vector2(0.5f, 0.5f));
-        pierceFlare.sprite = sprite;
-        pierceFlare.color = new Color(lightColor.r, lightColor.g, lightColor.b, 0f);
+    // A quad riding just in front of the lens. Sized to the frustum at that
+    // distance, so it covers exactly what the camera can see.
+    private Transform MakeCameraQuad(string name, Material mat, float distance)
+    {
+        var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        q.name = name;
+        var col = q.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+
+        var r = q.GetComponent<MeshRenderer>();
+        r.sharedMaterial = mat;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        r.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+
+        q.transform.SetParent(camT, false);
+        q.transform.localPosition = new Vector3(0f, 0f, Mathf.Max(distance, shotCamera.nearClipPlane * 1.2f));
+        q.transform.localRotation = Quaternion.identity;
+        return q.transform;
+    }
+
+    private void SizeToFrustum(Transform quad, float widthScale)
+    {
+        float d = quad.localPosition.z;
+        float h = 2f * d * Mathf.Tan(shotCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float w = h * shotCamera.aspect;
+        quad.localScale = new Vector3(w * widthScale, h * widthScale, 1f);
     }
 
     private void UpdatePierce(float t)
@@ -851,39 +892,51 @@ public class TrailerStatueShot : MonoBehaviour
 
         float u = Mathf.Clamp01((t - burstStartedAt) / Mathf.Max(0.05f, pierceDuration));
 
-        // Track the burning point on screen, so the flare grows OUT OF the crack
-        // rather than out of the middle of the display.
-        Vector3 sp = shotCamera.WorldToScreenPoint(pierceOrigin);
-        var rt = pierceFlare.rectTransform;
-        rt.anchorMin = rt.anchorMax = Vector2.zero;
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = new Vector2(sp.x, sp.y);
+        // Follow the burning point on screen so the flare grows OUT OF the crack
+        // rather than out of the middle of the display. Offset the quad sideways
+        // by where that point sits in the frustum.
+        Vector3 vp = shotCamera.WorldToViewportPoint(pierceOrigin);
+        float dz = pierceFlare.localPosition.z;
+        float fh = 2f * dz * Mathf.Tan(shotCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float fw = fh * shotCamera.aspect;
+        float ox = vp.z > 0f ? (vp.x - 0.5f) * fw : 0f;
+        float oy = vp.z > 0f ? (vp.y - 0.5f) * fh : 0f;
+        // Slide back to centre as it takes over — by the end it is the frame.
+        float recentre = Mathf.SmoothStep(0f, 1f, u);
+        pierceFlare.localPosition = new Vector3(ox * (1f - recentre), oy * (1f - recentre), dz);
 
-        // Accelerating growth. Light forcing its way through stone does not open
-        // at a constant rate; it gives way.
-        float diag = Mathf.Sqrt(Screen.width * Screen.width + Screen.height * Screen.height);
-        float size = diag * 3.2f * (u * u);
-        rt.sizeDelta = new Vector2(size, size);
+        // Accelerating growth: light forcing its way through stone does not open
+        // at a constant rate, it gives way.
+        SizeToFrustum(pierceFlare, 4.5f * (u * u));
 
-        // Ember -> hot white -> black. The white is the moment the frame is lost;
-        // the black is the cut.
         Color c;
         if (u < 0.62f)
         {
             c = Color.Lerp(lightColor, coreColor, u / 0.62f);
             c.a = Mathf.Clamp01(u / 0.45f);
         }
-        else if (u < 0.82f)
-        {
-            c = Color.Lerp(coreColor, Color.white, (u - 0.62f) / 0.20f);
-            c.a = 1f;
-        }
         else
         {
-            c = Color.Lerp(Color.white, Color.black, (u - 0.82f) / 0.18f);
+            c = Color.Lerp(coreColor, Color.white, Mathf.Clamp01((u - 0.62f) / 0.20f));
             c.a = 1f;
         }
-        pierceFlare.color = c;
+        SetQuadColor(pierceFlareMat, c);
+
+        // The cut. Comes in over the last stretch, on top of the white.
+        if (u > 0.80f)
+        {
+            if (!pierceBlack.gameObject.activeSelf) pierceBlack.gameObject.SetActive(true);
+            SizeToFrustum(pierceBlack, 1.05f);
+            SetQuadColor(pierceBlackMat, new Color(0f, 0f, 0f, Mathf.Clamp01((u - 0.80f) / 0.20f)));
+        }
+    }
+
+    private static void SetQuadColor(Material m, Color c)
+    {
+        if (m == null) return;
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color")) m.SetColor("_Color", c);
+        m.color = c;
     }
 
     private void SpawnDebris()
@@ -932,5 +985,7 @@ public class TrailerStatueShot : MonoBehaviour
     {
         if (rayMat != null) Destroy(rayMat);
         if (crackMat != null) Destroy(crackMat);
+        if (pierceFlareMat != null) Destroy(pierceFlareMat);
+        if (pierceBlackMat != null) Destroy(pierceBlackMat);
     }
 }
