@@ -1,0 +1,410 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+// Trailer shot 2 — builds the ground the legion marches over.
+//
+//   Tools ▸ Lore Trailer ▸ Setup Shot 2 (the legion marches)
+//
+// ==== THE ENVIRONMENT IS THE STORY ====
+//
+// The army is only half the shot. What sells it is ground that has already lost.
+// Everything below is placed to say something, not to fill space:
+//
+//   THE ROAD IS DEAD AND THE FIELDS ARE NOT. A bare, trampled corridor runs the
+//   length of the march, with living grass either side of it. The audience never
+//   has to be told this army has come this way before — the ground says so, and
+//   the contrast is what makes the dead part read as dead.
+//
+//   THE LAND GETS WORSE TOWARD THE HORIZON THEY CAME FROM. Grass thins and dirt
+//   takes over with distance up the column. Where they have been is grey; where
+//   they are going is still green. That gradient is the entire plot of the shot
+//   rendered into a splatmap.
+//
+//   THE TREES ARE DEAD, AND DEADEST NEAREST THE ROAD. Trees are cleared from the
+//   corridor entirely — nothing survives being walked over by an army — thin and
+//   broken along its edges, and thicken further out. A uniform scatter would read
+//   as decoration; a density that responds to the road reads as consequence.
+//
+//   THE VALLEY IS SHALLOW, NOT DEEP. The corridor sits slightly below the fields
+//   so the camera can look down the line, but not so far that the column hides
+//   in it. Terrain here exists to serve one camera move.
+//
+// Re-running rebuilds everything from scratch rather than stacking another copy.
+public static class TrailerLegionSetup
+{
+    private const string RigName = "LoreTrailer_Legion_Rig";
+
+    private const string GrassLayerPath = "Assets/Layers/GrassLayer.terrainlayer";
+    private const string RockLayerPath  = "Assets/Layers/RockLayer.terrainlayer";
+    private const string DirtLayerPath  = "Assets/Layers/SandLayer.terrainlayer";
+    private const string DeadTreeDir    = "Assets/Prefabs/Trees/Dead_trees";
+    private const string GrassDetailDir = "Assets/LowPoly Environment Pack/Prefabs";
+
+    // Terrain metrics, in metres. Big enough that the column runs off both ends
+    // of frame on the long lens, small enough to stay cheap.
+    private const int   Size = 500;
+    private const int   Height = 45;
+    private const int   HeightRes = 513;
+    private const int   AlphaRes = 512;
+    private const int   DetailRes = 256;
+
+    // The march runs up the middle along +Z.
+    private const float RoadHalfWidth = 13f;
+    private const float RoadFeather = 16f;
+
+    [MenuItem("Tools/Lore Trailer/Setup Shot 2 (the legion marches)")]
+    public static void Setup()
+    {
+        var rankPrefabs = LoadRankPrefabs();
+        if (rankPrefabs.Length == 0)
+        {
+            EditorUtility.DisplayDialog("Shot 2", "No skeleton prefabs found under Assets/Prefabs. Nothing to march.", "OK");
+            return;
+        }
+
+        Undo.SetCurrentGroupName("Setup Trailer Shot 2");
+        ParkOtherTrailerRigs();
+
+        foreach (var old in TrailerFind.AllByName(RigName))
+            if (old != null) Undo.DestroyObjectImmediate(old);
+
+        var rig = new GameObject(RigName);
+        Undo.RegisterCreatedObjectUndo(rig, "create legion rig");
+
+        Terrain terrain = BuildTerrain(rig.transform, out Vector3 terrainOrigin);
+        Vector3 columnStart = terrainOrigin + new Vector3(Size * 0.5f, 0f, Size * 0.30f);
+        columnStart.y = terrain.SampleHeight(columnStart) + terrain.transform.position.y;
+
+        // --- camera ---------------------------------------------------------
+        var camGO = new GameObject("Cam_Legion");
+        camGO.transform.SetParent(rig.transform, false);
+        var cam = camGO.AddComponent<Camera>();
+        cam.tag = "MainCamera";
+        cam.nearClipPlane = 0.1f;
+        cam.farClipPlane = 900f;      // the column has to be visible to the horizon
+        camGO.AddComponent<AudioListener>();
+
+        // --- light + fog ----------------------------------------------------
+        var sunGO = new GameObject("Overcast");
+        sunGO.transform.SetParent(rig.transform, false);
+        var sun = sunGO.AddComponent<Light>();
+        sun.type = LightType.Directional;
+        // Flat, sunless, colourless. A sky with a sun in it has weather; this one
+        // has no weather, which is worse.
+        sun.color = new Color(0.62f, 0.64f, 0.70f);
+        sun.intensity = 0.85f;
+        sun.shadows = LightShadows.Soft;
+        sunGO.transform.rotation = Quaternion.Euler(24f, 200f, 0f);
+
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        // Tuned so visibility dies at roughly 150 m. For exponential-squared fog
+        // that is d ~ 1.73 / range. This does most of the work of "no visible
+        // end": the column does not have to actually reach the horizon, it only
+        // has to reach the point where the grey takes it.
+        RenderSettings.fogDensity = 0.011f;
+        RenderSettings.fogColor = new Color(0.58f, 0.58f, 0.60f);
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+        RenderSettings.ambientSkyColor = new Color(0.42f, 0.44f, 0.50f);
+        RenderSettings.ambientEquatorColor = new Color(0.32f, 0.32f, 0.35f);
+        RenderSettings.ambientGroundColor = new Color(0.16f, 0.15f, 0.15f);
+
+        // --- the march ------------------------------------------------------
+        var columnGO = new GameObject("Legion");
+        columnGO.transform.SetParent(rig.transform, false);
+        columnGO.transform.position = columnStart;
+
+        var march = columnGO.AddComponent<TrailerLegionMarch>();
+        march.rankPrefabs = rankPrefabs;
+        march.bossPrefabs = LoadBossPrefabs();
+        march.shotCamera = cam;
+        march.marchDirection = Vector3.forward;
+
+        Selection.activeGameObject = rig;
+        SceneView.lastActiveSceneView?.FrameSelected();
+        MarkDirty();
+
+        EditorUtility.DisplayDialog("Shot 2 ready",
+            "Built LoreTrailer_Legion_Rig: terrain, painted ground, dead trees, fog and the marching column.\n\n" +
+            "Press Play.\n\n" +
+            "THE SHOT\n" +
+            "  Beat A — camera down in the grass at boot height, wide lens. The army towers. Fear.\n" +
+            "  Beat B — one unbroken crane up. No cut, so nobody gets to look away.\n" +
+            "  Beat C — high, and the lens goes LONG. Telephoto compression stacks the ranks so\n" +
+            "           the column reads far denser and longer than the unit count. Grandeur.\n\n" +
+            "TUNING (on TrailerLegionMarch)\n" +
+            "  • ranksAlive / unitsPerRank — the BUDGET, not the army. Ranks recycle behind the\n" +
+            "    camera, so the column is endless whatever these say. Raise only if it looks thin.\n" +
+            "  • highFov — the single most important value in the shot. Lower = denser, longer army.\n" +
+            "  • animateWithinDistance — Animators are the whole cost of a crowd. Drop it if the\n" +
+            "    frame rate suffers; at range nobody can tell a walk cycle from a pose.\n" +
+            "  • bossEveryNRanks — ranks part around each boss, which is what says it outranks them.",
+            "OK");
+    }
+
+    // ======================= terrain =======================
+
+    private static Terrain BuildTerrain(Transform parent, out Vector3 origin)
+    {
+        var data = new TerrainData
+        {
+            heightmapResolution = HeightRes,
+            alphamapResolution = AlphaRes,
+            baseMapResolution = 1024,
+            size = new Vector3(Size, Height, Size),
+        };
+        data.SetDetailResolution(DetailRes, 16);
+
+        // Re-runnable: creating the folder or the asset a second time would fail
+        // and leave a half-built rig behind, which is exactly when someone is most
+        // likely to run it again.
+        const string genDir = "Assets/TrailerGenerated";
+        if (!AssetDatabase.IsValidFolder(genDir)) AssetDatabase.CreateFolder("Assets", "TrailerGenerated");
+        const string dataPath = genDir + "/Legion_TerrainData.asset";
+        if (AssetDatabase.LoadAssetAtPath<TerrainData>(dataPath) != null) AssetDatabase.DeleteAsset(dataPath);
+        AssetDatabase.CreateAsset(data, dataPath);
+
+        GameObject go = Terrain.CreateTerrainGameObject(data);
+        go.name = "Legion_Terrain";
+        Undo.RegisterCreatedObjectUndo(go, "create terrain");
+        go.transform.SetParent(parent, true);
+        go.transform.position = new Vector3(-Size * 0.5f, 0f, -Size * 0.5f);
+        origin = go.transform.position;
+
+        var terrain = go.GetComponent<Terrain>();
+        terrain.drawInstanced = true;
+        terrain.detailObjectDistance = 120f;
+        terrain.treeDistance = 700f;
+        terrain.treeBillboardDistance = 160f;
+        terrain.heightmapPixelError = 3f;
+
+        ShapeLand(data);
+        PaintLand(data);
+        PlantTrees(terrain, data);
+        PlantGrass(data);
+
+        EditorUtility.SetDirty(data);
+        AssetDatabase.SaveAssets();
+        return terrain;
+    }
+
+    // Rolling ground with a shallow trough down the middle for the march.
+    private static void ShapeLand(TerrainData data)
+    {
+        int res = data.heightmapResolution;
+        var h = new float[res, res];
+        float seed = Random.Range(0f, 1000f);
+
+        for (int z = 0; z < res; z++)
+        for (int x = 0; x < res; x++)
+        {
+            float nx = (float)x / (res - 1);
+            float nz = (float)z / (res - 1);
+
+            // Two octaves: broad swells plus a little surface variation. More
+            // than that starts to look like landscape-generator noise rather
+            // than like fields.
+            float e = Mathf.PerlinNoise(seed + nx * 2.4f, seed + nz * 2.4f) * 0.65f
+                    + Mathf.PerlinNoise(seed + nx * 7f, seed + nz * 7f) * 0.12f;
+
+            // Carve the road: flatten toward a common level, feathering out so
+            // the edges are banks rather than a slot cut in the ground.
+            float distFromAxis = Mathf.Abs(nx - 0.5f) * Size;
+            float road = 1f - Mathf.SmoothStep(RoadHalfWidth, RoadHalfWidth + RoadFeather, distFromAxis);
+            e = Mathf.Lerp(e, 0.30f, road * 0.92f);
+
+            h[z, x] = e * 0.45f;
+        }
+        data.SetHeights(0, 0, h);
+    }
+
+    // The splatmap carries the story: a dead road, living fields, and land that
+    // gets worse the further up the column you look.
+    private static void PaintLand(TerrainData data)
+    {
+        var layers = new List<TerrainLayer>();
+        foreach (string p in new[] { GrassLayerPath, DirtLayerPath, RockLayerPath })
+        {
+            var l = AssetDatabase.LoadAssetAtPath<TerrainLayer>(p);
+            if (l != null) layers.Add(l);
+        }
+        if (layers.Count == 0)
+        {
+            Debug.LogWarning("[Shot 2] No terrain layers found under Assets/Layers — the ground will be untextured.");
+            return;
+        }
+        data.terrainLayers = layers.ToArray();
+
+        int res = data.alphamapResolution;
+        int n = layers.Count;
+        var map = new float[res, res, n];
+
+        for (int z = 0; z < res; z++)
+        for (int x = 0; x < res; x++)
+        {
+            float nx = (float)x / (res - 1);
+            float nz = (float)z / (res - 1);
+
+            float distFromAxis = Mathf.Abs(nx - 0.5f) * Size;
+            float road = 1f - Mathf.SmoothStep(RoadHalfWidth * 0.8f, RoadHalfWidth + RoadFeather, distFromAxis);
+
+            // Blight rising toward +Z — the direction the column is coming from.
+            // Where they have been is grey; where they are going is still green.
+            float blight = Mathf.SmoothStep(0.35f, 1f, nz);
+            // Break the boundary up so it is a front, not a painted line.
+            blight += (Mathf.PerlinNoise(nx * 9f, nz * 9f) - 0.5f) * 0.35f;
+            blight = Mathf.Clamp01(blight);
+
+            float steep = Mathf.Clamp01(data.GetSteepness(nx, nz) / 42f);
+
+            float dirt = Mathf.Clamp01(Mathf.Max(road, blight * 0.85f));
+            float rock = steep * 0.8f;
+            float grass = Mathf.Clamp01(1f - dirt - rock * 0.6f);
+
+            float sum = grass + dirt + rock;
+            if (sum < 0.0001f) { grass = 1f; sum = 1f; }
+
+            map[z, x, 0] = grass / sum;
+            if (n > 1) map[z, x, 1] = dirt / sum;
+            if (n > 2) map[z, x, 2] = rock / sum;
+        }
+        data.SetAlphamaps(0, 0, map);
+    }
+
+    // Dead trees only, cleared from the road, thin along its banks, thick beyond.
+    private static void PlantTrees(Terrain terrain, TerrainData data)
+    {
+        var prefabs = AssetDatabase.FindAssets("t:GameObject", new[] { DeadTreeDir })
+            .Select(g => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g)))
+            .Where(g => g != null).ToArray();
+
+        if (prefabs.Length == 0)
+        {
+            Debug.LogWarning($"[Shot 2] No dead-tree prefabs under {DeadTreeDir}.");
+            return;
+        }
+
+        data.treePrototypes = prefabs.Select(p => new TreePrototype { prefab = p }).ToArray();
+
+        var instances = new List<TreeInstance>(2000);
+        for (int i = 0; i < 4500; i++)
+        {
+            float nx = Random.value, nz = Random.value;
+
+            float distFromAxis = Mathf.Abs(nx - 0.5f) * Size;
+            // Nothing survives being marched over. Hard clear, then a thin belt of
+            // survivors, then real woodland.
+            if (distFromAxis < RoadHalfWidth + 3f) continue;
+            float openness = Mathf.SmoothStep(RoadHalfWidth + 3f, RoadHalfWidth + 60f, distFromAxis);
+            if (Random.value > openness * 0.75f) continue;
+
+            // Clumps, not an even sprinkle: real woodland has gaps.
+            if (Mathf.PerlinNoise(nx * 6f, nz * 6f) < 0.42f) continue;
+            if (Mathf.Clamp01(data.GetSteepness(nx, nz) / 45f) > 0.6f) continue;
+
+            instances.Add(new TreeInstance
+            {
+                position = new Vector3(nx, 0f, nz),
+                prototypeIndex = Random.Range(0, prefabs.Length),
+                // Near the road they are stunted and broken; further out, whole.
+                heightScale = Mathf.Lerp(0.55f, 1.25f, openness) * Random.Range(0.85f, 1.15f),
+                widthScale = Random.Range(0.85f, 1.15f),
+                rotation = Random.Range(0f, Mathf.PI * 2f),
+                color = Color.white,
+                lightmapColor = Color.white,
+            });
+        }
+        terrain.terrainData.treeInstances = instances.ToArray();
+        terrain.Flush();
+    }
+
+    private static void PlantGrass(TerrainData data)
+    {
+        var meshes = AssetDatabase.FindAssets("Grass t:GameObject", new[] { GrassDetailDir })
+            .Select(g => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g)))
+            .Where(g => g != null).Take(2).ToArray();
+
+        if (meshes.Length == 0)
+        {
+            Debug.LogWarning($"[Shot 2] No grass meshes under {GrassDetailDir} — the fields will be bare.");
+            return;
+        }
+
+        data.detailPrototypes = meshes.Select(m => new DetailPrototype
+        {
+            prototype = m,
+            usePrototypeMesh = true,
+            useInstancing = true,
+            renderMode = DetailRenderMode.VertexLit,
+            minWidth = 0.7f, maxWidth = 1.3f,
+            minHeight = 0.7f, maxHeight = 1.4f,
+            noiseSpread = 0.35f,
+            healthyColor = new Color(0.55f, 0.58f, 0.42f),
+            dryColor = new Color(0.52f, 0.46f, 0.30f),
+        }).ToArray();
+
+        int res = data.detailResolution;
+        for (int layer = 0; layer < meshes.Length; layer++)
+        {
+            var d = new int[res, res];
+            for (int z = 0; z < res; z++)
+            for (int x = 0; x < res; x++)
+            {
+                float nx = (float)x / (res - 1);
+                float nz = (float)z / (res - 1);
+
+                float distFromAxis = Mathf.Abs(nx - 0.5f) * Size;
+                // The road is bare. That bareness is only legible because there is
+                // grass right up to its edge.
+                if (distFromAxis < RoadHalfWidth) continue;
+                float openness = Mathf.SmoothStep(RoadHalfWidth, RoadHalfWidth + 25f, distFromAxis);
+
+                // Same blight gradient as the splatmap, so ground cover and ground
+                // colour tell the same story instead of contradicting each other.
+                float blight = Mathf.Clamp01(Mathf.SmoothStep(0.35f, 1f, nz)
+                                             + (Mathf.PerlinNoise(nx * 9f, nz * 9f) - 0.5f) * 0.35f);
+                float life = openness * (1f - blight * 0.85f);
+
+                if (Mathf.PerlinNoise(nx * 14f + layer * 30f, nz * 14f) * life > 0.42f)
+                    d[z, x] = Mathf.RoundToInt(Mathf.Lerp(1f, 5f, life));
+            }
+            data.SetDetailLayer(0, 0, layer, d);
+        }
+    }
+
+    // ======================= assets =======================
+
+    private static GameObject[] LoadRankPrefabs()
+    {
+        string[] names = { "Skeleton_Minion", "Skeleton_Warrior", "Skeleton_Rogue", "Skeleton_Mage" };
+        return names
+            .Select(n => AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/{n}.prefab"))
+            .Where(g => g != null).ToArray();
+    }
+
+    private static GameObject[] LoadBossPrefabs()
+    {
+        string[] names = { "Boss_Skeleton_1", "Boss_Skeleton_2", "Boss_Skeleton_3" };
+        var found = names
+            .Select(n => AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/{n}.prefab"))
+            .Where(g => g != null).ToArray();
+        if (found.Length == 0)
+            Debug.LogWarning("[Shot 2] No Boss_Skeleton_* prefabs found — the ranks will have nothing to part around.");
+        return found;
+    }
+
+    private static void ParkOtherTrailerRigs()
+    {
+        foreach (var n in new[] { "LoreTrailer_Rig", "LoreTrailer_ActII_Rig", "LoreTrailer_Part2_Rig", "LoreTrailer_Statue_Rig" })
+            foreach (var g in TrailerFind.AllByName(n))
+                if (g != null && g.activeSelf) { Undo.RecordObject(g, "park rig"); g.SetActive(false); }
+    }
+
+    private static void MarkDirty()
+    {
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
+            UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
+    }
+}
