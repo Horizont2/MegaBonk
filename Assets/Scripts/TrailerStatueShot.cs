@@ -143,9 +143,14 @@ public class TrailerStatueShot : MonoBehaviour
     public float blastShove = 1.6f;
 
     [Header("Audio")]
-    public string groanSound = AudioID.Region_Shockwave;
-    public string crackSound = AudioID.Enemy_Agro;
-    public string burstSound = AudioID.Region_Shockwave;
+    // Own sounds, not borrowed combat ones. A shockwave standing in for cracking
+    // stone is the kind of thing an audience cannot name but does notice.
+    public string dreadBed = AudioID.Trailer_Dread;
+    public string groanSound = AudioID.Trailer_StoneStress;
+    public string crackSound = AudioID.Trailer_StoneCrack;
+    public string burstSound = AudioID.Trailer_StoneBurst;
+    public string rubbleSound = AudioID.Trailer_Rubble;
+    public string riserSound = AudioID.Trailer_Riser;
 
     // ---- runtime ----
     private Transform camT;
@@ -406,6 +411,13 @@ public class TrailerStatueShot : MonoBehaviour
     {
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
+        TrailerAudio.SilenceStaleBeds();
+
+        // The dread bed runs under the whole shot. Without something holding the
+        // low end, the silences between cracks read as the audio having stopped
+        // rather than as the shot holding its breath.
+        if (AudioManager.Instance != null && !string.IsNullOrEmpty(dreadBed))
+            AudioManager.Instance.PlaySFX3D(dreadBed, center);
 
         float total = establish + buildDuration + pierceDuration;
         float t = 0f;
@@ -774,6 +786,14 @@ public class TrailerStatueShot : MonoBehaviour
 
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(burstSound))
             AudioManager.Instance.PlaySFX3D(burstSound, center);
+
+        // Riser first: the ear needs a moment of rising pitch BEFORE the hit, or
+        // the burst lands as a bang rather than as an arrival.
+        if (AudioManager.Instance != null)
+        {
+            if (!string.IsNullOrEmpty(riserSound)) AudioManager.Instance.PlaySFX3D(riserSound, center);
+            if (!string.IsNullOrEmpty(rubbleSound)) AudioManager.Instance.PlaySFX3D(rubbleSound, center);
+        }
 
         polish.ImpactPunch(1f, 0.7f);
         polish.TimeRamp(0.32f, pierceDuration * 0.6f, 0.04f, 0.45f);

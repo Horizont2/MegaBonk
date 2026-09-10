@@ -97,8 +97,14 @@ public class TrailerLegionMarch : MonoBehaviour
     public bool spawnMarchDust = true;
 
     [Header("Audio")]
-    public string marchSound = AudioID.Enemy_Footstep;
-    public string hornSound = AudioID.Enemy_Agro;
+    public string marchSound = AudioID.Trailer_MarchLoop;
+    public string hornSound = AudioID.Trailer_WarHorn;
+    public string boneSound = AudioID.Trailer_BoneRattle;
+    public string windSound = AudioID.Trailer_WindDesolate;
+    public string crowSound = AudioID.Trailer_Crows;
+    public string bossStepSound = AudioID.Trailer_BossStep;
+    [Tooltip("Seconds between boss footfalls. A slower, heavier tread than the ranks is what gives the big ones weight.")]
+    public float bossStepInterval = 1.35f;
 
     // ---- runtime ----
     private class Unit
@@ -139,6 +145,7 @@ public class TrailerLegionMarch : MonoBehaviour
         columnLength = ranksAlive * rankSpacing;
 
         BuildColumn();
+        ReportFormation();
         if (spawnMarchDust) BuildDust();
         StartCoroutine(PlayShot());
     }
@@ -186,15 +193,41 @@ public class TrailerLegionMarch : MonoBehaviour
         }
     }
 
+    // If the column ever comes out as a heap again, this says so in one line
+    // instead of requiring a scene to be picked apart by hand.
+    private void ReportFormation()
+    {
+        if (units.Count == 0) { Debug.LogWarning("[Legion] No units were built."); return; }
+        Bounds b = new Bounds(units[0].t.position, Vector3.zero);
+        for (int i = 1; i < units.Count; i++) b.Encapsulate(units[i].t.position);
+        Debug.Log($"[Legion] {units.Count} units over {b.size.x:F1} m wide x {b.size.z:F1} m deep " +
+                  $"(expected ~{(unitsPerRank - 1) * fileSpacing:F1} x {columnLength:F1}). March dir {dir}.");
+    }
+
     private Unit MakeUnit(GameObject go, bool isBoss)
     {
-        // Nothing here fights, thinks or drops loot — it marches. Every gameplay
-        // component is dead weight on a crowd this size.
-        foreach (var ai in go.GetComponentsInChildren<EnemyAI>()) ai.enabled = false;
-        foreach (var c in go.GetComponentsInChildren<Collider>()) c.enabled = false;
-        foreach (var cc in go.GetComponentsInChildren<CharacterController>()) cc.enabled = false;
-        foreach (var rb in go.GetComponentsInChildren<Rigidbody>()) rb.isKinematic = true;
-        foreach (var cv in go.GetComponentsInChildren<Canvas>()) cv.enabled = false;   // health bars
+        // Strip EVERY behaviour except the Animator.
+        //
+        // Disabling the components I happened to think of is not good enough: a
+        // prefab this deep carries AI, health, loot, audio, VFX and UI drivers, and
+        // any one of them left running will move a unit, re-enable a health bar, or
+        // spawn something. This crowd exists to be POSED BY THIS SCRIPT and nothing
+        // else, so the rule is a whitelist rather than a blacklist.
+        foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (mb == null || mb is Animator) continue;
+            Destroy(mb);
+        }
+
+        // Health bars and any other world-space UI go entirely — disabling the
+        // Canvas leaves its children to be switched back on by anything that
+        // survived, and destroying is cheaper to be sure of.
+        foreach (var cv in go.GetComponentsInChildren<Canvas>(true))
+            if (cv != null) Destroy(cv.gameObject);
+
+        foreach (var c in go.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+        foreach (var cc in go.GetComponentsInChildren<CharacterController>(true)) cc.enabled = false;
+        foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) { rb.isKinematic = true; rb.useGravity = false; }
 
         var u = new Unit
         {
@@ -344,6 +377,18 @@ public class TrailerLegionMarch : MonoBehaviour
             var tex = TrailerSoftSprite.Get();
             if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
             if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
+            // A URP particle material defaults to OPAQUE. With a soft sprite in an
+            // opaque material the alpha is simply ignored and every particle draws
+            // as a flat grey card — the "grey squares near the enemies".
+            if (mat.HasProperty("_Surface"))
+            {
+                mat.SetFloat("_Surface", 1f);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
             pr.material = mat;
         }
         else pr.enabled = false;
@@ -357,12 +402,20 @@ public class TrailerLegionMarch : MonoBehaviour
     {
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
+        TrailerAudio.SilenceStaleBeds();
 
+        // Layered, because one massed-footsteps file on its own sounds like rain.
+        // Bone over the tread is what makes it skeletons; wind under both is what
+        // makes it a landscape rather than a sound effect.
         if (AudioManager.Instance != null)
         {
+            if (!string.IsNullOrEmpty(windSound)) AudioManager.Instance.PlaySFX3D(windSound, transform.position);
+            if (!string.IsNullOrEmpty(crowSound)) AudioManager.Instance.PlaySFX3D(crowSound, transform.position);
             if (!string.IsNullOrEmpty(hornSound)) AudioManager.Instance.PlaySFX3D(hornSound, transform.position);
             if (!string.IsNullOrEmpty(marchSound)) AudioManager.Instance.PlaySFX3D(marchSound, transform.position);
+            if (!string.IsNullOrEmpty(boneSound)) AudioManager.Instance.PlaySFX3D(boneSound, transform.position);
         }
+        StartCoroutine(BossFootfalls());
 
         float total = lowBeat + riseBeat + wideBeat;
         while (shotTime < total)
@@ -373,6 +426,33 @@ public class TrailerLegionMarch : MonoBehaviour
         }
 
         polish.FadeToBlack(outFade);
+    }
+
+    // The bosses get their own, slower footfall. A heavy step at a different
+    // tempo from the ranks is what tells the ear something bigger is walking,
+    // even when it is too far away to see clearly.
+    private IEnumerator BossFootfalls()
+    {
+        if (string.IsNullOrEmpty(bossStepSound)) yield break;
+
+        var wait = new WaitForSecondsRealtime(Mathf.Max(0.2f, bossStepInterval));
+        while (true)
+        {
+            yield return wait;
+            if (AudioManager.Instance == null) continue;
+
+            // Nearest boss to the lens only. Playing one per boss would turn a
+            // tread into a stampede.
+            float best = float.MaxValue;
+            Vector3 at = transform.position;
+            for (int i = 0; i < units.Count; i++)
+            {
+                if (!units[i].isBoss || units[i].t == null) continue;
+                float d = (units[i].t.position - camT.position).sqrMagnitude;
+                if (d < best) { best = d; at = units[i].t.position; }
+            }
+            AudioManager.Instance.PlaySFX3D(bossStepSound, at);
+        }
     }
 
     private void UpdateCamera(float t)

@@ -61,6 +61,22 @@ public static class AudioID
     public const string Region_Shockwave = "Enemy/Shockwave";
     public const string Cinematic_Whoosh = "Enemy/Boss/Cinematic Whoosh";
 
+    // --- Trailer ---------------------------------------------------------
+    // The trailer was borrowing combat SFX for cinematic beats, which is why a
+    // shockwave stood in for cracking stone. These are its own.
+    public const string Trailer_Dread = "Trailer/Dread Bed";
+    public const string Trailer_StoneStress = "Trailer/Stone Stress";
+    public const string Trailer_StoneCrack = "Trailer/Stone Crack";
+    public const string Trailer_StoneBurst = "Trailer/Stone Burst";
+    public const string Trailer_Rubble = "Trailer/Rubble";
+    public const string Trailer_Riser = "Trailer/Riser";
+    public const string Trailer_WarHorn = "Trailer/War Horn";
+    public const string Trailer_MarchLoop = "Trailer/March Loop";
+    public const string Trailer_BoneRattle = "Trailer/Bone Rattle";
+    public const string Trailer_BossStep = "Trailer/Boss Step";
+    public const string Trailer_Crows = "Trailer/Crows";
+    public const string Trailer_WindDesolate = "Trailer/Wind Desolate";
+
     public const string Encounter_Cleared = "UI/Encounter_Cleared";
     public const string Totem_Activate = "UI/Activate Totem";
     public const string Player_PerfectDodge = "Player/Player Perfect Dodge";
@@ -190,6 +206,23 @@ public class AudioManager : MonoBehaviour
     public SoundGroup regionVictoryStinger;
     public SoundGroup regionShockwave;
     public SoundGroup cinematicWhoosh;
+
+    [Header("=== TRAILER ===")]
+    // Leave any of these empty and the trailer still plays — PlaySFX3D no-ops on
+    // an unassigned group. They are separate entries precisely so a missing
+    // trailer sound never silently borrows a gameplay one.
+    public SoundGroup trailerDread;
+    public SoundGroup trailerStoneStress;
+    public SoundGroup trailerStoneCrack;
+    public SoundGroup trailerStoneBurst;
+    public SoundGroup trailerRubble;
+    public SoundGroup trailerRiser;
+    public SoundGroup trailerWarHorn;
+    public SoundGroup trailerMarchLoop;
+    public SoundGroup trailerBoneRattle;
+    public SoundGroup trailerBossStep;
+    public SoundGroup trailerCrows;
+    public SoundGroup trailerWindDesolate;
 
     [Header("=== GAMEPLAY FEEL ===")]
     public SoundGroup encounterCleared;
@@ -726,6 +759,19 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Region_VictoryStinger, regionVictoryStinger);
         sfxDictionary.Add(AudioID.Region_Shockwave, regionShockwave);
         sfxDictionary.Add(AudioID.Cinematic_Whoosh, cinematicWhoosh);
+
+        sfxDictionary.Add(AudioID.Trailer_Dread, trailerDread);
+        sfxDictionary.Add(AudioID.Trailer_StoneStress, trailerStoneStress);
+        sfxDictionary.Add(AudioID.Trailer_StoneCrack, trailerStoneCrack);
+        sfxDictionary.Add(AudioID.Trailer_StoneBurst, trailerStoneBurst);
+        sfxDictionary.Add(AudioID.Trailer_Rubble, trailerRubble);
+        sfxDictionary.Add(AudioID.Trailer_Riser, trailerRiser);
+        sfxDictionary.Add(AudioID.Trailer_WarHorn, trailerWarHorn);
+        sfxDictionary.Add(AudioID.Trailer_MarchLoop, trailerMarchLoop);
+        sfxDictionary.Add(AudioID.Trailer_BoneRattle, trailerBoneRattle);
+        sfxDictionary.Add(AudioID.Trailer_BossStep, trailerBossStep);
+        sfxDictionary.Add(AudioID.Trailer_Crows, trailerCrows);
+        sfxDictionary.Add(AudioID.Trailer_WindDesolate, trailerWindDesolate);
 
         sfxDictionary.Add(AudioID.Encounter_Cleared, encounterCleared);
         sfxDictionary.Add(AudioID.Totem_Activate, totemActivate);

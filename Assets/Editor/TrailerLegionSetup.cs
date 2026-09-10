@@ -48,7 +48,7 @@ public static class TrailerLegionSetup
     private const int   Height = 45;
     private const int   HeightRes = 513;
     private const int   AlphaRes = 512;
-    private const int   DetailRes = 256;
+    private const int   DetailRes = 512;
 
     // The march runs up the middle along +Z.
     private const float RoadHalfWidth = 13f;
@@ -66,6 +66,7 @@ public static class TrailerLegionSetup
 
         Undo.SetCurrentGroupName("Setup Trailer Shot 2");
         ParkOtherTrailerRigs();
+        SilenceGameplaySpawners();
 
         foreach (var old in TrailerFind.AllByName(RigName))
             if (old != null) Undo.DestroyObjectImmediate(old);
@@ -175,7 +176,8 @@ public static class TrailerLegionSetup
 
         var terrain = go.GetComponent<Terrain>();
         terrain.drawInstanced = true;
-        terrain.detailObjectDistance = 120f;
+        terrain.detailObjectDistance = 200f;
+        terrain.detailObjectDensity = 1f;
         terrain.treeDistance = 700f;
         terrain.treeBillboardDistance = 160f;
         terrain.heightmapPixelError = 3f;
@@ -309,14 +311,21 @@ public static class TrailerLegionSetup
                 position = new Vector3(nx, 0f, nz),
                 prototypeIndex = Random.Range(0, prefabs.Length),
                 // Near the road they are stunted and broken; further out, whole.
-                heightScale = Mathf.Lerp(0.55f, 1.25f, openness) * Random.Range(0.85f, 1.15f),
-                widthScale = Random.Range(0.85f, 1.15f),
+                // Kept near 1. Stunting them too far reads as a scaling bug rather
+                // than as blighted woodland.
+                heightScale = Mathf.Lerp(0.8f, 1.15f, openness) * Random.Range(0.92f, 1.08f),
+                widthScale = Random.Range(0.92f, 1.08f),
                 rotation = Random.Range(0f, Mathf.PI * 2f),
                 color = Color.white,
                 lightmapColor = Color.white,
             });
         }
-        terrain.terrainData.treeInstances = instances.ToArray();
+        // SetTreeInstances with snapToHeightmap, NOT the treeInstances setter.
+        // TreeInstance.position.y is a NORMALISED height, so the 0 written above
+        // means the bottom of the terrain's height range — which is why trees came
+        // out buried to the waist. Snapping puts every one on the surface.
+        data.RefreshPrototypes();
+        terrain.terrainData.SetTreeInstances(instances.ToArray(), true);
         terrain.Flush();
     }
 
@@ -338,8 +347,8 @@ public static class TrailerLegionSetup
             usePrototypeMesh = true,
             useInstancing = true,
             renderMode = DetailRenderMode.VertexLit,
-            minWidth = 0.7f, maxWidth = 1.3f,
-            minHeight = 0.7f, maxHeight = 1.4f,
+            minWidth = 1.1f, maxWidth = 2.0f,
+            minHeight = 1.0f, maxHeight = 2.0f,
             noiseSpread = 0.35f,
             healthyColor = new Color(0.55f, 0.58f, 0.42f),
             dryColor = new Color(0.52f, 0.46f, 0.30f),
@@ -367,8 +376,14 @@ public static class TrailerLegionSetup
                                              + (Mathf.PerlinNoise(nx * 9f, nz * 9f) - 0.5f) * 0.35f);
                 float life = openness * (1f - blight * 0.85f);
 
-                if (Mathf.PerlinNoise(nx * 14f + layer * 30f, nz * 14f) * life > 0.42f)
-                    d[z, x] = Mathf.RoundToInt(Mathf.Lerp(1f, 5f, life));
+                // Density, not presence. The old gate only let grass through where
+                // a noise sample cleared a threshold AND then placed 1-5 blades, so
+                // the fields came out as a few lonely sprigs on bare dirt. Grass is
+                // the ground cover here: it should be continuous, and thin out
+                // because the land is dying, not because a noise test failed.
+                float clump = 0.55f + 0.45f * Mathf.PerlinNoise(nx * 14f + layer * 30f, nz * 14f);
+                float density = life * clump;
+                if (density > 0.08f) d[z, x] = Mathf.RoundToInt(Mathf.Lerp(2f, 14f, density));
             }
             data.SetDetailLayer(0, 0, layer, d);
         }
@@ -393,6 +408,41 @@ public static class TrailerLegionSetup
         if (found.Length == 0)
             Debug.LogWarning("[Shot 2] No Boss_Skeleton_* prefabs found — the ranks will have nothing to part around.");
         return found;
+    }
+
+    // Shut down anything in the scene that spawns or drives enemies.
+    //
+    // Skeletons appearing in a heap and running off in all directions, with health
+    // bars over their heads, are not the column — they are the game's own spawners
+    // doing their job in a scene that also happens to contain a trailer rig. The
+    // marching units are stripped of their AI individually, but that does nothing
+    // about a spawner making NEW ones behind the camera.
+    private static void SilenceGameplaySpawners()
+    {
+        int off = 0;
+        foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (mb == null) continue;
+            string n = mb.GetType().Name;
+            if (n != "EnemySpawner" && n != "WorldEncounterDirector" && n != "RegionAlertDirector"
+                && n != "EnemyEncounterGroup" && n != "RegionTotem" && n != "WorldGenerator") continue;
+            if (!mb.enabled) continue;
+            Undo.RecordObject(mb, "silence spawner");
+            mb.enabled = false;
+            off++;
+        }
+
+        // And clear out anything they already put in the scene.
+        int killed = 0;
+        foreach (var ai in Object.FindObjectsByType<EnemyAI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (ai == null) continue;
+            Undo.DestroyObjectImmediate(ai.gameObject);
+            killed++;
+        }
+
+        if (off > 0 || killed > 0)
+            Debug.Log($"[Shot 2] Disabled {off} gameplay spawner(s) and removed {killed} existing enemy/enemies so the shot only contains the column.");
     }
 
     private static void ParkOtherTrailerRigs()
