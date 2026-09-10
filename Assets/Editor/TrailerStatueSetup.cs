@@ -88,12 +88,21 @@ public static class TrailerStatueSetup
 
         EditorUtility.DisplayDialog("Shot 1 ready",
             "Built LoreTrailer_Statue_Rig.\n\n" +
-            "Press Play to see the shot. Tune it on the TrailerStatueShot component:\n" +
-            "  • startDistance / endDistance — how far the camera travels\n" +
-            "  • crackCount / crackInterval — the rhythm of the break\n" +
-            "  • lightColor / coreColor — the violet\n" +
-            "  • rayLensOffset — how wide the shafts sweep past the lens\n\n" +
-            "It wants a dark scene: the light out of the statue should be the brightest thing in frame.",
+            "Press Play. Tune it on the TrailerStatueShot component:\n\n" +
+            "PACING\n" +
+            "  • establish — the dead-quiet hold before the first crack. This is what makes it land.\n" +
+            "  • buildDuration — first fracture to full burst\n" +
+            "  • stepIntervalStart / End — how fast the cracks crawl, and how much they accelerate\n\n" +
+            "LOOK\n" +
+            "  • motesPerRay — dust drifting through the shafts. Turn this to 0 and see how flat they go;\n" +
+            "    it is the single biggest thing making them read as volumetric.\n" +
+            "  • rayLensOffset — how wide the shafts sweep past the lens. Too low and they shrink to dots.\n" +
+            "  • rayFlicker — a perfectly steady beam is the clearest CGI tell there is.\n" +
+            "  • crackWidthScale — thickness of the fissures on the stone\n\n" +
+            "CAMERA\n" +
+            "  • framingBias — 0.5 is dead centre and looks like a product turntable\n" +
+            "  • handheldBase / handheldAtPeak — the camera should get less steady as the stone fails\n\n" +
+            "It wants a DARK scene: the light out of the statue should be the brightest thing in frame.",
             "OK");
     }
 
