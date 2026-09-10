@@ -191,7 +191,7 @@ public static class TrailerLegionSetup
             // Both verges, running the length of the march. Gapped and jittered:
             // an unbroken line reads as a wall, and a wall reads as level geometry
             // rather than as something a farmer put there.
-            for (float z = origin.z + 40f; z < origin.z + Size - 40f; z += 6f)
+            for (float z = origin.z + 40f; z < origin.z + Size - 40f; z += 11f)
             {
                 foreach (float side in new[] { -1f, 1f })
                 {
@@ -323,11 +323,16 @@ public static class TrailerLegionSetup
 
         var terrain = go.GetComponent<Terrain>();
         terrain.drawInstanced = true;
-        terrain.detailObjectDistance = 200f;
-        terrain.detailObjectDensity = 1f;
-        terrain.treeDistance = 700f;
-        terrain.treeBillboardDistance = 160f;
-        terrain.heightmapPixelError = 3f;
+        terrain.detailObjectDistance = 90f;
+        terrain.detailObjectDensity = 0.7f;
+        terrain.treeDistance = 350f;
+        // Full-mesh trees only very close. Dead trees are all branches, so a
+        // generous billboard distance means thousands of high-poly meshes drawn at
+        // once — which does not look like a performance setting being wrong, it
+        // looks like the engine hanging.
+        terrain.treeBillboardDistance = 40f;
+        terrain.treeMaximumFullLODCount = 25;
+        terrain.heightmapPixelError = 5f;
 
         try
         {
@@ -446,7 +451,7 @@ public static class TrailerLegionSetup
         data.treePrototypes = prefabs.Select(p => new TreePrototype { prefab = p }).ToArray();
 
         var instances = new List<TreeInstance>(2000);
-        for (int i = 0; i < 4500; i++)
+        for (int i = 0; i < 1400; i++)
         {
             float nx = Random.value, nz = Random.value;
 
@@ -482,6 +487,7 @@ public static class TrailerLegionSetup
         data.RefreshPrototypes();
         terrain.terrainData.SetTreeInstances(instances.ToArray(), true);
         terrain.Flush();
+        Debug.Log($"[Shot 2] Planted {instances.Count} trees.");
     }
 
     // Take the grass the GAME paints with, not a lookalike.

@@ -56,8 +56,8 @@ public class TrailerLegionMarch : MonoBehaviour
 
     [Header("Formation")]
     [Tooltip("Ranks kept alive at once. Because ranks recycle, this is a BUDGET, not the length of the army — raise it only if the tail is visibly short before the fog takes it.")]
-    [Range(4, 60)] public int ranksAlive = 30;
-    [Range(2, 24)] public int unitsPerRank = 9;
+    [Range(4, 60)] public int ranksAlive = 20;
+    [Range(2, 24)] public int unitsPerRank = 8;
     public float rankSpacing = 3.2f;
     public float fileSpacing = 2.1f;
     [Tooltip("A boss walks in place of the centre of every Nth rank, and the rank opens up around it.")]
@@ -74,7 +74,7 @@ public class TrailerLegionMarch : MonoBehaviour
 
     [Header("Performance")]
     [Tooltip("Beyond this distance a unit's Animator is switched off. At range nobody can tell, and Animators are the entire cost of a crowd.")]
-    public float animateWithinDistance = 55f;
+    public float animateWithinDistance = 38f;
     [Tooltip("Ground is sampled this many times a second per unit, not every frame.")]
     public float groundSampleRate = 6f;
 
@@ -521,9 +521,17 @@ public class TrailerLegionMarch : MonoBehaviour
 
     private IEnumerator PlayShot()
     {
+        // A stray zero or slow timeScale left by the previous shot would stop
+        // anything here that is not on unscaled time.
+        if (Time.timeScale < 0.99f) Time.timeScale = 1f;
+
         // Build BEFORE the fade-in. The screen is black at this point, so the
         // frames the column costs to assemble are frames nobody is looking at.
+        float t0 = Time.realtimeSinceStartup;
         yield return BuildColumnRoutine();
+        Debug.Log($"[Legion] Column of {units.Count} built in {Time.realtimeSinceStartup - t0:F2}s. " +
+                  $"If the shot is slow but this number is small, the cost is RENDERING, not the build — " +
+                  $"lower ranksAlive/unitsPerRank, or the terrain's tree and detail distances.");
 
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
