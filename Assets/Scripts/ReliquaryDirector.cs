@@ -73,9 +73,21 @@ public class ReliquaryDirector : MonoBehaviour
             return;
         }
 
-        if (Random.value > regionHasOneChance)
+        // Per-region overrides win where a designer set them. The values here are
+        // the house default, not the law: an early forest and the Throne Room
+        // should not be seeded the same way, and forcing that decision through
+        // one global number is how a system stops being tunable.
+        RegionData region = GameManager.Instance != null ? GameManager.Instance.currentRegion : null;
+        if (region == null) region = MissionInitializer.PendingMissionRegion;
+
+        float chance = region != null && region.reliquaryChance >= 0f ? region.reliquaryChance : regionHasOneChance;
+        int cap = region != null && region.maxReliquaries >= 0 ? region.maxReliquaries : maxPerRegion;
+        float pShrine = region != null && region.shrineChance >= 0f ? region.shrineChance : shrineChance;
+        float pBarrow = region != null && region.barrowChance >= 0f ? region.barrowChance : barrowChance;
+
+        if (Random.value > chance)
         {
-            Debug.Log("[Reliquary] This region has none. That is by design — see ReliquaryDirector.");
+            Debug.Log($"[Reliquary] This region has none (chance {chance:P0}). That is by design — see ReliquaryDirector.");
             return;
         }
 
@@ -83,7 +95,7 @@ public class ReliquaryDirector : MonoBehaviour
         var pc = FindFirstObjectByType<PlayerController>();
         if (pc != null) start = pc.transform.position;
 
-        int want = Random.Range(1, Mathf.Max(1, maxPerRegion) + 1);
+        int want = Random.Range(1, Mathf.Max(1, cap) + 1);
         var taken = new List<Vector3>(want);
 
         for (int attempt = 0; attempt < 400 && taken.Count < want; attempt++)
@@ -95,8 +107,8 @@ public class ReliquaryDirector : MonoBehaviour
 
             var rel = go.AddComponent<Reliquary>();
             float roll = Random.value;
-            rel.grade = roll < barrowChance ? Reliquary.Grade.Barrow
-                      : roll < barrowChance + shrineChance ? Reliquary.Grade.Shrine
+            rel.grade = roll < pBarrow ? Reliquary.Grade.Barrow
+                      : roll < pBarrow + pShrine ? Reliquary.Grade.Shrine
                       : Reliquary.Grade.Wayside;
             // Distance from the start is the only honest way to pay for a walk.
             float d = Vector3.Distance(site, start);

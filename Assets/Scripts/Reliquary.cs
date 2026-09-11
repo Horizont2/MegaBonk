@@ -314,7 +314,7 @@ public class Reliquary : MonoBehaviour
         if (Sealed)
         {
             if (dist <= _chest.interactRange + 2f)
-                ChannelBar.Show(LocalizationManager.Tr("RELIQUARY_SEALED", LivingGuardians()), 0f, Accent);
+                ShowBar(LocalizationManager.Tr("RELIQUARY_SEALED", LivingGuardians()), 0f);
             _progress = 0f;
             return;
         }
@@ -348,7 +348,7 @@ public class Reliquary : MonoBehaviour
             string key = holding ? "RELIQUARY_OPENING"
                        : _progress > 0f ? "RELIQUARY_HOLD"
                        : "RELIQUARY_PROMPT";
-            ChannelBar.Show(LocalizationManager.Tr(key), _progress, Accent);
+            ShowBar(LocalizationManager.Tr(key), _progress);
         }
 
         if (_progress >= 1f)
@@ -356,6 +356,30 @@ public class Reliquary : MonoBehaviour
             _spent = true;
             _chest.ForceOpen();   // payout rides on LootChest.Opened
         }
+    }
+
+    // The boss HP bar, borrowed. The player already reads that bar as "there is
+    // a fight in progress and here is how far through it you are" — which is
+    // exactly what breaking a seal is — so reusing it costs them nothing to
+    // learn. GlobalHUD drops the real boss bar out of the way if one is up.
+    private void ShowBar(string label, float progress)
+    {
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowObjectiveBar(label, progress, Accent);
+        _barShownAt = Time.unscaledTime;
+    }
+
+    private float _barShownAt = -1f;
+
+    private void LateUpdate()
+    {
+        // Hide it a moment after the last Show. Every way out of a channel —
+        // finishing, walking off, dying, the guardians being killed elsewhere —
+        // would otherwise need its own teardown, and the one that got forgotten
+        // would leave a bar stuck on screen for the rest of the run.
+        if (_barShownAt < 0f) return;
+        if (Time.unscaledTime - _barShownAt < 0.25f) return;
+        _barShownAt = -1f;
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideObjectiveBar();
     }
 
     private int LivingGuardians()

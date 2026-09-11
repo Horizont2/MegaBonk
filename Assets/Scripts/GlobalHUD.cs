@@ -481,6 +481,124 @@ public class GlobalHUD : MonoBehaviour
 
     public void UpdateBossHealth(float currentHp, float maxHp) { targetBossHpRatio = currentHp / maxHp; }
 
+    // ---- objective bar ------------------------------------------------------
+    //
+    // A second bar in the boss HP bar's shape, for anything the player has to
+    // hold out through — currently breaking a reliquary's seal.
+    //
+    // It is a CLONE of the boss bar rather than a new widget, and that is the
+    // whole point: the player has already learned to read that bar. A bespoke
+    // progress meter somewhere else on screen would be a second thing to learn
+    // for no reason, and it would not carry the same "this is a fight you are in
+    // the middle of" weight.
+    //
+    // When a real boss turns up while one is running, the BOSS moves down and the
+    // objective keeps the usual spot. That way the bar the player is actively
+    // driving with their own held key stays where their eye already is.
+    [SerializeField] private float bossDropWhenObjectiveShown = 78f;
+
+    private CanvasGroup objectiveBarGroup;
+    private Image objectiveBarFill;
+    private TextMeshProUGUI objectiveBarLabel;
+    private Vector2 bossBarBasePos;
+    private bool bossBarDropped;
+    private bool objectiveBarVisible;
+
+    public void ShowObjectiveBar(string label, float ratio01, Color tint)
+    {
+        if (!EnsureObjectiveBar()) return;
+
+        objectiveBarGroup.alpha = 1f;
+        if (objectiveBarLabel != null) { objectiveBarLabel.text = label; objectiveBarLabel.color = tint; }
+        if (objectiveBarFill != null) { objectiveBarFill.fillAmount = Mathf.Clamp01(ratio01); objectiveBarFill.color = tint; }
+
+        if (!objectiveBarVisible)
+        {
+            objectiveBarVisible = true;
+            DropBossBar(true);
+        }
+    }
+
+    public void HideObjectiveBar()
+    {
+        if (!objectiveBarVisible) return;
+        objectiveBarVisible = false;
+        if (objectiveBarGroup != null) objectiveBarGroup.alpha = 0f;
+        DropBossBar(false);
+    }
+
+    private bool EnsureObjectiveBar()
+    {
+        if (objectiveBarGroup != null) return true;
+        if (bossUIGroup == null) return false;
+
+        var clone = Instantiate(bossUIGroup.gameObject, bossUIGroup.transform.parent);
+        clone.name = "ObjectiveBar";
+        clone.SetActive(true);
+
+        objectiveBarGroup = clone.GetComponent<CanvasGroup>();
+        if (objectiveBarGroup == null) objectiveBarGroup = clone.AddComponent<CanvasGroup>();
+        objectiveBarGroup.ignoreParentGroups = true;
+        objectiveBarGroup.blocksRaycasts = false;
+        objectiveBarGroup.interactable = false;
+        objectiveBarGroup.alpha = 0f;
+
+        // Find the clone's equivalents by walking the same child indices as the
+        // original. Matching by name would break the moment someone renames a
+        // node in the boss bar, and this hierarchy is a copy by construction.
+        objectiveBarFill = MirrorIn(clone.transform, bossUIGroup.transform, bossHpFill != null ? bossHpFill.transform : null)?.GetComponent<Image>();
+        objectiveBarLabel = MirrorIn(clone.transform, bossUIGroup.transform, bossNameText != null ? bossNameText.transform : null)?.GetComponent<TextMeshProUGUI>();
+
+        // The catch-up fill is the boss bar's delayed red streak. On a progress
+        // bar that fills upward it reads as the bar being ahead of itself, so it
+        // is switched off rather than driven.
+        var catchup = MirrorIn(clone.transform, bossUIGroup.transform, bossHpCatchupFill != null ? bossHpCatchupFill.transform : null);
+        if (catchup != null) catchup.gameObject.SetActive(false);
+
+        if (objectiveBarFill == null)
+            Debug.LogWarning("[GlobalHUD] Objective bar cloned but its fill image could not be located — " +
+                             "the bar will show a label with no progress. Check bossHpFill is wired.");
+        return true;
+    }
+
+    // Same position in the copied hierarchy as `node` occupies under `origRoot`.
+    private static Transform MirrorIn(Transform cloneRoot, Transform origRoot, Transform node)
+    {
+        if (node == null || origRoot == null) return null;
+
+        var path = new List<int>();
+        Transform t = node;
+        while (t != null && t != origRoot) { path.Add(t.GetSiblingIndex()); t = t.parent; }
+        if (t != origRoot) return null;   // not actually under the boss bar
+
+        Transform cur = cloneRoot;
+        for (int i = path.Count - 1; i >= 0; i--)
+        {
+            if (path[i] < 0 || path[i] >= cur.childCount) return null;
+            cur = cur.GetChild(path[i]);
+        }
+        return cur;
+    }
+
+    private void DropBossBar(bool down)
+    {
+        if (bossUIGroup == null) return;
+        var rt = bossUIGroup.transform as RectTransform;
+        if (rt == null) return;
+
+        if (down && !bossBarDropped)
+        {
+            bossBarBasePos = rt.anchoredPosition;
+            rt.anchoredPosition = bossBarBasePos + new Vector2(0f, -bossDropWhenObjectiveShown);
+            bossBarDropped = true;
+        }
+        else if (!down && bossBarDropped)
+        {
+            rt.anchoredPosition = bossBarBasePos;
+            bossBarDropped = false;
+        }
+    }
+
     public void HideBossUI()
     {
         NudgeTimerForBoss(false);

@@ -92,6 +92,16 @@ public class RegionData : ScriptableObject
              "region). 0 = only the main totem, unchanged.")]
     [Range(0, 5)] public int extraCaptureLocations = 0;
 
+    [Header("Reliquaries (exploration POIs)")]
+    [Tooltip("Шанс, що в цьому регіоні взагалі є реліквіарій. -1 = взяти значення з ReliquaryDirector. Нижче 1 навмисно: регіон, у якому нічого немає, і робить силует наступного вартим уваги.")]
+    [Range(-1f, 1f)] public float reliquaryChance = -1f;
+    [Tooltip("Максимум реліквіаріїв, якщо кидок вдався. -1 = значення директора.")]
+    public int maxReliquaries = -1;
+    [Tooltip("Шанс, що майданчик — Святилище з вартовим, а не проста придорожня схованка. -1 = значення директора.")]
+    [Range(-1f, 1f)] public float shrineChance = -1f;
+    [Tooltip("Шанс, що майданчик — Курган: четверо вартових, дев'ять секунд утримання і хвиля. Найрідкісніше в системі — піднімати це означає міняти економіку, а не крутити налаштування. -1 = значення директора.")]
+    [Range(-1f, 0.5f)] public float barrowChance = -1f;
+
     [Header("One-Time Rewards (�� �����������)")]
     public int woodReward = 100;
     public int stoneReward = 50;
