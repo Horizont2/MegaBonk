@@ -118,12 +118,31 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     private float staggerRumbleTimer;
 
     private bool hasShownBossUI = false;
+    // This boss's own clips. Each named move loads its own animation into the
+    // attack state before the trigger fires — see ArmAttack.
+    private EnemyPersonality personality;
 
     private void Awake()
     {
         gameObject.layer = 9;
         animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.applyRootMotion = false;
+
+        // Bosses run on this script rather than EnemyAI, so they were missed by
+        // the personality hook there — which meant the one enemy the player looks
+        // at longest was also the one still wearing the shared minion animations.
+        //
+        // GetComponent then an explicit null check, never `?? AddComponent`:
+        // UnityEngine.Object overloads ==, so a destroyed-but-not-collected
+        // component is "null" to == and not null to ??, and the coalescing form
+        // silently skips the Add.
+        personality = GetComponent<EnemyPersonality>();
+        if (personality == null) personality = gameObject.AddComponent<EnemyPersonality>();
+        // Gait is driven from EnemyAI.Update for ordinary enemies, and a boss has
+        // no EnemyAI — without this it would be stuck on the calm walk it starts
+        // in and would charge at a stroll. A boss runs; that is what it did before
+        // any of this, and it is what it should keep doing.
+        personality.SetGait(true);
 
         Renderer[] allRenderers = GetComponentsInChildren<Renderer>();
         List<Renderer> validRenderers = new List<Renderer>();
@@ -182,6 +201,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);
             if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioID.Music_Battle);
+
+            // There has been a roar on the soundtrack here since forever with
+            // nothing on screen making it. Now the boss actually roars.
+            Roar();
         }
     }
 
@@ -365,6 +388,9 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         if (!isStaggered && !isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 1.5f)
         {
             lastAttackTime = Time.time;
+            // Back to this boss's ordinary swing, so the named moves above read as
+            // departures from it rather than as four unrelated animations.
+            if (personality != null) personality.ArmAttack(EnemyPersonality.Move.Basic);
             if (animator != null) animator.SetTrigger("Attack");
         }
 
@@ -425,6 +451,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (!isDead && !isStaggered)
         {
+            if (personality != null) personality.ArmAttack(EnemyPersonality.Move.Slam);
             if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
             CameraShakeUtil.TryShake(0.35f, 0.15f);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Boss_Slam, center);
@@ -498,6 +525,13 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                     if (Vector3.Distance(transform.position, fp) <= attackRange)
                     {
                         hit = true;
+                        // The charge itself is a run, which is right — but the
+                        // moment it connects had no animation at all, so the
+                        // player took 2.5x damage from something that visually
+                        // just jogged into them. A thrust on contact, because the
+                        // body is already travelling.
+                        if (personality != null) personality.ArmAttack(EnemyPersonality.Move.Charge);
+                        if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
                         CameraShakeUtil.TryShake(0.3f, 0.14f);
                         Vector3 push = (playerTarget.transform.position - transform.position); push.y = 0f;
                         playerTarget.TakeDamage(new DamageInfo { Amount = damage * chargeDamageMult, PushDirection = push.normalized, KnockbackForce = 25f, SourceName = bossName });
@@ -532,6 +566,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (!isDead && !isStaggered)
         {
+            if (personality != null) personality.ArmAttack(EnemyPersonality.Move.Cleave);
             if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
             CameraShakeUtil.TryShake(0.3f, 0.13f);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
@@ -561,6 +596,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         lastSummonTime = Time.time;
         if (animator != null) animator.SetBool("isMoving", false);
         // Play the "call the army" cast gesture + telegraph so the summon reads.
+        // It now IS a cast: Ranged_Magic_Summon goes into the attack state first,
+        // so the gesture matches what is about to happen instead of being another
+        // sword swing that happens to produce skeletons.
+        if (personality != null) personality.ArmAttack(EnemyPersonality.Move.Summon);
         if (animator != null && !string.IsNullOrEmpty(summonAnimTrigger)) animator.SetTriggerSafe(summonAnimTrigger);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
         SetColor(new Color(0.4f, 0f, 1.6f));
@@ -607,6 +646,17 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isPreparingAttack = false;
     }
 
+    // A taunt loaded into the attack state and fired. Not a state of its own: the
+    // controller is shared by every enemy in the game and adding boss-only states
+    // to it would mean every skeleton carried them too.
+    private void Roar()
+    {
+        if (personality == null || !personality.HasMoves || animator == null) return;
+        personality.ArmAttack(EnemyPersonality.Move.Taunt);
+        animator.ResetTrigger("Attack");
+        animator.SetTrigger("Attack");
+    }
+
     private void EnterEnrage()
     {
         isEnraged = true;
@@ -617,6 +667,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         CameraShakeUtil.TryShake(0.5f, 0.2f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Boss_Enrage, transform.position);
         StartCoroutine(EnrageFlashRoutine());
+        // The fight changes shape here — faster, more slams, a fresh pack of adds.
+        // A phase that only announces itself with a colour flash is a phase the
+        // player discovers by dying to it.
+        Roar();
 
         // Summon a one-off pack of adds so the low-HP phase spikes in threat.
         if (enrageAddPrefabs != null && enrageAddPrefabs.Length > 0)

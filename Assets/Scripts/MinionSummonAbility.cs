@@ -106,6 +106,12 @@ public class MinionSummonAbility : MonoBehaviour
         }
 
         if (anim == null) anim = GetComponentInChildren<Animator>();
+        // Load the actual summoning gesture into the attack state before firing
+        // it. Without this the necromancer raises the dead by swinging a sword,
+        // which reads as an attack that happens to produce skeletons rather than
+        // as a spell — and the tell the player is meant to learn is the gesture.
+        var personality = GetComponent<EnemyPersonality>();
+        if (personality != null) personality.ArmAttack(EnemyPersonality.Move.Summon);
         if (anim != null && !string.IsNullOrEmpty(castAnimTrigger)) anim.SetTriggerSafe(castAnimTrigger);
         // World-space + graceful fade (VFXAutoFade) — these VFX prefabs loop, so
         // an un-cleaned instance would hang around forever, and a hard Destroy

@@ -65,6 +65,9 @@ public class EnemyPersonality : MonoBehaviour
     private string _idleKey, _runKey, _hitKey, _deathKey, _attackKey;
 
     private AnimationClip _walkClip, _runClip;
+    // What this one swings by default, remembered so a named move can hand the
+    // attack state back afterwards.
+    private AnimationClip _basicAttack;
     private bool _walking = true;
 
     private void Awake()
@@ -119,13 +122,13 @@ public class EnemyPersonality : MonoBehaviour
 
         AnimationClip idle = PickIdle();
         AnimationClip death = EnemyAnimationSet.Pick(_set.deaths, _rng);
-        AnimationClip attack = PickAttack();
+        _basicAttack = PickAttack();
         _walkClip = PickWalk();
         _runClip = PickRun();
 
         Set(_idleKey, idle);
         Set(_deathKey, death);
-        Set(_attackKey, attack);
+        Set(_attackKey, _basicAttack);
         Set(_hitKey, EnemyAnimationSet.Pick(_set.hits, _rng));
         Set(_runKey, _walkClip ?? _runClip);   // starts calm; SetGait corrects it
 
@@ -255,12 +258,63 @@ public class EnemyPersonality : MonoBehaviour
         _override[_runKey] = want;
     }
 
-    // One-off clip swaps for a specific moment — the necromancer's summon, a
-    // boss's slam — without needing a state for each.
+    // ---- named moves ---------------------------------------------------------
+
+    public enum Move { Basic, Slam, Cleave, Charge, Summon, Taunt }
+
+    // Load a specific move into the attack state, then let the caller fire the
+    // trigger it already fires.
+    //
+    // This is how five different boss attacks stop looking like one. The boss has
+    // Slam, Cleave, Charge, Summon and a basic swing in code, all of them firing
+    // the same "Attack" trigger, so a player has no way to learn to read them —
+    // a wind-up that looks identical to four other wind-ups is not a tell, it is
+    // a coin toss. The state machine does not need to change for this: the state
+    // stays the same, the clip inside it does not.
+    //
+    // The swap has to happen BEFORE the trigger, which is exactly where every one
+    // of those routines already has a telegraph to hide it in.
+    public void ArmAttack(Move move)
+    {
+        if (_set == null || _override == null || string.IsNullOrEmpty(_attackKey)) return;
+        AnimationClip c = Resolve(move);
+        if (c != null) _override[_attackKey] = c;
+    }
+
+    private AnimationClip Resolve(Move m)
+    {
+        switch (m)
+        {
+            // A slam wants a downward two-handed commitment.
+            case Move.Slam:
+                return _set.bossSlam
+                    ?? First(_set.attacks2H, "Melee_2H_Attack_Chop")
+                    ?? _basicAttack;
+            // A cleave is a radial sweep centred on the boss, so a spin is
+            // literally the motion — not an approximation of it.
+            case Move.Cleave:
+                return First(_set.attacks2H, "Melee_2H_Attack_Spin")
+                    ?? First(_set.attacks2H, "Melee_2H_Attack_Slice")
+                    ?? _basicAttack;
+            // A charge ends in a thrust, because the body is already travelling.
+            case Move.Charge:
+                return First(_set.attacks2H, "Melee_2H_Attack_Stab")
+                    ?? First(_set.attacks1H, "Melee_1H_Attack_Stab")
+                    ?? _basicAttack;
+            case Move.Summon:
+                return _set.summon ?? EnemyAnimationSet.Pick(_set.spellcasts, _rng) ?? _basicAttack;
+            case Move.Taunt:
+                return EnemyAnimationSet.Pick(_set.taunts, _rng) ?? _basicAttack;
+            default:
+                return _basicAttack;
+        }
+    }
+
+    // One-off swap for a caller that has its own clip in hand.
     public void UseAttackClip(AnimationClip clip)
     {
         if (clip != null) Set(_attackKey, clip);
     }
 
-    public AnimationClip Taunt => EnemyAnimationSet.Pick(_set != null ? _set.taunts : null, _rng);
+    public bool HasMoves => _set != null && _override != null && !string.IsNullOrEmpty(_attackKey);
 }
