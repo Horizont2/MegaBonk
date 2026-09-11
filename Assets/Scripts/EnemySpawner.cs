@@ -143,12 +143,32 @@ public class EnemySpawner : MonoBehaviour
             // never got a quiet moment, and a fight with no gaps in it stops
             // registering as a fight at all. Note these are the numbers BEFORE
             // AmbientThrottle, which the director then scales down again.
-            maxEnemiesOnMap = Mathf.Max(maxEnemiesOnMap, 44);
-            startCap        = Mathf.Max(startCap, 14);
-            capRampMinutes  = Mathf.Min(capRampMinutes, 6f);
-            gracePeriod     = Mathf.Min(gracePeriod, 22f);
-            relaxCapFactor  = Mathf.Max(relaxCapFactor, 0.5f); // RELAX is meant to BE a rest
-            relaxIntervalMult = Mathf.Min(relaxIntervalMult, 3.5f);
+            maxEnemiesOnMap = Mathf.Max(maxEnemiesOnMap, 38);
+            startCap        = Mathf.Max(startCap, 12);
+            capRampMinutes  = Mathf.Min(capRampMinutes, 7f);
+            gracePeriod     = Mathf.Min(gracePeriod, 24f);
+            relaxCapFactor  = Mathf.Max(relaxCapFactor, 0.45f); // RELAX is meant to BE a rest
+            relaxIntervalMult = Mathf.Min(relaxIntervalMult, 4f);
+
+            // THE FIRST REGION IS A LESSON, NOT A TEST.
+            //
+            // Keyed on having conquered nothing yet rather than on a region ID,
+            // so it is true for whichever region the player actually opens with.
+            // Someone who has never fought one of these needs room to find out
+            // what the enemies do, where the totem is and what the anchors are
+            // for — and none of that is learnable while being swarmed. It goes
+            // away permanently the moment they win one.
+            if (PlayerPrefs.GetInt("TotalConqueredRegions", 0) == 0)
+            {
+                maxEnemiesOnMap = Mathf.RoundToInt(maxEnemiesOnMap * 0.6f);
+                startCap        = Mathf.RoundToInt(startCap * 0.55f);
+                gracePeriod     = Mathf.Max(gracePeriod, 40f);
+                relaxCapFactor  = Mathf.Min(relaxCapFactor, 0.35f);
+                relaxDuration   = new Vector2(relaxDuration.x * 1.5f, relaxDuration.y * 1.5f);
+                peakDuration    = new Vector2(peakDuration.x * 0.7f, peakDuration.y * 0.7f);
+                enableGroundAmbush = false;   // no ambushes on a first outing
+                Debug.Log("[Spawner] First region — density eased while the player learns the format.");
+            }
         }
     }
 

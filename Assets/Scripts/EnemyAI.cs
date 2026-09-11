@@ -355,9 +355,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
     //   arrived     -> SEARCH the area for a while, still able to re-spot
     //   nothing     -> walk back to the post and resume duty
     //
-    // Only encounter enemies opt in. The radial spawner's horde is meant to be
-    // relentless and is left exactly as it was.
-    [HideInInspector] public bool canDeAggro = false;
+    // EVERYONE opts in now, including the radial spawner's horde.
+    //
+    // "Relentless" was the intent and it turned out to mean a skeleton following
+    // the player across the entire map for the rest of the run. That is not
+    // pressure, it is a tail: the player has no move that answers it, so the only
+    // thing running away buys is a longer conga line, and a fight you cannot
+    // leave stops being a fight you are choosing to have.
+    //
+    // The horde is still the persistent one — it just gives up eventually, and it
+    // gives up on LOSING SIGHT rather than on distance, so breaking line of sight
+    // is the skill that works. Encounter enemies keep the tighter numbers set on
+    // them by their group.
+    [HideInInspector] public bool canDeAggro = true;
     // This enemy's own look and gait. Added in Start; see the note there.
     private EnemyPersonality personality;
     [HideInInspector] public float loseSightDuration = 6f;   // grace after sight breaks

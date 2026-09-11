@@ -470,15 +470,41 @@ public class CampGuideDirector : MonoBehaviour
     private bool TryPathTo(Vector3 aim)
     {
         if (!NavMesh.CalculatePath(player.position, aim, guideFilter, scratchPath)) return false;
-        if (scratchPath.status != NavMeshPathStatus.PathComplete) return false;
         if (scratchPath.corners.Length < 2) return false;
 
-        // Belt and braces: even a "complete" path ends at the navmesh polygon
-        // nearest the destination, which is not the destination if the
-        // destination was never on the mesh.
+        // Judge the path by WHERE IT ENDS UP, not by its status flag.
+        //
+        // The previous version demanded PathComplete and a landing within three
+        // metres, and that turned out to hide almost every trail in the camp.
+        // Both halves were wrong for this job. A route that ends on the walkable
+        // ground beside a building is a perfectly good route, and a building's
+        // aim point sits at the centre of its footprint — which is inside the
+        // building, off the navmesh, so the path legitimately stops at its edge
+        // and legitimately reports PathPartial.
+        //
+        // What actually needs catching is the failure this check exists for: a
+        // path that gives up somewhere else entirely and draws a confident gold
+        // ribbon to the wrong place. A generous landing radius catches that and
+        // nothing else.
         Vector3 end = scratchPath.corners[scratchPath.corners.Length - 1];
-        return (new Vector2(end.x - aim.x, end.z - aim.z)).sqrMagnitude <= 9f;   // within 3 m
+        float dx = end.x - aim.x, dz = end.z - aim.z;
+        if (dx * dx + dz * dz <= trailArrivalRadius * trailArrivalRadius) return true;
+
+        // Said once per target rather than four times a second, so a genuinely
+        // unreachable objective is visible in the log without burying it.
+        if (_lastUnreachableAim != aim)
+        {
+            _lastUnreachableAim = aim;
+            Debug.LogWarning($"[CampGuide] No route reaches {aim} — the path stops {Mathf.Sqrt(dx * dx + dz * dz):F1}m " +
+                             $"short ({scratchPath.status}). Hiding the trail; the beacon and the arrow still point at it. " +
+                             "Usually means the objective sits outside the baked NavMesh.");
+        }
+        return false;
     }
+
+    [Tooltip("How close a route has to get to the objective to count as reaching it. Generous on purpose: a building's aim point is inside its own footprint, so a good path stops at the edge of it.")]
+    public float trailArrivalRadius = 14f;
+    private Vector3 _lastUnreachableAim = new Vector3(float.NaN, 0f, 0f);
 
     private Vector3 GetAimPoint(Transform target)
     {

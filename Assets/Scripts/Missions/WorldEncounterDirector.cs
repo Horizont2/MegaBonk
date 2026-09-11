@@ -144,7 +144,20 @@ public class WorldEncounterDirector : MonoBehaviour
         // IsSpawningBlocked — that flag is cleared by the spawner's own
         // self-heal within two seconds, so the old "block" here lasted exactly
         // as long as it took the player to reach the first patrol.
-        if (!conquered && blockRandomSpawnerOnStart) EnemySpawner.AmbientThrottle = ambientSpawnerThrottle;
+        if (!conquered && blockRandomSpawnerOnStart)
+        {
+            float throttle = ambientSpawnerThrottle;
+            // Halve it again on the player's very first region, and thin the
+            // hand-placed encounters to match. Two systems each at "reasonable"
+            // still add up to no quiet moment, and a first region with no quiet
+            // moment in it teaches nothing.
+            if (PlayerPrefs.GetInt("TotalConqueredRegions", 0) == 0)
+            {
+                throttle *= 0.5f;
+                densityMultiplier = Mathf.Min(densityMultiplier, 0.8f);
+            }
+            EnemySpawner.AmbientThrottle = throttle;
+        }
         yield return StartCoroutine(RunDirectorRoutine(conquered));
     }
 

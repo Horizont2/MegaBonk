@@ -73,8 +73,16 @@ public class PowerSystemManager : MonoBehaviour
     public static float CalculateDifficultyMultiplier(int playerPower, int recommendedPower)
     {
         int delta = playerPower - recommendedPower;
+        // The underpowered penalty is capped at 1.55, not 2.
+        //
+        // At 2x the enemies have double health AND double damage, which is not
+        // "hard", it is a wall: the player dies in two or three hits while their
+        // own attacks barely register, so there is nothing to learn from the
+        // attempt. A fresh save has power 50, and every region asked for more
+        // than that, so this ceiling was where new players actually lived rather
+        // than being the rare punishment for wandering somewhere too early.
         float power = (delta < 0)
-            ? Mathf.Clamp(1f + (-delta) * 0.01f, 1f, 2f)
+            ? Mathf.Clamp(1f + (-delta) * 0.007f, 1f, 1.55f)
             : Mathf.Clamp(1f - delta * 0.003f, 0.7f, 1f);
         // Stack the player's chosen difficulty on top of the power-based
         // curve so the Settings_Difficulty dropdown actually does

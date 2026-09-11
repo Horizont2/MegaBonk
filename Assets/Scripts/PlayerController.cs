@@ -15,6 +15,13 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Coroutine activeFlashRoutine;
     private float actionLockEndTime = 0f;
 
+    [Header("Hit Reaction")]
+    [Tooltip("How long a hit interrupts the player. Deliberately tiny — see TakeDamage. Set to 0 to remove the flinch entirely.")]
+    public float hitFlinchDuration = 0.08f;
+    [Tooltip("Minimum gap between two flinches. Stops a crowd from chain-locking the player out of their own escape.")]
+    public float hitFlinchCooldown = 0.7f;
+    private float nextHitFlinchTime = 0f;
+
     [Header("Weapon Spawning")]
     public GameObject[] weaponPrefabs;
     [Tooltip("Optional per-weapon local rotation (Euler °) for the weapon in the hand, indexed the same as Weapon Prefabs. Fixes prefabs that sit crooked at identity. Empty/short → identity (the default sword, index 0, is corrected in code).")]
@@ -780,14 +787,18 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
-    private void LockAction(string trigger, float duration)
+    private void LockAction(string trigger, float duration, bool keepMomentum = false)
     {
         actionLockEndTime = Time.unscaledTime + duration;
-        currentVelocityMove = Vector3.zero;
+        // A hit should not delete the run the player was already doing. Zeroing
+        // momentum is right for a deliberate action (a swing roots you); it is
+        // wrong for being grazed, because it means every touch reverses the
+        // escape you were mid-way through.
+        if (!keepMomentum) currentVelocityMove = Vector3.zero;
 
         if (anim != null)
         {
-            anim.SetFloat("Speed", 0f);
+            if (!keepMomentum) anim.SetFloat("Speed", 0f);
             anim.ResetTrigger(trigger);
             anim.SetTrigger(trigger);
         }
@@ -2181,7 +2192,27 @@ public class PlayerController : MonoBehaviour, IDamageable
         UpdateHUD();
 
         if (currentHealth <= 0) { if (hpCatchupFill != null) hpCatchupFill.fillAmount = 0; Die(); }
-        else { LockAction("Hit", 0.35f); }
+        else
+        {
+            // A FLINCH, NOT A STUN.
+            //
+            // This used to lock the player out for 0.35s and wipe their momentum
+            // on every single hit. Against one enemy that reads as impact; in a
+            // swarm it is a loop — hit, frozen, hit again before the freeze ends,
+            // frozen again — and the player cannot leave a fight they are losing.
+            // Being unable to disengage is not difficulty, it is the game taking
+            // the controller away.
+            //
+            // So: a twelfth of a second instead of a third, momentum kept, and a
+            // cooldown so a crowd cannot chain-lock even that. The hit still
+            // reads — the flash, the shake, the rumble and the sound all fire
+            // regardless of this and always did most of the communicating.
+            if (Time.unscaledTime >= nextHitFlinchTime)
+            {
+                nextHitFlinchTime = Time.unscaledTime + hitFlinchCooldown;
+                LockAction("Hit", hitFlinchDuration, keepMomentum: true);
+            }
+        }
     }
 
     private IEnumerator ShakeUIRoutine(RectTransform uiElement)

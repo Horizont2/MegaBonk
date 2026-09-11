@@ -194,6 +194,7 @@ public class RegionTotem : MonoBehaviour
 
     private void Start()
     {
+        AdoptManager();
         FindPlayer();
         if (totemLight != null) totemLight.color = Color.red;
         if (activationShieldVFX != null) { activationShieldVFX.Stop(); activationShieldVFX.gameObject.SetActive(false); }
@@ -325,6 +326,41 @@ public class RegionTotem : MonoBehaviour
         {
             GlobalHUD.Instance.HidePrompt();
             isPromptShowing = false;
+        }
+    }
+
+    // Find the region's manager and join its roster.
+    //
+    // THIS IS WHY WINNING A REGION NEVER SENT THE PLAYER HOME.
+    //
+    // `manager` is only ever assigned by RegionManager.Start, which walks a
+    // `totems` list wired inside the arena prefab it lives on. But the region's
+    // MAIN totem is not in that prefab — WorldGenerator instantiates it
+    // separately from RegionData.regionTotemPrefab and never tells anyone. So the
+    // totem the whole region is built around came up with manager == null.
+    //
+    // A null manager falls into the standalone-altar branch on purification: a
+    // handful of diamonds and nothing else. No OnTotemPurified, so no victory
+    // sequence, no conquest recorded, no trip back to camp — and, because the
+    // stranded-player watchdog is armed inside OnTotemPurified, no watchdog
+    // either. That is why three rounds of fixes to the victory routine changed
+    // nothing: the routine was never reached, and neither was its safety net.
+    //
+    // Bonus capture points are left alone. They are DELIBERATELY standalone —
+    // side objectives that reward but must not end the region.
+    private void AdoptManager()
+    {
+        if (manager != null || isStandalone) return;
+
+        manager = FindFirstObjectByType<RegionManager>();
+        if (manager == null) return;   // handled at purification instead
+
+        if (manager.totems == null) manager.totems = new List<RegionTotem>();
+        if (!manager.totems.Contains(this))
+        {
+            manager.totems.Add(this);
+            Debug.Log($"[Totem] '{name}' was spawned outside the region prefab and had no manager. " +
+                      "Registered it with the scene's RegionManager so purifying it finishes the region.");
         }
     }
 
@@ -604,6 +640,14 @@ public class RegionTotem : MonoBehaviour
             if (spawnedBoss != null) spawnedBoss.isBoss = true;
         }
         activeEnemies.Add(entity);
+
+        // The wave does NOT give up. Every other enemy in the game can now lose
+        // the player and go back to its business, which is right — but purifying
+        // this totem requires every one of these to die, so a wave member that
+        // wandered off would leave the region uncompletable until the player went
+        // hunting for it. They were summoned to kill the player; they keep at it.
+        var waveAI = entity.GetComponent<EnemyAI>();
+        if (waveAI != null) waveAI.canDeAggro = false;
 
         // ФІКС: Більше ніяких isBoss прапорців. Перевіряємо напряму, чи це бос!
         TutorialBossAI bossAI = entity.GetComponent<TutorialBossAI>();
@@ -925,6 +969,11 @@ public class RegionTotem : MonoBehaviour
         // battle music releases back to calm.
         if (healWorldOnCapture) StartCoroutine(WorldHealRoutine());
 
+        // A late attempt, in case the manager appeared after this totem's Start —
+        // the arena prefab it lives on is placed by world generation, so the two
+        // do not come up in a guaranteed order.
+        AdoptManager();
+
         if (manager != null)
         {
             manager.OnTotemPurified(this);
@@ -940,7 +989,50 @@ public class RegionTotem : MonoBehaviour
                 ResourceManager.Instance.AddDiamonds(standaloneDiamondReward);
             var pc = player != null ? player.GetComponent<PlayerController>() : null;
             if (pc != null && standaloneXpReward > 0) pc.GainXP(standaloneXpReward);
+
+            // A REGION totem with no manager anywhere is not a roadside altar —
+            // it is the objective of a mission that now has no way to end. Rather
+            // than leave the player standing in a cleansed region until they quit,
+            // finish it here: record the conquest and go home.
+            if (!isStandalone) StartCoroutine(FinishRegionWithoutManager());
         }
+    }
+
+    // The last resort. Deliberately plain: no cinematic, no title card, just the
+    // bookkeeping and the door. An abrupt return to camp is enormously better
+    // than a region the player can only leave through the pause menu.
+    private IEnumerator FinishRegionWithoutManager()
+    {
+        Debug.LogWarning("[Totem] Region objective completed with no RegionManager in the scene. " +
+                         "Recording the capture and returning to camp directly — the victory cinematic " +
+                         "lives on RegionManager and cannot play without one.");
+
+        RegionData region = GameManager.Instance != null ? GameManager.Instance.currentRegion : null;
+        if (region == null) region = MissionInitializer.PendingMissionRegion;
+
+        if (region != null)
+        {
+            bool already = PlayerPrefs.GetInt("RegionState_" + region.regionID, 0) == 2;
+            region.currentState = RegionState.Conquered;
+            PlayerPrefs.SetInt("RegionState_" + region.regionID, 2);
+            PlayerPrefs.SetInt("AutoOpenMap", 1);
+            if (!already)
+                PlayerPrefs.SetInt("TotalConqueredRegions", PlayerPrefs.GetInt("TotalConqueredRegions", 0) + 1);
+            PlayerPrefs.Save();
+
+            if (ResourceManager.Instance != null)
+            {
+                ResourceManager.Instance.AddStashResources(region.woodReward, region.stoneReward, region.foodReward);
+                ResourceManager.Instance.AddDiamonds(region.diamondReward);
+                ResourceManager.Instance.UpdateUI();
+            }
+        }
+
+        // Long enough to read the world healing, short enough not to feel stuck.
+        yield return new WaitForSecondsRealtime(4f);
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+        else SceneLoader.LoadScene("CampScene");
     }
 
     private IEnumerator WorldHealRoutine()
