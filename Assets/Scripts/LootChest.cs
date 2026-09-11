@@ -70,9 +70,9 @@ public class LootChest : MonoBehaviour
         }
     }
 
-    // Raised the moment the lid commits, before the loot burst. Lets an
-    // ExplorationCache hang its own payout and consequences off an ordinary
-    // chest without this class needing to know anything about caches.
+    // Raised the moment the lid commits, before the loot burst. Lets a Reliquary
+    // hang its own payout off an ordinary chest without this class needing to
+    // know anything about reliquaries.
     public event System.Action Opened;
     public bool IsOpened => isInteracted;
 

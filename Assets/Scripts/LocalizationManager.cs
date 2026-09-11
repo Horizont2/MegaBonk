@@ -3803,36 +3803,23 @@ public static class LocalizationManager
         Add("GUIDE_SEND_ARMY",          "Send an army to an auto-battle region", "Пошли армію в регіон авто-битви");
         Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
 
-        // === Exploration caches ==========================================
-        // {0} found so far, {1} marked in this region.
-        Add7("CACHE_FOUND",
-             "Cache opened  {0}/{1}",
-             "Схованку відкрито  {0}/{1}",
-             "Тайник вскрыт  {0}/{1}",
-             "Alijo abierto  {0}/{1}",
-             "Versteck geöffnet  {0}/{1}",
-             "Cache ouverte  {0}/{1}",
-             "Skrytka otwarta  {0}/{1}");
-
-        // Subtitles under the big centred reward icon.
-        // {0} = armour slot, {1} = its power rating.
+        // === Exploration =================================================
+        // Subtitle under the big centred reward icon.
+        // {0} = rarity, {1} = armour slot, {2} = its power rating.
         Add7("REVEAL_ARMOUR_SUB",
-             "{0} · Power {1}",
-             "{0} · Сила {1}",
-             "{0} · Сила {1}",
-             "{0} · Poder {1}",
-             "{0} · Stärke {1}",
-             "{0} · Puissance {1}",
-             "{0} · Moc {1}");
+             "{0} · {1} · Power {2}",
+             "{0} · {1} · Сила {2}",
+             "{0} · {1} · Сила {2}",
+             "{0} · {1} · Poder {2}",
+             "{0} · {1} · Stärke {2}",
+             "{0} · {1} · Puissance {2}",
+             "{0} · {1} · Moc {2}");
 
-        Add7("REVEAL_WEAPON_SUB",
-             "New weapon unlocked",
-             "Відкрито нову зброю",
-             "Открыто новое оружие",
-             "Nueva arma desbloqueada",
-             "Neue Waffe freigeschaltet",
-             "Nouvelle arme débloquée",
-             "Odblokowano nową broń");
+        Add7("RARITY_COMMON",    "Common",     "Звичайна",   "Обычная",     "Común",      "Gewöhnlich", "Commune",   "Zwykła");
+        Add7("RARITY_UNCOMMON",  "Uncommon",   "Незвична",   "Необычная",   "Poco común", "Ungewöhnlich", "Peu commune", "Niezwykła");
+        Add7("RARITY_RARE",      "Rare",       "Рідкісна",   "Редкая",      "Rara",       "Selten",     "Rare",      "Rzadka");
+        Add7("RARITY_EPIC",      "Epic",       "Епічна",     "Эпическая",   "Épica",      "Episch",     "Épique",    "Epicka");
+        Add7("RARITY_LEGENDARY", "Legendary",  "Легендарна", "Легендарная", "Legendaria", "Legendär",   "Légendaire", "Legendarna");
 
         // === The post-first-region mercenary arc =========================
         //
