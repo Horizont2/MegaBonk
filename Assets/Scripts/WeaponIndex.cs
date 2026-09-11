@@ -18,6 +18,7 @@ public class WeaponIndex : ScriptableObject
     public const string ResourceName = "WeaponIndex";
 
     public WeaponData[] weapons;
+    public ArmorData[] armour;
 
     private static WeaponIndex _cached;
     private static bool _searched;
@@ -45,6 +46,23 @@ public class WeaponIndex : ScriptableObject
             if (w == null || w.price <= 0) continue;
             if (PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, 0) == 1) continue;
             result.Add(w);
+        }
+        return result;
+    }
+
+    // Armour the player has not bought yet. Same ownership convention as
+    // weapons — ShopManager reads "ArmorUnlocked_<id>".
+    public static System.Collections.Generic.List<ArmorData> UnownedArmour()
+    {
+        var result = new System.Collections.Generic.List<ArmorData>();
+        var index = Load();
+        if (index == null || index.armour == null) return result;
+
+        foreach (var a in index.armour)
+        {
+            if (a == null || a.price <= 0) continue;
+            if (PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, 0) == 1) continue;
+            result.Add(a);
         }
         return result;
     }

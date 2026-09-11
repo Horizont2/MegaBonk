@@ -30,7 +30,15 @@ public static class BuildWeaponIndexTool
         bool isNew = index == null;
         if (isNew) index = ScriptableObject.CreateInstance<WeaponIndex>();
 
+        var armour = AssetDatabase.FindAssets("t:ArmorData")
+            .Select(AssetDatabase.GUIDToAssetPath)
+            .Select(AssetDatabase.LoadAssetAtPath<ArmorData>)
+            .Where(a => a != null)
+            .OrderBy(a => a.armorID)
+            .ToArray();
+
         index.weapons = weapons;
+        index.armour = armour;
         if (isNew) AssetDatabase.CreateAsset(index, Path);
         EditorUtility.SetDirty(index);
         AssetDatabase.SaveAssets();
@@ -39,13 +47,24 @@ public static class BuildWeaponIndexTool
         // Duplicate IDs would make "does the player own this" ambiguous, and the
         // symptom would be a cache handing out a weapon that never appears.
         var dupes = weapons.GroupBy(w => w.weaponID).Where(g => g.Count() > 1).ToArray();
-        string body = string.Join("\n  ", weapons.Select(w => $"{w.weaponID,3}  {w.weaponName}  ({w.price})"));
-        if (dupes.Length > 0)
-            Debug.LogWarning($"[WeaponIndex] {weapons.Length} weapon(s) indexed, but these IDs are used more than " +
-                             $"once: {string.Join(", ", dupes.Select(d => d.Key))}. Ownership is keyed on the ID, so " +
-                             $"unlocking one unlocks the other.\n  {body}");
+        var armourDupes = armour.GroupBy(a => a.armorID).Where(g => g.Count() > 1).ToArray();
+        int noIcon = armour.Count(a => a.icon == null) + weapons.Count(w => w.icon == null);
+
+        string body = string.Join("\n  ", weapons.Select(w => $"W{w.weaponID,3}  {w.weaponName}  ({w.price})"));
+        string summary = $"[WeaponIndex] {weapons.Length} weapon(s) and {armour.Length} armour piece(s) indexed -> {Path}";
+
+        if (dupes.Length > 0 || armourDupes.Length > 0)
+            Debug.LogWarning($"{summary}\n  DUPLICATE IDs — ownership is keyed on the ID, so unlocking one unlocks " +
+                             $"the other. Weapons: {string.Join(", ", dupes.Select(d => d.Key))}. " +
+                             $"Armour: {string.Join(", ", armourDupes.Select(d => d.Key))}\n  {body}");
         else
-            Debug.Log($"[WeaponIndex] {weapons.Length} weapon(s) indexed -> {Path}\n  {body}");
+            Debug.Log($"{summary}\n  {body}");
+
+        // The reveal is built around the icon. A drop with none still shows its
+        // name, but it is the one thing worth knowing about before shipping.
+        if (noIcon > 0)
+            Debug.LogWarning($"[WeaponIndex] {noIcon} indexed item(s) have no icon sprite — their reward reveal will " +
+                             "show the name over an empty frame.");
 
         Selection.activeObject = index;
     }

@@ -225,7 +225,7 @@ public class ExplorationCache : MonoBehaviour
 
             case Kind.Armoury:
                 if (rm != null) rm.AddDiamonds(Mathf.RoundToInt(Random.Range(35f, 70f) * richness));
-                GrantUnownedWeapon();
+                GrantUnownedGear();
                 break;
         }
     }
@@ -236,21 +236,39 @@ public class ExplorationCache : MonoBehaviour
     // shop reads — so unlocking one here puts a real weapon in the player's rack
     // with no new system to build. If they already own everything, the diamonds
     // above stand in for it rather than the cache paying nothing.
-    private void GrantUnownedWeapon()
+    private bool GrantUnownedGear()
     {
-        // Via WeaponIndex, not Resources.LoadAll: the WeaponData assets live in
-        // Assets/ShopItems, which is not a Resources folder, so loading them
-        // directly finds nothing and the cache would silently pay out diamonds
-        // alone while claiming to be an armoury.
-        var locked = WeaponIndex.Unowned();
-        if (locked.Count == 0) return;
+        // Via WeaponIndex, not Resources.LoadAll: the WeaponData and ArmorData
+        // assets live outside any Resources folder, so loading them directly
+        // finds nothing and the cache would silently pay out diamonds alone
+        // while claiming to be an armoury.
+        var weapons = WeaponIndex.Unowned();
+        var armour = WeaponIndex.UnownedArmour();
+        if (weapons.Count == 0 && armour.Count == 0) return false;
 
-        var prize = locked[Random.Range(0, locked.Count)];
-        PlayerPrefs.SetInt("WeaponUnlocked_" + prize.weaponID, 1);
-        PlayerPrefs.Save();
+        // Armour is the more common find, weapons the rarer one — there is far
+        // more armour in the game and a weapon should stay an event.
+        bool takeArmour = armour.Count > 0 && (weapons.Count == 0 || Random.value < 0.7f);
 
-        ToastManager.Show(LocalizationManager.Tr("CACHE_WEAPON_FOUND", prize.weaponName),
-                          ToastManager.ToastKind.Achievement);
+        if (takeArmour)
+        {
+            var prize = armour[Random.Range(0, armour.Count)];
+            PlayerPrefs.SetInt("ArmorUnlocked_" + prize.armorID, 1);
+            PlayerPrefs.Save();
+            RewardReveal.Show(prize.icon, prize.armorName,
+                              LocalizationManager.Tr("REVEAL_ARMOUR_SUB", prize.category.ToString(), prize.basePower),
+                              ArmouryColour);
+        }
+        else
+        {
+            var prize = weapons[Random.Range(0, weapons.Count)];
+            PlayerPrefs.SetInt("WeaponUnlocked_" + prize.weaponID, 1);
+            PlayerPrefs.Save();
+            RewardReveal.Show(prize.icon, prize.weaponName,
+                              LocalizationManager.Tr("REVEAL_WEAPON_SUB"),
+                              ArmouryColour);
+        }
+        return true;
     }
 
     private void PutTheTellOut()

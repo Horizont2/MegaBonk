@@ -3814,15 +3814,25 @@ public static class LocalizationManager
              "Cache ouverte  {0}/{1}",
              "Skrytka otwarta  {0}/{1}");
 
-        // {0} = the weapon's name.
-        Add7("CACHE_WEAPON_FOUND",
-             "Found in the cache: {0}",
-             "У схованці знайдено: {0}",
-             "В тайнике найдено: {0}",
-             "Hallado en el alijo: {0}",
-             "Im Versteck gefunden: {0}",
-             "Trouvé dans la cache : {0}",
-             "Znaleziono w skrytce: {0}");
+        // Subtitles under the big centred reward icon.
+        // {0} = armour slot, {1} = its power rating.
+        Add7("REVEAL_ARMOUR_SUB",
+             "{0} · Power {1}",
+             "{0} · Сила {1}",
+             "{0} · Сила {1}",
+             "{0} · Poder {1}",
+             "{0} · Stärke {1}",
+             "{0} · Puissance {1}",
+             "{0} · Moc {1}");
+
+        Add7("REVEAL_WEAPON_SUB",
+             "New weapon unlocked",
+             "Відкрито нову зброю",
+             "Открыто новое оружие",
+             "Nueva arma desbloqueada",
+             "Neue Waffe freigeschaltet",
+             "Nouvelle arme débloquée",
+             "Odblokowano nową broń");
 
         // === The post-first-region mercenary arc =========================
         //
