@@ -15,6 +15,14 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Coroutine activeFlashRoutine;
     private float actionLockEndTime = 0f;
 
+    [Header("Attack Commitment")]
+    [Tooltip("Movement speed while mid-swing, as a fraction of normal. Low enough that attacking is still a commitment, high enough that it is never a full stop.")]
+    [Range(0.1f, 1f)] public float attackMoveSpeedMult = 0.45f;
+    [Tooltip("How long a swing keeps the player slowed. The swing itself is gated separately by attackCooldown.")]
+    public float attackCommitTime = 0.45f;
+    private float attackWalkEndTime = 0f;
+    private bool IsAttackWalking => Time.unscaledTime < attackWalkEndTime;
+
     [Header("Hit Reaction")]
     [Tooltip("How long a hit interrupts the player. Deliberately tiny — see TakeDamage. Set to 0 to remove the flinch entirely.")]
     public float hitFlinchDuration = 0.08f;
@@ -787,6 +795,37 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
+    // Swinging SLOWS the player instead of nailing them down.
+    //
+    // It used to be LockAction("Attack", 0.6f): a hard lock that zeroed momentum
+    // and blocked input — and since attackCooldown is also 0.6, a player who kept
+    // attacking was frozen essentially the whole time. That was survivable while
+    // enemies also had to stop to swing. They no longer do: they now bring the
+    // weapon up while closing. Leaving the player rooted against that would have
+    // made the fight one-sided in a way the enemy change never intended.
+    //
+    // The answer is NOT "attack freely at full speed" — that removes commitment
+    // from combat entirely and every fight collapses into holding forward and
+    // mashing. It is the same deal the enemies got: keep moving through the
+    // swing, at a speed that makes the choice cost something, and plant nothing.
+    //
+    // Dash stays available mid-swing on purpose. It is the escape valve for
+    // exactly the situation being complained about — caught mid-animation with
+    // three skeletons converging — and it already costs a cooldown, so it is a
+    // decision rather than a free out.
+    //
+    // The pattern is the project's own: aiming a grenade has always slowed the
+    // player to 40% rather than rooting them.
+    private void SwingAttack()
+    {
+        attackWalkEndTime = Time.unscaledTime + attackCommitTime;
+        if (anim != null)
+        {
+            anim.ResetTrigger("Attack");
+            anim.SetTrigger("Attack");
+        }
+    }
+
     private void LockAction(string trigger, float duration, bool keepMomentum = false)
     {
         actionLockEndTime = Time.unscaledTime + duration;
@@ -999,7 +1038,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         float currentAccel = (!isCampMode && currentStack >= 30) ? dragAcceleration : normalAcceleration;
-        float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f : moveSpeed;
+        float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f
+                          : IsAttackWalking ? moveSpeed * attackMoveSpeedMult
+                          : moveSpeed;
         float dt = isBulletTime || isAimingGrenade ? Time.unscaledDeltaTime : Time.deltaTime;
 
         if (inputDir.magnitude >= 0.1f) currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMoveDirection * actualSpeed, currentAccel * dt);
@@ -1150,7 +1191,7 @@ public class PlayerController : MonoBehaviour, IDamageable
                             lastAttackIndex = randAnim;
 
                             if (anim != null) anim.SetInteger("AttackIndex", randAnim);
-                            LockAction("Attack", 0.6f);
+                            SwingAttack();
                         }
                         else if (isAimingGrenade) CancelGrenadeAim();
                     }
@@ -1833,6 +1874,10 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         lastAttackTime = -100f;
         actionLockEndTime = 0f;
+        // A perfect dodge cancels the swing outright, so the slow goes with it —
+        // otherwise the reward for a frame-perfect read would be dodging into a
+        // walk speed the player never chose.
+        attackWalkEndTime = 0f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
         if (perfectDodgeVFX != null) ActivateSceneVFX(perfectDodgeVFX);
