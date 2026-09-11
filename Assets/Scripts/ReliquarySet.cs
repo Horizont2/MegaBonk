@@ -26,6 +26,9 @@ public class ReliquarySet : ScriptableObject
     public GameObject archPrefab;
     public GameObject lanternPrefab;
 
+    [Tooltip("Skeletons posted at the site. They stand dormant until the player is close — see Reliquary.PostGuardians.")]
+    public GameObject[] guardianPrefabs;
+
     private static ReliquarySet _cached;
     private static bool _searched;
 

@@ -76,6 +76,24 @@ public class LootChest : MonoBehaviour
     public event System.Action Opened;
     public bool IsOpened => isInteracted;
 
+    // Open it from outside, bypassing the [E] prompt.
+    //
+    // A Reliquary switches this component off so its own press-to-open never
+    // runs — the chest there is sealed behind guardians and a channel — and then
+    // calls this once the player has actually earned it. Without it a reliquary
+    // would have to either duplicate the whole open sequence or leave the plain
+    // interaction live alongside its own, which is how a player ends up able to
+    // skip the fight by pressing E at the right moment.
+    public void ForceOpen()
+    {
+        if (isInteracted) return;
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+        isPromptShowing = false;
+        // Runs on this component even when it is disabled — StartCoroutine needs
+        // the GameObject active, not the behaviour enabled.
+        StartCoroutine(OpenSequence());
+    }
+
     private IEnumerator OpenSequence()
     {
         isInteracted = true;

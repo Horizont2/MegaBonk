@@ -3804,6 +3804,43 @@ public static class LocalizationManager
         Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
 
         // === Exploration =================================================
+        // {0} = how many guardians are still standing.
+        Add7("RELIQUARY_SEALED",
+             "Sealed — {0} guardian(s) remain",
+             "Запечатано — лишилось вартових: {0}",
+             "Запечатано — осталось стражей: {0}",
+             "Sellado — quedan {0} guardián(es)",
+             "Versiegelt — {0} Wächter übrig",
+             "Scellé — {0} gardien(s) restant(s)",
+             "Zapieczętowane — pozostało strażników: {0}");
+
+        Add7("RELIQUARY_PROMPT",
+             "Hold [E] to break the seal",
+             "Утримуй [E], щоб зламати печатку",
+             "Удерживай [E], чтобы сломать печать",
+             "Mantén [E] para romper el sello",
+             "[E] halten, um das Siegel zu brechen",
+             "Maintiens [E] pour briser le sceau",
+             "Przytrzymaj [E], by złamać pieczęć");
+
+        Add7("RELIQUARY_OPENING",
+             "Breaking the seal — hold your ground",
+             "Ламаєш печатку — тримай позицію",
+             "Ломаешь печать — держи позицию",
+             "Rompiendo el sello: mantén la posición",
+             "Siegel bricht — halte die Stellung",
+             "Le sceau cède — tiens la position",
+             "Łamiesz pieczęć — utrzymaj pozycję");
+
+        Add7("RELIQUARY_HOLD",
+             "The seal is closing again",
+             "Печатка знову стягується",
+             "Печать снова смыкается",
+             "El sello vuelve a cerrarse",
+             "Das Siegel schließt sich wieder",
+             "Le sceau se referme",
+             "Pieczęć znów się zamyka");
+
         // Subtitle under the big centred reward icon.
         // {0} = rarity, {1} = armour slot, {2} = its power rating.
         Add7("REVEAL_ARMOUR_SUB",

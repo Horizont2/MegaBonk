@@ -51,15 +51,21 @@ public static class ArmourLootTable
 
     // The chance a reliquary contains armour at all, before anything is rolled.
     // Everything else it gives — supplies, crystals — is the common case.
-    public static float ArmourChance(bool legendary)
+    public static float ArmourChance(Reliquary.Grade grade)
     {
-        float baseChance = legendary ? 0.85f : 0.30f;
+        float baseChance = grade switch
+        {
+            Reliquary.Grade.Barrow => 0.85f,   // the one you fought a warband for
+            Reliquary.Grade.Shrine => 0.35f,
+            _ => 0.12f,                        // a wayside find is mostly supplies
+        };
         return baseChance * Mathf.Lerp(1f, FloorMultiplier, Progress);
     }
 
     // Pick a piece, or null when there is nothing left worth giving.
-    public static ArmorData Roll(bool legendary)
+    public static ArmorData Roll(Reliquary.Grade grade)
     {
+        bool legendary = grade == Reliquary.Grade.Barrow;
         var pool = WeaponIndex.UnownedArmour();
         if (pool.Count == 0) return null;
 

@@ -28,8 +28,10 @@ public class ReliquaryDirector : MonoBehaviour
     [Range(0f, 1f)] public float regionHasOneChance = 0.75f;
     [Tooltip("Upper bound when the roll succeeds. Two is a lot already.")]
     public int maxPerRegion = 2;
-    [Tooltip("Chance that a placed reliquary is the legendary kind. This is the rarest thing in the system — treat any increase as an economy change, not a tuning tweak.")]
-    [Range(0f, 0.4f)] public float legendaryChance = 0.12f;
+    [Tooltip("Chance a placed site is a guarded Shrine rather than a plain wayside find.")]
+    [Range(0f, 1f)] public float shrineChance = 0.40f;
+    [Tooltip("Chance a placed site is a Barrow — four guardians, a nine-second hold and a wave. The rarest thing in the system; treat any increase as an economy change, not a tuning tweak.")]
+    [Range(0f, 0.4f)] public float barrowChance = 0.12f;
 
     [Header("Where")]
     [Tooltip("Never nearer the player's start than this — a landmark visible from spawn is not a discovery.")]
@@ -92,7 +94,10 @@ public class ReliquaryDirector : MonoBehaviour
             go.transform.position = site;
 
             var rel = go.AddComponent<Reliquary>();
-            rel.legendary = Random.value < legendaryChance;
+            float roll = Random.value;
+            rel.grade = roll < barrowChance ? Reliquary.Grade.Barrow
+                      : roll < barrowChance + shrineChance ? Reliquary.Grade.Shrine
+                      : Reliquary.Grade.Wayside;
             // Distance from the start is the only honest way to pay for a walk.
             float d = Vector3.Distance(site, start);
             rel.richness = Mathf.Lerp(1f, 2.1f, Mathf.InverseLerp(minDistanceFromStart, minDistanceFromStart + 260f, d));
@@ -119,7 +124,9 @@ public class ReliquaryDirector : MonoBehaviour
                              $"at least {minDistanceFromStart}m from the player. Lower clearRadius on a dense map.");
         else
             Debug.Log($"[Reliquary] Placed {Placed} " +
-                      $"({s_live.FindAll(r => r.legendary).Count} legendary). Lifetime armour granted: {ArmourLootTable.LifetimeFound}.");
+                      $"({s_live.FindAll(r => r.grade == Reliquary.Grade.Barrow).Count} barrow, " +
+                      $"{s_live.FindAll(r => r.grade == Reliquary.Grade.Shrine).Count} shrine). " +
+                      $"Lifetime armour granted: {ArmourLootTable.LifetimeFound}.");
     }
 
     private bool TryFindSite(Vector3 start, List<Vector3> taken, out Vector3 site)

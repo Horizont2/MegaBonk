@@ -34,6 +34,15 @@ public static class BuildReliquarySetTool
     private const string Arch = "Assets/EmaceArt/NecroPOLY Dark Corners/Prefabs/Assets/Ruins/EA_Arch_Wall04_Ruin_01b_PRE.prefab";
     private const string Lantern = "Assets/EmaceArt/NecroPOLY Dark Corners/Prefabs/Assets/Props/EA_Exterior_Lantern_Solid_01a_PRE.prefab";
 
+    // The region's own enemies, so a guarded site is guarded by the things that
+    // live there rather than by a separate cast nobody recognises.
+    private static readonly string[] Guardians =
+    {
+        "Assets/Prefabs/Skeleton_Warrior.prefab",
+        "Assets/Prefabs/Skeleton_Rogue.prefab",
+        "Assets/Prefabs/Skeleton_Minion.prefab",
+    };
+
     [MenuItem("Tools/Exploration/Build Reliquary Set")]
     public static void Build()
     {
@@ -63,6 +72,7 @@ public static class BuildReliquarySetTool
         set.remains = Many(Remains);
         set.archPrefab = One(Arch);
         set.lanternPrefab = One(Lantern);
+        set.guardianPrefabs = Many(Guardians);
 
         if (isNew) AssetDatabase.CreateAsset(set, Path);
         EditorUtility.SetDirty(set);
