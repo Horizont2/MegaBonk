@@ -11,8 +11,11 @@ public class ReliquarySet : ScriptableObject
 {
     public const string ResourceName = "ReliquarySet";
 
-    [Tooltip("Must carry a LootChest. This is the thing at the centre.")]
-    public GameObject chestPrefab;
+    [Tooltip("Model only, one per grade: level_01 wayside, level_02 shrine, level_03 barrow. No LootChest on these — the reliquary builds the interactive root around them, so the chest the player sees says which grade it is before they are close enough to read anything else.")]
+    public GameObject[] chestByGrade = new GameObject[3];
+
+    [Tooltip("What a chest scatters when it opens. Read off the project's existing chest so a reliquary drops exactly what an ordinary one does.")]
+    public GameObject[] chestLoot;
 
     [Tooltip("The landmark. Tall, coloured, and the one prop that reads across broken terrain.")]
     public GameObject[] banners;
@@ -45,7 +48,18 @@ public class ReliquarySet : ScriptableObject
 
     public static void ClearCache() { _cached = null; _searched = false; }
 
-    public bool IsUsable => chestPrefab != null;
+    public bool IsUsable => ChestFor(0) != null;
+
+    // Falls back down the grades rather than returning nothing: a barrow with a
+    // level_01 chest still works, a barrow with no chest is decoration.
+    public GameObject ChestFor(int grade)
+    {
+        if (chestByGrade == null || chestByGrade.Length == 0) return null;
+        for (int i = Mathf.Clamp(grade, 0, chestByGrade.Length - 1); i >= 0; i--)
+            if (chestByGrade[i] != null) return chestByGrade[i];
+        foreach (var g in chestByGrade) if (g != null) return g;
+        return null;
+    }
 
     public GameObject PickBanner() => Pick(banners);
     public GameObject PickRuneStone() => Pick(runeStones);

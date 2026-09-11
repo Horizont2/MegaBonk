@@ -11,7 +11,24 @@ public static class BuildReliquarySetTool
 
     // Paths rather than a search, because these are specific chosen props and a
     // type search would sweep up every rock in the project.
-    private const string Chest = "Assets/Prefabs/Chest.prefab";
+    // One chest model per grade, from the pack the project's Camp_POI already
+    // uses. They carry no LootChest — the reliquary builds the interactive root
+    // around them at runtime — and they share an animator whose only parameter
+    // is the "Open" trigger LootChest already sends.
+    private static readonly string[] ChestsByGrade =
+    {
+        "Assets/Animated Fantasy Polygon Chest/Prefab/Fantasy_Polygon_Chest_level_01.prefab",
+        "Assets/Animated Fantasy Polygon Chest/Prefab/Fantasy_Polygon_Chest_level_02.prefab",
+        "Assets/Animated Fantasy Polygon Chest/Prefab/Fantasy_Polygon_Chest_level_03.prefab",
+    };
+
+    // What the existing chest scatters, so a reliquary drops what an ordinary
+    // one does rather than inventing a second loot list to keep in step.
+    private static readonly string[] Loot =
+    {
+        "Assets/Prefabs/Xp_Prefab.prefab",
+        "Assets/Prefabs/Crystal_Prefab.prefab",
+    };
 
     private static readonly string[] Banners =
     {
@@ -66,7 +83,8 @@ public static class BuildReliquarySetTool
         bool isNew = set == null;
         if (isNew) set = ScriptableObject.CreateInstance<ReliquarySet>();
 
-        set.chestPrefab = One(Chest);
+        set.chestByGrade = Many(ChestsByGrade);
+        set.chestLoot = Many(Loot);
         set.banners = Many(Banners);
         set.runeStones = Many(RuneStones);
         set.remains = Many(Remains);
@@ -81,14 +99,16 @@ public static class BuildReliquarySetTool
 
         // The chest is the only thing that is fatal — everything else degrades
         // into a plainer shrine, which is worth saying rather than failing over.
-        if (set.chestPrefab == null)
+        if (set.ChestFor(0) == null)
         {
-            Debug.LogError($"[Reliquary] No chest prefab at {Chest}. Without it a reliquary is decoration with " +
+            Debug.LogError("[Reliquary] No chest model resolved. Without one a reliquary is decoration with " +
                            "nothing to open, and the director will refuse to place any.");
         }
-        else if (set.chestPrefab.GetComponent<LootChest>() == null)
+        else if (set.chestByGrade.Length < 3)
         {
-            Debug.LogError($"[Reliquary] {Chest} has no LootChest component. The site would build and never open.");
+            Debug.LogWarning($"[Reliquary] Only {set.chestByGrade.Length} of 3 chest grades resolved — the higher " +
+                             "grades will fall back to a lower chest, so the site's grade will not read from the " +
+                             "chest itself.");
         }
 
         if (set.banners.Length == 0)
@@ -96,7 +116,7 @@ public static class BuildReliquarySetTool
                              "site is invisible until the player is standing on it, which defeats the whole feature.");
 
         string report = $"[Reliquary] Set built -> {Path}\n" +
-                        $"  chest {(set.chestPrefab != null ? set.chestPrefab.name : "MISSING")}, " +
+                        $"  chests {set.chestByGrade.Length}/3, loot {set.chestLoot.Length}, " +
                         $"banners {set.banners.Length}, stones {set.runeStones.Length}, remains {set.remains.Length}, " +
                         $"arch {(set.archPrefab != null ? "yes" : "no")}, lantern {(set.lanternPrefab != null ? "yes" : "no")}";
         if (missing.Count > 0) Debug.LogWarning(report + "\n  Not found:\n    " + string.Join("\n    ", missing));

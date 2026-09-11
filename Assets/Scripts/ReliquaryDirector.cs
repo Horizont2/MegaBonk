@@ -114,15 +114,8 @@ public class ReliquaryDirector : MonoBehaviour
             float d = Vector3.Distance(site, start);
             rel.richness = Mathf.Lerp(1f, 2.1f, Mathf.InverseLerp(minDistanceFromStart, minDistanceFromStart + 260f, d));
 
-            var chestGo = Instantiate(set.chestPrefab, site, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), go.transform);
-            var chest = chestGo.GetComponent<LootChest>();
-            if (chest == null)
-            {
-                Debug.LogWarning("[Reliquary] The set's chest prefab has no LootChest on it — the site would be " +
-                                 "decoration with nothing to open. Skipping.");
-                Destroy(go);
-                continue;
-            }
+            var chest = BuildChest(set, rel.grade, site, go.transform);
+            if (chest == null) { Destroy(go); continue; }
             rel.Bind(chest);
             rel.Raise(set);
 
@@ -139,6 +132,41 @@ public class ReliquaryDirector : MonoBehaviour
                       $"({s_live.FindAll(r => r.grade == Reliquary.Grade.Barrow).Count} barrow, " +
                       $"{s_live.FindAll(r => r.grade == Reliquary.Grade.Shrine).Count} shrine). " +
                       $"Lifetime armour granted: {ArmourLootTable.LifetimeFound}.");
+    }
+
+    // Wraps a chest MODEL in the interactive parts.
+    //
+    // The three tiers from the Fantasy Polygon Chest pack are art only — no
+    // LootChest, no collider, just a mesh and an animator whose single parameter
+    // is the "Open" trigger LootChest already sends. So the root is assembled
+    // here rather than there being three near-identical prefabs to author and
+    // keep in step, and the grade the player walked to is legible from the chest
+    // itself before they are close enough to read anything else.
+    private static LootChest BuildChest(ReliquarySet set, Reliquary.Grade grade, Vector3 site, Transform parent)
+    {
+        var model = set.ChestFor((int)grade);
+        if (model == null) return null;
+
+        var root = new GameObject("Chest");
+        root.transform.SetParent(parent, false);
+        root.transform.position = site;
+        root.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+
+        Instantiate(model, root.transform, false);
+
+        var chest = root.AddComponent<LootChest>();
+        chest.possibleLoot = set.chestLoot;
+        // A barrow chest is worth more in raw pickups too, not only in the armour
+        // roll — the pile has to look like it was worth nine seconds.
+        switch (grade)
+        {
+            case Reliquary.Grade.Barrow: chest.minLootItems = 6; chest.maxLootItems = 12; break;
+            case Reliquary.Grade.Shrine: chest.minLootItems = 4; chest.maxLootItems = 8; break;
+            default:                     chest.minLootItems = 2; chest.maxLootItems = 5; break;
+        }
+        // LootChest resolves its own animator from the children in Start, so the
+        // model's controller is picked up without wiring.
+        return chest;
     }
 
     private bool TryFindSite(Vector3 start, List<Vector3> taken, out Vector3 site)
