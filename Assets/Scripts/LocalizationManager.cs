@@ -3803,6 +3803,27 @@ public static class LocalizationManager
         Add("GUIDE_SEND_ARMY",          "Send an army to an auto-battle region", "Пошли армію в регіон авто-битви");
         Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
 
+        // === Exploration caches ==========================================
+        // {0} found so far, {1} marked in this region.
+        Add7("CACHE_FOUND",
+             "Cache opened  {0}/{1}",
+             "Схованку відкрито  {0}/{1}",
+             "Тайник вскрыт  {0}/{1}",
+             "Alijo abierto  {0}/{1}",
+             "Versteck geöffnet  {0}/{1}",
+             "Cache ouverte  {0}/{1}",
+             "Skrytka otwarta  {0}/{1}");
+
+        // {0} = the weapon's name.
+        Add7("CACHE_WEAPON_FOUND",
+             "Found in the cache: {0}",
+             "У схованці знайдено: {0}",
+             "В тайнике найдено: {0}",
+             "Hallado en el alijo: {0}",
+             "Im Versteck gefunden: {0}",
+             "Trouvé dans la cache : {0}",
+             "Znaleziono w skrytce: {0}");
+
         // === The post-first-region mercenary arc =========================
         //
         // {0} in GUIDE_HIRE_SQUAD is MercenaryRoster.GuideSquadSize, which is

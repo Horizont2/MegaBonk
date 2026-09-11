@@ -70,9 +70,16 @@ public class LootChest : MonoBehaviour
         }
     }
 
+    // Raised the moment the lid commits, before the loot burst. Lets an
+    // ExplorationCache hang its own payout and consequences off an ordinary
+    // chest without this class needing to know anything about caches.
+    public event System.Action Opened;
+    public bool IsOpened => isInteracted;
+
     private IEnumerator OpenSequence()
     {
         isInteracted = true;
+        Opened?.Invoke();
 
         // Правильний звук відкриття скрині замість перевикористаного
         // звуку рубання дерева, який тут стояв раніше.
