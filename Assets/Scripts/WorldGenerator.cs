@@ -51,13 +51,14 @@ public class WorldGenerator : MonoBehaviour
     public int maxCagedAllies = 4;
     private int spawnedCagedAllies = 0;
 
-    [Header("Ambient Crows (distant flock atmosphere)")]
-    [Tooltip("Looping crow-flock effects, e.g. P_Crows_Random / P_Crows_Orbit. A few are placed circling high over the map for atmosphere. Leave empty to skip.")]
+    [Header("Ambient Birds")]
+    [Tooltip("Flock prefabs — the Zacxophone bird prefabs work directly. Handed to AmbientBirdLife, which flies them around the player and startles them out of cover. Leave empty to skip birds entirely.")]
     public GameObject[] ambientCrowPrefabs;
-    [Tooltip("Flocks placed high over the land for atmosphere. Was pinned at 0 while the only crow prefab drew an untextured plane; the Zacxophone bird prefabs render properly, so it is on again.")]
-    public int ambientCrowCount = 7;
-    public float ambientCrowMinHeight = 14f;
-    public float ambientCrowMaxHeight = 32f;
+    [Tooltip("How many flocks are ALIVE AT ONCE. They are recycled around the player rather than scattered over the map, so this is the entire budget however far the player walks — 3-5 is plenty.")]
+    public int ambientCrowCount = 4;
+    [Tooltip("Cruise height above the ground beneath them. Low enough to sit in the visible band of sky for a third-person camera; they are deliberately kept out of the zenith, which is off-screen.")]
+    public float ambientCrowMinHeight = 20f;
+    public float ambientCrowMaxHeight = 38f;
 
     [Header("Smart Road System")]
     public TerrainLayer roadLayer; // Текстура доріг (має бути 5-м шаром в масиві)
@@ -829,37 +830,30 @@ public class WorldGenerator : MonoBehaviour
         catch (System.Exception e) { Debug.LogError("[WorldGenerator] OnWorldGenerationComplete handler threw: " + e); }
     }
 
-    // Places a few looping crow-flock effects high over the land for ambient
-    // "distant crows" atmosphere. Purely visual — no colliders, over land only.
+    // Hands the bird prefabs to AmbientBirdLife, which keeps a small number of
+    // flocks alive AROUND THE PLAYER and flies them.
+    //
+    // This used to scatter the prefabs itself: a handful of them dropped at fixed
+    // points across the whole terrain, 14-32 m up, and left standing there. Not
+    // one of those ever got seen, for three reasons that compound. They never
+    // moved, and travel is what peripheral vision actually reacts to — a bird
+    // flapping on the spot is a rock. Seven of them across a whole region is
+    // nothing; the player had to wander within a few dozen metres AND look up.
+    // And looking up is the part that never happens: this is a third-person
+    // camera a few metres behind the player, so a band of sky 30 m overhead is
+    // simply not on screen.
+    //
+    // The settings below still belong to the generator — the birds are part of
+    // the world's character, so the knobs stay where the rest of the world's
+    // knobs are — but the behaviour lives in the component.
     private void SpawnAmbientCrows()
     {
         if (ambientCrowCount <= 0) return;
-        if (ambientCrowPrefabs == null || ambientCrowPrefabs.Length == 0 || terrain == null) return;
+        if (ambientCrowPrefabs == null || ambientCrowPrefabs.Length == 0) return;
 
-        Transform container = new GameObject("AmbientCrows").transform;
-        container.SetParent(this.transform);
-
-        float w = terrain.terrainData.size.x;
-        float l = terrain.terrainData.size.z;
-        float absWaterH = transform.position.y + (depth * waterLevel);
-
-        int placed = 0, attempts = 0;
-        int target = Mathf.Max(1, ambientCrowCount);
-        while (placed < target && attempts++ < target * 40)
-        {
-            float px = transform.position.x + GetRandomRange(w * 0.15f, w * 0.85f);
-            float pz = transform.position.z + GetRandomRange(l * 0.15f, l * 0.85f);
-            float groundY = terrain.SampleHeight(new Vector3(px, 0, pz)) + transform.position.y;
-            if (groundY <= absWaterH + 2f) continue;   // keep them over land
-
-            GameObject prefab = ambientCrowPrefabs[GetRandomRangeInt(0, ambientCrowPrefabs.Length)];
-            if (prefab == null) continue;
-
-            float h = groundY + GetRandomRange(ambientCrowMinHeight, ambientCrowMaxHeight);
-            Instantiate(prefab, new Vector3(px, h, pz),
-                        Quaternion.Euler(0f, GetRandomRange(0f, 360f), 0f), container);
-            placed++;
-        }
+        var life = AmbientBirdLife.Install(ambientCrowPrefabs, ambientCrowCount,
+                                           ambientCrowMinHeight, ambientCrowMaxHeight);
+        if (life != null) life.transform.SetParent(this.transform, true);
     }
 
     private IEnumerator CalculateAndCarveRiversRoutine(TerrainData td)
