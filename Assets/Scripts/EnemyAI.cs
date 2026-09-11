@@ -773,9 +773,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Commit to the swing slightly before fully closing — the wind-up
             // lunge (in AttackRoutine) covers the remaining gap, so the attack
             // starts while still advancing instead of only after stopping.
-            if (isAttackReady && distanceToPlayer <= attackRange * 1.15f)
+            if (isAttackReady && distanceToPlayer <= attackRange * 1.15f && MayCommitSwing())
             {
-                if (animator != null) animator.SetBool("isMoving", false);
                 StartCoroutine(AttackRoutine());
             }
             else if (isAttackReady && distanceToPlayer > attackRange)
@@ -1409,10 +1408,65 @@ public class EnemyAI : MonoBehaviour, IDamageable
         return orb;
     }
 
+    // Enemies take turns instead of all swinging on the same frame.
+    //
+    // A crowd that commits together is the single thing that makes a swarm look
+    // wrong: eight skeletons raising eight weapons in perfect unison reads as a
+    // chorus line, not a fight, and the player has one moment to react to all of
+    // it rather than a stream of separate threats to read. Spacing the
+    // commitments out means the same enemies, the same damage over time, and a
+    // fight that looks like it has a rhythm.
+    //
+    // A timestamp rather than a counter, deliberately: there is nothing to leak
+    // when an enemy dies mid-swing, which a counter would need careful unwinding
+    // to survive. With one enemy on the field it is always in the past and the
+    // gate does nothing at all.
+    private static float s_nextCrowdSwing = 0f;
+    [Tooltip("Minimum gap between two enemies COMMITTING to a swing. Not a cooldown on any one of them — it staggers the crowd.")]
+    public float crowdSwingSpacing = 0.32f;
+
+    private bool MayCommitSwing()
+    {
+        // Bosses and elites never queue behind fodder.
+        if (isBoss || isElite) return true;
+
+        // Self-healing against a stale timestamp: Time.time restarts with the
+        // scene, so a value left over from the last run would sit in the future
+        // and silently stop every enemy from ever attacking again.
+        float now = Time.time;
+        if (s_nextCrowdSwing > now && s_nextCrowdSwing - now < 5f) return false;
+
+        s_nextCrowdSwing = now + Mathf.Max(0f, crowdSwingSpacing);
+        return true;
+    }
+
     private IEnumerator AttackRoutine()
     {
         isPreparingAttack = true;
-        if (animator != null) animator.SetBool("isMoving", false);
+
+        // START THE SWING NOW, NOT AT THE END OF THE WIND-UP.
+        //
+        // The telegraph used to be a colour pulse and nothing else: the enemy ran
+        // in, flashed red for half a second, and only then did the Attack trigger
+        // fire — so the raise, the commitment and the strike all happened in one
+        // instant after it had already stopped. That is why they read as standing
+        // next to you and then hitting, rather than as swinging at you.
+        //
+        // Firing here means the weapon comes up WHILE the enemy is still closing,
+        // and the lunge below carries the body into the blow. The damage still
+        // lands at the end of the telegraph, which is roughly where these clips
+        // put their contact frame, so the hit and the visual agree.
+        //
+        // The legs deliberately keep running: the old SetBool(false) here stopped
+        // them for a frame before the lunge switched them back on, which is a
+        // visible hitch at exactly the moment the player is reading the attack.
+        // A different swing from this archetype's own pool each time, so a long
+        // fight is not one animation on loop and two of the same enemy side by
+        // side stop mirroring each other. Swapped before the trigger, never
+        // during — mid-swing it would restart the clip on the contact frame.
+        if (personality != null) personality.RerollAttack();
+        SetAnimIntSafe("AttackIndex", UnityEngine.Random.Range(0, 3));
+        if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
         // Telegraph growl is the pre-attack roar the player kept hearing
         // continue off a corpse — route it through the tracked vocal so
         // Die()/OnDisable can cut it. Stops any lingering aggro roar too,
@@ -1477,13 +1531,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (!isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 0.8f)
         {
             lastAttackTime = Time.time;
-            // Stop the run legs at the moment of the strike so the attack anim
-            // plays cleanly (the lunge above kept the legs moving on approach).
+            // Plant the feet for the blow. The swing itself started back at the
+            // top of the wind-up and is mid-clip by now; re-triggering it here
+            // would restart the animation on the frame it is supposed to connect.
             if (animator != null) animator.SetBool("isMoving", false);
-            // Vary the swing when the rig offers alternates, so a long boss
-            // fight isn't the same animation on loop.
-            SetAnimIntSafe("AttackIndex", UnityEngine.Random.Range(0, 3));
-            if (animator != null) animator.SetTrigger("Attack");
             // Swing / lunge SFX at the moment the animator commits — the
             // telegraph beeps as the wind-up, this reads as the strike.
             // Dedupe: if the animation clip ALSO has an Animation Event

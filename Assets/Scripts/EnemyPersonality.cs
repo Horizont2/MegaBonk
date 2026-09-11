@@ -310,6 +310,25 @@ public class EnemyPersonality : MonoBehaviour
         }
     }
 
+    // A different swing this time, drawn from the same archetype pool.
+    //
+    // Called just before each attack fires. The warrior still swings like a
+    // warrior — it is picking between that archetype's own two-handed attacks,
+    // not borrowing a rogue's — but a drawn-out fight stops being one animation
+    // on loop, and two of the same enemy next to each other stop mirroring.
+    //
+    // Safe to call here and nowhere else: this runs immediately BEFORE the
+    // trigger, so the clip is swapped while the attack state is idle. Doing it
+    // mid-swing would restart the animation on the frame it should connect.
+    public void RerollAttack()
+    {
+        if (_set == null || _override == null || string.IsNullOrEmpty(_attackKey)) return;
+        AnimationClip c = PickAttack();
+        if (c == null) return;
+        _basicAttack = c;
+        _override[_attackKey] = c;
+    }
+
     // One-off swap for a caller that has its own clip in hand.
     public void UseAttackClip(AnimationClip clip)
     {
