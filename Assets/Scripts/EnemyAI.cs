@@ -358,6 +358,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // Only encounter enemies opt in. The radial spawner's horde is meant to be
     // relentless and is left exactly as it was.
     [HideInInspector] public bool canDeAggro = false;
+    // This enemy's own look and gait. Added in Start; see the note there.
+    private EnemyPersonality personality;
     [HideInInspector] public float loseSightDuration = 6f;   // grace after sight breaks
     [HideInInspector] public float searchDuration = 9f;      // how long the area is searched
     [HideInInspector] public float searchRoamRadius = 7f;
@@ -429,6 +431,18 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // so the aiming state's transitions (gated on IsRanged) only fire for
             // ranged enemies. Guarded so a controller without the param stays quiet.
             SetAnimBoolSafe("IsRanged", isRanged);
+
+            // Give this one an identity of its own — its own idle, its own death,
+            // its own gait and build. Every enemy prefab in the game shares a
+            // single controller, so without this a camp of four skeletons is one
+            // skeleton drawn four times, animating on the same frame.
+            //
+            // GetComponent then an explicit null check, never `?? AddComponent`:
+            // UnityEngine.Object overloads ==, so a destroyed-but-not-yet-collected
+            // component is "null" to == and NOT null to ??, and the coalescing form
+            // silently skips the Add.
+            personality = GetComponent<EnemyPersonality>();
+            if (personality == null) personality = gameObject.AddComponent<EnemyPersonality>();
         }
 
         randomOffset = Random.Range(0f, 100f);
@@ -578,6 +592,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void Update()
     {
+        // Walk or run, decided from intent rather than from speed.
+        //
+        // Driven from ONE place on purpose. `isMoving` is written from eighteen
+        // sites in this file, and threading a gait argument through all of them
+        // would be eighteen chances to get it backwards. Chasing runs; roaming,
+        // searching and walking back to a post do not — which is why the game's
+        // patrols have always looked like they were sprinting to nowhere.
+        if (personality != null) personality.SetGait(isAggroed && !isSearching);
+
         // --- Плавна анімація UI ХП (Lerp) ---
         if (healthCanvas != null && healthCanvas.activeInHierarchy)
         {
