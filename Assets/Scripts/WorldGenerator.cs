@@ -728,7 +728,42 @@ public class WorldGenerator : MonoBehaviour
     {
         QualitySettings.vSyncCount = _vsyncBeforeGen;
         Application.targetFrameRate = _targetFpsBeforeGen;
-        Debug.Log($"[WorldGenerator] Generation finished in {Time.realtimeSinceStartup - _genStartTime:0.00}s.");
+
+        // A BREAKDOWN, NOT A TOTAL.
+        //
+        // "Generation finished in 11.4s" tells you the loading screen is too
+        // long and nothing about which of the fourteen phases to attack. Every
+        // optimisation attempt then starts with a guess, and guessing wrong
+        // costs an afternoon that buys 200ms. The table below names the worst
+        // offender outright, which is the whole job of a profiler and takes
+        // twenty lines to have permanently.
+        float total = Time.realtimeSinceStartup - _genStartTime;
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"[WorldGenerator] Generation finished in {total:0.00}s.");
+        if (_phaseTimes.Count > 0)
+        {
+            string worst = "";
+            float worstMs = 0f;
+            foreach (var kv in _phaseTimes) if (kv.Value > worstMs) { worstMs = kv.Value; worst = kv.Key; }
+            sb.Append($"  Slowest phase: {worst} at {worstMs:0}ms ({worstMs / Mathf.Max(1f, total * 1000f):P0} of the load).\n");
+            foreach (var kv in _phaseTimes)
+                sb.Append($"    {kv.Key,-28} {kv.Value,7:0} ms\n");
+        }
+        Debug.Log(sb.ToString());
+        _phaseTimes.Clear();
+    }
+
+    private readonly System.Collections.Generic.Dictionary<string, float> _phaseTimes =
+        new System.Collections.Generic.Dictionary<string, float>(16);
+
+    // Runs one generation phase and records what it cost. Wrapping rather than
+    // sprinkling timers keeps the sequence readable — the phase list below still
+    // reads as a list of phases.
+    private IEnumerator Phase(string name, IEnumerator routine)
+    {
+        float t0 = Time.realtimeSinceStartup;
+        yield return StartCoroutine(routine);
+        _phaseTimes[name] = (Time.realtimeSinceStartup - t0) * 1000f;
     }
 
     // Restore even if the scene is torn down mid-generation, or the player would
@@ -745,40 +780,40 @@ public class WorldGenerator : MonoBehaviour
     private IEnumerator GenerateWorldRoutine()
     {
         BeginGenerationPerfMode();
-        yield return StartCoroutine(GenerateHeightsRoutine(terrain.terrainData));
+        yield return Phase("Heights", GenerateHeightsRoutine(terrain.terrainData));
         CurrentProgress = 0.10f;
 
-        yield return StartCoroutine(CalculateAndCarveRiversRoutine(terrain.terrainData));
+        yield return Phase("Rivers", CalculateAndCarveRiversRoutine(terrain.terrainData));
         CurrentProgress = 0.20f;
 
         // СПАВН БАЗ ТА POI
-        yield return StartCoroutine(SpawnRegionTotemRoutine());
-        yield return StartCoroutine(SpawnPOIsRoutine());
-        yield return StartCoroutine(SpawnExtractionCartsRoutine());
+        yield return Phase("Totem", SpawnRegionTotemRoutine());
+        yield return Phase("POI locations", SpawnPOIsRoutine());
+        yield return Phase("Extraction carts", SpawnExtractionCartsRoutine());
         Physics.SyncTransforms();
         CurrentProgress = 0.30f;
 
         // --- НОВЕ: ПРОКЛАДАННЯ ДОРІГ ---
-        yield return StartCoroutine(GenerateRoadsRoutine());
+        yield return Phase("Roads", GenerateRoadsRoutine());
         CurrentProgress = 0.40f;
 
-        yield return StartCoroutine(PaintTerrainRoutine(terrain.terrainData));
+        yield return Phase("Terrain paint", PaintTerrainRoutine(terrain.terrainData));
         CurrentProgress = 0.50f;
 
-        yield return StartCoroutine(GenerateDetailsRoutine());
+        yield return Phase("Grass details", GenerateDetailsRoutine());
         CurrentProgress = 0.60f;
 
         SpawnWaterPlane();
-        yield return StartCoroutine(PopulateSplineRiversRoutine());
+        yield return Phase("River dressing", PopulateSplineRiversRoutine());
         CurrentProgress = 0.65f;
 
-        yield return StartCoroutine(PopulateBiomesRoutine());
+        yield return Phase("Biome scatter", PopulateBiomesRoutine());
         CurrentProgress = 0.85f;
 
         // --- НОВЕ: ДЕКОРАЦІЇ ДОРІГ ---
-        yield return StartCoroutine(SpawnRoadDecorationsRoutine());
+        yield return Phase("Road decor", SpawnRoadDecorationsRoutine());
 
-        yield return StartCoroutine(SpawnBorderMountainsRoutine());
+        yield return Phase("Border mountains", SpawnBorderMountainsRoutine());
         Physics.SyncTransforms();
         CurrentProgress = 0.95f;
 
