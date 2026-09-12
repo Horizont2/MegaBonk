@@ -2912,7 +2912,20 @@ public class WorldGenerator : MonoBehaviour
                 Mathf.Clamp(Mathf.RoundToInt((targetPos.z - transform.position.z) / cellSize), 0, gridL - 1)
             );
 
-            List<Vector3> path = FindAStarPathToNetwork(startGrid, totemGrid, roadNetwork, gridW, gridL, cellSize, absWaterH);
+            // ONE BAD ROAD MUST NOT COST THE REST OF THEM.
+            //
+            // This routine is a coroutine, so a throw anywhere inside it stops
+            // the whole loop — every remaining road, and with them the altars
+            // and prisoner events that are placed on road dead-ends. That is a
+            // very quiet failure: the map simply comes out sparse, and nothing
+            // says a road was ever meant to be there.
+            List<Vector3> path = null;
+            try { path = FindAStarPathToNetwork(startGrid, totemGrid, roadNetwork, gridW, gridL, cellSize, absWaterH); }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Smart Roads] Pathfinding threw for target {targetPos}; skipping this road and " +
+                               $"continuing with the rest.\n{e}");
+            }
 
             if (path != null && path.Count > 4)
             {
@@ -4157,7 +4170,7 @@ public class WorldGenerator : MonoBehaviour
             _navSteep = new float[n];
             _aG = new float[n]; _aF = new float[n];
             _aParent = new int[n]; _aStamp = new int[n];
-            _aHeap = new int[n + 1];
+            _aHeap = new int[Mathf.Max(1024, n / 4)];
         }
 
         for (int x = 0; x < gridW; x++)
@@ -4175,6 +4188,18 @@ public class WorldGenerator : MonoBehaviour
 
     private void HeapPush(int node)
     {
+        // GROW, DO NOT OVERFLOW.
+        //
+        // The heap holds PUSHES, not nodes, and a node is pushed again every
+        // time a cheaper route to it is found — so the count can comfortably
+        // exceed the number of cells. Sizing it to the cell count threw an
+        // IndexOutOfRange partway through the road loop, which killed the
+        // coroutine: the first few roads were built and every road after that
+        // silently never happened, taking the altars and prisoner events that
+        // sit on road dead-ends with them.
+        if (_aHeapCount + 1 >= _aHeap.Length)
+            System.Array.Resize(ref _aHeap, _aHeap.Length * 2);
+
         int i = ++_aHeapCount;
         _aHeap[i] = node;
         while (i > 1)
@@ -4224,8 +4249,15 @@ public class WorldGenerator : MonoBehaviour
         HeapPush(startIdx);
 
         // CLOSED is folded into the stamp: a negative stamp means expanded.
+        //
+        // The cap was 15 000 because each iteration used to cost eight terrain
+        // queries and a linear scan of the open set — it existed to stop the
+        // editor hanging, and roads across broken ground gave up against it. An
+        // iteration is now array lookups and a heap sift, so the same wall-clock
+        // budget buys far more search, and roads that used to be abandoned as
+        // "blocked by terrain" now find their way.
         int iterations = 0;
-        while (_aHeapCount > 0 && iterations < 15000)
+        while (_aHeapCount > 0 && iterations < 120000)
         {
             iterations++;
             int cur = HeapPop();

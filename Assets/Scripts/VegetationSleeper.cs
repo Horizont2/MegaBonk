@@ -48,12 +48,34 @@ public class VegetationSleeper : MonoBehaviour
     [Tooltip("Extra metres before an awake node goes back to sleep. Without the gap, a tree on the boundary toggles every time the player shifts their weight.")]
     public float sleepHysteresis = 12f;
 
+    // ==== WHAT SLEEPING IS ALLOWED TO TOUCH ====
+    //
+    // The first version switched off colliders and scripts as well, and it broke
+    // the game: away from the player's spawn every tree AND every rock became
+    // scenery you could not hit, because a disabled collider is invisible to the
+    // melee overlap. The wake pass was supposed to turn them back on and did
+    // not reach everything, and the failure mode of "did not reach everything"
+    // is that the world stops responding.
+    //
+    // That trade was wrong even if the bug were fixed. An optimisation must not
+    // be ABLE to break interaction — a collider that is off when it should be on
+    // is a broken game, while a collider that is on when it could be off costs
+    // a broadphase entry, which is nothing. Almost the entire win was in the
+    // shadows anyway: every tree draws a second time into the shadow map whether
+    // or not anybody is near it, and that is pure GPU cost with no gameplay
+    // meaning at all.
+    //
+    // So shadows are dropped, and nothing that the player can interact with is
+    // touched. The collider switch is kept for measurement, defaulted OFF, and
+    // should stay off unless a profile proves the broadphase actually matters.
     [Header("What sleeping gives up")]
-    [Tooltip("The big one. A distant tree draws a second time into the shadow map for nothing.")]
+    [Tooltip("The big one, and the safe one. A distant tree draws a second time into the shadow map for nothing, and turning that off cannot affect gameplay.")]
     public bool dropShadows = true;
-    [Tooltip("Colliders on unreachable trees sit in the physics broadphase costing a little, forever.")]
-    public bool dropColliders = true;
-    [Tooltip("Leaf rustle, dust, fireflies — none of it is visible or audible from across the map.")]
+    [Tooltip("DANGEROUS — leave off. A disabled collider is invisible to the melee overlap, so any node the wake pass fails to reach becomes unhittable scenery. Only worth turning on to measure whether the physics broadphase costs anything.")]
+    public bool dropColliders = false;
+    [Tooltip("DANGEROUS — leave off. Disabling the script means a node the wake pass misses cannot be harvested even when its collider is live.")]
+    public bool dropScripts = false;
+    [Tooltip("Leaf rustle, dust, fireflies — none of it is visible or audible from across the map. Safe: these are hit effects, replayed on contact.")]
     public bool dropEffects = true;
 
     [Header("Budget")]
@@ -119,9 +141,12 @@ public class VegetationSleeper : MonoBehaviour
         // to have finished putting its trees down. Scanning before that finds
         // an empty scene and sleeps forever.
         yield return null;
+        // Resolved ONCE. FindFirstObjectByType is a full scene search, and
+        // running it every frame of a ten-second generation is a self-inflicted
+        // cost inside a system whose whole job is to remove cost.
+        var gen = FindFirstObjectByType<WorldGenerator>();
         float deadline = Time.realtimeSinceStartup + 90f;
-        while (!WorldGenerator.IsGenerationDone && Time.realtimeSinceStartup < deadline
-               && FindFirstObjectByType<WorldGenerator>() != null)
+        while (gen != null && !WorldGenerator.IsGenerationDone && Time.realtimeSinceStartup < deadline)
             yield return null;
         yield return null;
 
@@ -235,7 +260,12 @@ public class VegetationSleeper : MonoBehaviour
                     if ((node.tf.position - pos).sqrMagnitude > wakeSqr) continue;
 
                     _nearby.Add(list[n]);
-                    if (node.asleep && budget > 0) { SetAsleep(node, false); budget--; }
+                    // WAKING IS NOT RATIONED. The budget exists to spread the
+                    // cost of putting things to sleep; applying it to waking
+                    // means a node the player is standing next to can stay
+                    // asleep for several ticks, and if sleeping ever touches
+                    // something interactive again that is a hole in the world.
+                    if (node.asleep) SetAsleep(node, false);
                 }
             }
         }
@@ -296,6 +326,9 @@ public class VegetationSleeper : MonoBehaviour
             }
         }
 
-        if (n.script != null) n.script.enabled = !sleep;
+        // The script is left alone by default. It costs nothing to leave on —
+        // ResourceNode has no Update and only reacts to being hit — and turning
+        // it off is how a missed wake becomes a node that cannot be harvested.
+        if (dropScripts && n.script != null) n.script.enabled = !sleep;
     }
 }

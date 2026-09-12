@@ -41,15 +41,15 @@ public class VegetationHydrator : MonoBehaviour
 
     [Header("Range")]
     [Tooltip("Metres within which a painted tree becomes a real, choppable object. Only needs to comfortably exceed the player's reach and the camera's near field — bigger costs objects for nothing.")]
-    public float hydrateRadius = 32f;
+    public float hydrateRadius = 46f;
     [Tooltip("Extra metres before a hydrated tree is put back. Without this gap a tree on the boundary flickers between the two forms every time the player breathes.")]
     public float dehydrateHysteresis = 10f;
 
     [Header("Budget")]
     [Tooltip("Most trees to swap in a single tick. Spreads a walk into a dense forest over several frames instead of one long hitch.")]
-    public int maxSwapsPerTick = 6;
+    public int maxSwapsPerTick = 25;
     [Tooltip("Seconds between checks. The player cannot cross the hysteresis gap in this time, so there is nothing to gain from running it every frame.")]
-    public float tickInterval = 0.2f;
+    public float tickInterval = 0.15f;
 
     [Header("Diagnostics")]
     public bool logSummary = true;
@@ -70,6 +70,8 @@ public class VegetationHydrator : MonoBehaviour
     private readonly Dictionary<int, GameObject> _live = new Dictionary<int, GameObject>(64);
     private readonly HashSet<int> _retired = new HashSet<int>();
     private readonly List<int> _scratch = new List<int>(256);
+    private int _faults;
+    private float _nextReport;
 
     public static void Install(Terrain terrain)
     {
@@ -151,7 +153,23 @@ public class VegetationHydrator : MonoBehaviour
                 var p = GameObject.FindGameObjectWithTag("Player");
                 if (p != null) _player = p.transform;
             }
-            if (_player != null) Tick();
+            if (_player != null)
+            {
+                // A THROW MUST NOT END HYDRATION FOR THE RUN.
+                //
+                // An exception inside a coroutine stops that coroutine
+                // permanently. Without this, one bad frame anywhere in Tick
+                // means every tree for the rest of the session is scenery —
+                // and it looks exactly like "it worked near spawn and then
+                // stopped", because that is precisely what happens.
+                try { Tick(); }
+                catch (System.Exception e)
+                {
+                    _faults++;
+                    if (_faults <= 3)
+                        Debug.LogError($"[Hydrator] Tick threw (fault {_faults}); hydration continues.\n{e}");
+                }
+            }
             yield return wait;
         }
     }
@@ -159,6 +177,13 @@ public class VegetationHydrator : MonoBehaviour
     private void Tick()
     {
         Vector3 pos = _player.position;
+
+        if (logSummary && Time.time >= _nextReport)
+        {
+            _nextReport = Time.time + 10f;
+            Debug.Log($"[Hydrator] {_live.Count} trees real around the player, {_retired.Count} chopped. " +
+                      "If this number is zero while you are standing in a wood, the grid lookup is missing them.");
+        }
         float hydrateSqr = hydrateRadius * hydrateRadius;
         float dropSqr = (hydrateRadius + dehydrateHysteresis) * (hydrateRadius + dehydrateHysteresis);
 
@@ -197,6 +222,56 @@ public class VegetationHydrator : MonoBehaviour
                 }
             }
         }
+    }
+
+    // TURN THE NEAREST PAINTED TREE REAL, RIGHT NOW.
+    //
+    // The tick is a prediction — it guesses which trees the player is about to
+    // care about from where they are standing. A prediction can be late: sprint
+    // into a wood and for a fraction of a second the trees around you are still
+    // painted, and a swing at one of them hits nothing. That is not a tuning
+    // problem to be solved with a bigger budget, it is a race, and the way to
+    // win a race is not to run it.
+    //
+    // So the player's swing says so directly. Painted trees collide through the
+    // TerrainCollider, so a melee hit that lands on terrain and nothing else is
+    // very likely a tree — this converts the nearest one and the follow-up swing
+    // finds a real object. Costs nothing when there is no tree there.
+    public static bool EnsureRealAt(Vector3 point, float radius = 3.5f)
+    {
+        return Instance != null && Instance.ConvertNearest(point, radius);
+    }
+
+    private bool ConvertNearest(Vector3 point, float radius)
+    {
+        if (_instances == null) return false;
+
+        Vector3 size = _data.size;
+        Vector3 origin = _terrain.transform.position;
+        float bestSqr = radius * radius;
+        int best = -1;
+        Vector3 bestPos = Vector3.zero;
+
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                long key = CellKey(point.x + dx * _cell, point.z + dz * _cell);
+                if (!_grid.TryGetValue(key, out var list)) continue;
+
+                for (int n = 0; n < list.Count; n++)
+                {
+                    int i = list[n];
+                    if (_retired.Contains(i) || _live.ContainsKey(i)) continue;
+
+                    Vector3 w = origin + Vector3.Scale(_instances[i].position, size);
+                    float d = (new Vector2(w.x - point.x, w.z - point.z)).sqrMagnitude;
+                    if (d < bestSqr) { bestSqr = d; best = i; bestPos = w; }
+                }
+            }
+        }
+
+        return best >= 0 && Hydrate(best, bestPos);
     }
 
     private bool Hydrate(int index, Vector3 world)
