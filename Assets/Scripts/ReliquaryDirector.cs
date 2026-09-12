@@ -25,7 +25,7 @@ public class ReliquaryDirector : MonoBehaviour
 {
     [Header("How many exist at all")]
     [Tooltip("Chance this region contains any reliquary. Below 1 on purpose: a region with nothing in it is what makes the next one's silhouette worth noticing.")]
-    [Range(0f, 1f)] public float regionHasOneChance = 0.75f;
+    [Range(0f, 1f)] public float regionHasOneChance = 0.9f;
     [Tooltip("Upper bound when the roll succeeds. Two is a lot already.")]
     public int maxPerRegion = 2;
     [Tooltip("Chance a placed site is a guarded Shrine rather than a plain wayside find.")]
@@ -57,12 +57,17 @@ public class ReliquaryDirector : MonoBehaviour
     {
         // One frame for MissionInitializer.Start to publish the region, then ask.
         yield return null;
+
+        // NOT gated on region mode any more.
+        //
+        // It used to bail out unless PlayerPrefs said "IsRegionMission" — which is
+        // 0 whenever the scene is played straight from the editor, so every test
+        // run produced a world with no exploration in it at all and one quiet log
+        // line to say why. This director only ever runs because a WorldGenerator
+        // finished building a world, and a generated world is a world worth
+        // exploring, whichever mission put it there.
         if (!WorldEncounterDirector.IsAnyRegionMode())
-        {
-            Debug.Log("[Reliquary] Not a region mission — no reliquaries here.");
-            Destroy(gameObject);
-            yield break;
-        }
+            Debug.Log("[Reliquary] Not flagged as a region mission — placing anyway, since a world was generated.");
 
         // Sites are chosen against the finished terrain and the finished tree
         // cover, so this waits for a definite signal rather than a guessed number
@@ -114,9 +119,24 @@ public class ReliquaryDirector : MonoBehaviour
         int want = Random.Range(1, Mathf.Max(1, cap) + 1);
         var taken = new List<Vector3>(want);
 
-        for (int attempt = 0; attempt < 400 && taken.Count < want; attempt++)
+        // The search RELAXES rather than failing.
+        //
+        // This is why nothing was ever placed on a real map. The first pass wants
+        // seven metres of clear ground a hundred and ten metres from the player on
+        // a slope of under three metres — perfectly reasonable numbers, and on a
+        // dense forested region there is often nowhere on the whole terrain that
+        // satisfies all of them at once. Four hundred rejections later the
+        // director logged a warning nobody read and the feature simply did not
+        // exist that run.
+        //
+        // Now each block of attempts loosens the constraints, and the last block
+        // asks only for dry land. A site that is slightly cramped is enormously
+        // better than no site, and the numbers at the top still describe the
+        // sites we PREFER — they just no longer describe the only ones allowed.
+        for (int attempt = 0; attempt < 900 && taken.Count < want; attempt++)
         {
-            if (!TryFindSite(start, taken, out Vector3 site)) continue;
+            float ease = attempt < 300 ? 1f : attempt < 600 ? 0.6f : 0.25f;
+            if (!TryFindSite(start, taken, ease, out Vector3 site)) continue;
 
             float roll = Random.value;
             var rollGrade = roll < pBarrow ? Reliquary.Grade.Barrow
@@ -133,22 +153,37 @@ public class ReliquaryDirector : MonoBehaviour
             // old slope.
             if (flattenGround) site = LevelGround(site, rollGrade);
 
+            // The site is a PREFAB now, not something assembled here.
+            //
+            // Everything that used to be built at runtime — measuring the chest
+            // model, scaling it, grounding it, bolting on an Animator — is baked
+            // into the asset by Tools > Exploration > Build Reliquary Prefabs,
+            // where it is visible and fixable. Two things stopped being possible
+            // the moment that moved: a chest coming out the wrong size, and a lid
+            // with no animator behind it.
+            var prefab = set.SiteFor((int)rollGrade);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[Reliquary] The ReliquarySet has no site prefabs. Run " +
+                                 "Tools > Exploration > Build Reliquary Prefabs — nothing can be placed without them.");
+                break;
+            }
+
+            var go = Instantiate(prefab, site, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
             // Named by grade so a hierarchy search for "Reliquary" both finds
             // them and says what each one is without clicking it.
-            var go = new GameObject($"Reliquary_{rollGrade}_{taken.Count}");
-            go.transform.position = site;
+            go.name = $"Reliquary_{rollGrade}_{taken.Count}";
 
-            var rel = go.AddComponent<Reliquary>();
+            var rel = go.GetComponent<Reliquary>();
+            if (rel == null) { Destroy(go); continue; }
             rel.grade = rollGrade;
+            // Bare ground: this one dresses itself. A prefab dropped into a
+            // hand-built location leaves the dressing to the location.
+            rel.buildDecor = true;
 
             // Distance from the start is the only honest way to pay for a walk.
             float d = Vector3.Distance(site, start);
             rel.richness = Mathf.Lerp(1f, 2.1f, Mathf.InverseLerp(minDistanceFromStart, minDistanceFromStart + 260f, d));
-
-            var chest = BuildChest(set, rel.grade, site, go.transform);
-            if (chest == null) { Destroy(go); continue; }
-            rel.Bind(chest);
-            rel.Raise(set);
 
             taken.Add(site);
             s_live.Add(rel);
@@ -193,58 +228,10 @@ public class ReliquaryDirector : MonoBehaviour
         return site;
     }
 
-    // Wraps a chest MODEL in the interactive parts.
-    //
-    // The three tiers from the Fantasy Polygon Chest pack are art only — no
-    // LootChest, no collider, just a mesh and an animator whose single parameter
-    // is the "Open" trigger LootChest already sends. So the root is assembled
-    // here rather than there being three near-identical prefabs to author and
-    // keep in step, and the grade the player walked to is legible from the chest
-    // itself before they are close enough to read anything else.
-    private static LootChest BuildChest(ReliquarySet set, Reliquary.Grade grade, Vector3 site, Transform parent)
-    {
-        var model = set.ChestFor((int)grade);
-        if (model == null) return null;
-
-        var root = new GameObject("Chest");
-        root.transform.SetParent(parent, false);
-        root.transform.position = site;
-
-        // Scaled to a chest-sized chest, and grounded by its bounds.
-        //
-        // The Fantasy Polygon meshes are authored several metres tall in their
-        // own units, so instantiating them as-is put a chest the size of a house
-        // in the middle of every site — which is what the screenshots showed.
-        // Same treatment every other prop gets; see Reliquary.PlaceProp.
-        var model3d = Reliquary.PlaceProp(model, site, Random.Range(0f, 360f),
-                                          grade == Reliquary.Grade.Barrow ? 1.35f : 1.1f, root.transform);
-
-        // The pack's prefabs carry the rig but no Animator, so the lid never
-        // moved. LootChest looks for one in its children and finds nothing, then
-        // silently falls back to a plain timer.
-        if (model3d != null && model3d.GetComponentInChildren<Animator>() == null)
-        {
-            var anim = model3d.AddComponent<Animator>();
-            anim.runtimeAnimatorController = set.chestAnimatorController;
-            anim.applyRootMotion = false;
-        }
-
-        var chest = root.AddComponent<LootChest>();
-        chest.possibleLoot = set.chestLoot;
-        // A barrow chest is worth more in raw pickups too, not only in the armour
-        // roll — the pile has to look like it was worth nine seconds.
-        switch (grade)
-        {
-            case Reliquary.Grade.Barrow: chest.minLootItems = 6; chest.maxLootItems = 12; break;
-            case Reliquary.Grade.Shrine: chest.minLootItems = 4; chest.maxLootItems = 8; break;
-            default:                     chest.minLootItems = 2; chest.maxLootItems = 5; break;
-        }
-        // LootChest resolves its own animator from the children in Start, so the
-        // model's controller is picked up without wiring.
-        return chest;
-    }
-
-    private bool TryFindSite(Vector3 start, List<Vector3> taken, out Vector3 site)
+    // `ease` is 1 for the preferred constraints and drops towards 0 as the search
+    // gives up on finding a perfect spot. See the comment at the call site: this
+    // is the difference between the feature existing on a dense map and not.
+    private bool TryFindSite(Vector3 start, List<Vector3> taken, float ease, out Vector3 site)
     {
         site = Vector3.zero;
 
@@ -253,15 +240,18 @@ public class ReliquaryDirector : MonoBehaviour
         Vector3 o = terrain.transform.position;
         Vector3 s = terrain.terrainData.size;
 
+        float margin = Mathf.Min(edgeMargin * ease, Mathf.Min(s.x, s.z) * 0.4f);
         Vector3 p = new Vector3(
-            Random.Range(o.x + edgeMargin, o.x + s.x - edgeMargin),
+            Random.Range(o.x + margin, o.x + s.x - margin),
             0f,
-            Random.Range(o.z + edgeMargin, o.z + s.z - edgeMargin));
+            Random.Range(o.z + margin, o.z + s.z - margin));
         p.y = terrain.SampleHeight(p) + o.y;
 
-        if ((p - start).sqrMagnitude < minDistanceFromStart * minDistanceFromStart) return false;
+        float minStart = minDistanceFromStart * ease;
+        if ((p - start).sqrMagnitude < minStart * minStart) return false;
+        float spacing = minSpacing * ease;
         foreach (var t in taken)
-            if ((p - t).sqrMagnitude < minSpacing * minSpacing) return false;
+            if ((p - t).sqrMagnitude < spacing * spacing) return false;
 
         // NOT IN WATER. Rivers and lakes are carved into the same heightmap this
         // samples, so a site chosen on height alone lands happily on a lake bed —
@@ -280,7 +270,8 @@ public class ReliquaryDirector : MonoBehaviour
         // rejected every candidate site and no reliquary was ever placed
         // anywhere. The test is "is anything built or grown here", not "is there
         // ground here" — there had better be ground here.
-        int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * 1.5f, clearRadius, s_clearance, ~0, QueryTriggerInteraction.Ignore);
+        float clear = Mathf.Max(2.5f, clearRadius * ease);
+        int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * 1.5f, clear, s_clearance, ~0, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < n; i++)
         {
             if (s_clearance[i] == null) continue;
@@ -288,12 +279,12 @@ public class ReliquaryDirector : MonoBehaviour
             return false;
         }
 
-        float h1 = terrain.SampleHeight(p + new Vector3(clearRadius, 0f, 0f)) + o.y;
-        float h2 = terrain.SampleHeight(p + new Vector3(-clearRadius, 0f, 0f)) + o.y;
-        float h3 = terrain.SampleHeight(p + new Vector3(0f, 0f, clearRadius)) + o.y;
-        float h4 = terrain.SampleHeight(p + new Vector3(0f, 0f, -clearRadius)) + o.y;
+        float h1 = terrain.SampleHeight(p + new Vector3(clear, 0f, 0f)) + o.y;
+        float h2 = terrain.SampleHeight(p + new Vector3(-clear, 0f, 0f)) + o.y;
+        float h3 = terrain.SampleHeight(p + new Vector3(0f, 0f, clear)) + o.y;
+        float h4 = terrain.SampleHeight(p + new Vector3(0f, 0f, -clear)) + o.y;
         float spread = Mathf.Max(Mathf.Max(h1, h2), Mathf.Max(h3, h4)) - Mathf.Min(Mathf.Min(h1, h2), Mathf.Min(h3, h4));
-        if (spread > 3.2f) return false;
+        if (spread > 3.2f / Mathf.Max(0.2f, ease)) return false;
 
         site = p;
         return true;

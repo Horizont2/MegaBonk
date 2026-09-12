@@ -35,6 +35,27 @@ public class ReliquarySet : ScriptableObject
     [Tooltip("Skeletons posted at the site. They stand dormant until the player is close — see Reliquary.PostGuardians.")]
     public GameObject[] guardianPrefabs;
 
+    [Header("Built site prefabs — one per grade")]
+    [Tooltip("Assets/Prefabs/Exploration/Reliquary_Wayside|Shrine|Barrow. The whole interactive site, authored: chest model at the right SIZE, animator attached, LootChest and Reliquary wired. Drop one into a hand-built location and that location becomes a reliquary. Built by Tools > Exploration > Build Reliquary Prefabs.")]
+    public GameObject[] sitePrefabByGrade = new GameObject[3];
+
+    [Header("Visible payout")]
+    [Tooltip("Physical pickups thrown out of the chest as the lid opens, so the reward is something the player watches land and collects — not a number that changes on the HUD.")]
+    public GameObject woodDrop;
+    public GameObject stoneDrop;
+    public GameObject foodDrop;
+
+    // Falls back down the grades the same way ChestFor does, so a set built
+    // before the prefabs existed still yields something instead of nothing.
+    public GameObject SiteFor(int grade)
+    {
+        if (sitePrefabByGrade == null || sitePrefabByGrade.Length == 0) return null;
+        for (int i = Mathf.Clamp(grade, 0, sitePrefabByGrade.Length - 1); i >= 0; i--)
+            if (sitePrefabByGrade[i] != null) return sitePrefabByGrade[i];
+        foreach (var g in sitePrefabByGrade) if (g != null) return g;
+        return null;
+    }
+
     private static ReliquarySet _cached;
     private static bool _searched;
 

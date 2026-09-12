@@ -22,6 +22,7 @@ public class LootChest : MonoBehaviour
     public float delayForLoot = 1.5f;
 
     [Header("Destruction")]
+    [Tooltip("Seconds after opening before the chest removes itself. Zero or less means it stays — which is what a chest standing inside a hand-built location wants, since the location should not develop a hole in it a few seconds after the player loots it.")]
     public float destroyDelay = 10f;
 
     private bool isInteracted = false;
@@ -36,7 +37,22 @@ public class LootChest : MonoBehaviour
 
         originalPos = transform.position;
 
-        if (chestAnimator == null) chestAnimator = GetComponentInChildren<Animator>();
+        if (chestAnimator == null) chestAnimator = GetComponentInChildren<Animator>(true);
+
+        // Say so out loud when the lid physically cannot move.
+        //
+        // Both of these failed SILENTLY before — the chest fell back to a plain
+        // timer, the loot appeared out of a shut box, and there was nothing in the
+        // console to distinguish "no animator" from "animator with no controller"
+        // from "it played and you missed it". Every round of "the opening
+        // animation still doesn't work" was unfalsifiable as a result.
+        if (chestAnimator == null)
+            Debug.LogWarning($"[LootChest] '{name}' has no Animator anywhere in its hierarchy — it will open on a " +
+                             "timer with the lid shut. The chest models carry the rig but no Animator component; " +
+                             "one has to be added and pointed at Fantasy_Polygon_Chest_Animation_Controller.", this);
+        else if (chestAnimator.runtimeAnimatorController == null)
+            Debug.LogWarning($"[LootChest] '{name}' has an Animator with no controller assigned — SetTrigger(\"Open\") " +
+                             "goes nowhere and the lid stays shut.", this);
     }
 
     private void Update()
@@ -74,7 +90,30 @@ public class LootChest : MonoBehaviour
     // hang its own payout off an ordinary chest without this class needing to
     // know anything about reliquaries.
     public event System.Action Opened;
+
+    // Raised when the LID IS ACTUALLY UP, at the same instant the loot bursts out.
+    //
+    // Separate from Opened on purpose. Opened fires when the player commits, which
+    // is a second and a half of shake-and-creak before anything visibly happens —
+    // paying a reward there means the numbers change while the chest is still
+    // shut, and the player reads it as the chest having done nothing. Anything the
+    // player is supposed to SEE arrive hangs off this one instead.
+    public event System.Action LidOpened;
+
     public bool IsOpened => isInteracted;
+
+    // Where the loot should appear from: the top of the chest, not its pivot.
+    public Vector3 LootOrigin
+    {
+        get
+        {
+            var rends = GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return transform.position + Vector3.up * 0.5f;
+            Bounds b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            return new Vector3(b.center.x, b.max.y, b.center.z);
+        }
+    }
 
     [HideInInspector]
     // Set by a Reliquary, which owns the interaction itself: the chest there is
@@ -162,21 +201,25 @@ public class LootChest : MonoBehaviour
             yield return new WaitForSeconds(delayForLoot);
         }
 
+        LidOpened?.Invoke();
         SpawnLoot();
 
-        Destroy(gameObject, destroyDelay);
+        if (destroyDelay > 0f) Destroy(gameObject, destroyDelay);
     }
 
     private void SpawnLoot()
     {
+        if (possibleLoot == null || possibleLoot.Length == 0) return;
+        // Out of the OPEN MOUTH of the chest. Spawning at the pivot put the burst
+        // inside the model, so half of it was hidden and the rest looked like it
+        // had squeezed out through the woodwork.
+        Vector3 mouth = LootOrigin;
         int count = Random.Range(minLootItems, maxLootItems + 1);
         for (int i = 0; i < count; i++)
         {
-            if (possibleLoot.Length > 0)
-            {
-                GameObject loot = possibleLoot[Random.Range(0, possibleLoot.Length)];
-                Instantiate(loot, transform.position + Vector3.up * 0.5f, Quaternion.identity);
-            }
+            GameObject loot = possibleLoot[Random.Range(0, possibleLoot.Length)];
+            if (loot == null) continue;
+            Instantiate(loot, mouth, Quaternion.identity);
         }
     }
 

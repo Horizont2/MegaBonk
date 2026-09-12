@@ -64,6 +64,19 @@ public class ResourceManager : MonoBehaviour
         }
         else
         {
+            // Hand our inspector wiring to the survivor before dying.
+            //
+            // WHY: the HUD prefab carries this component, so every scene brings a
+            // fresh copy wired to ITS widgets — and the first one ever created is
+            // the one that lives forever. If a later scene's HUD is wired even
+            // slightly differently (a counter added, a field left empty in an
+            // older prefab instance), the survivor keeps pointing at whatever it
+            // was born with. That is how "the bar filled but the numbers did not"
+            // happens: one reference resolved and the other did not.
+            //
+            // Adopting anything the survivor is missing costs nothing and removes
+            // a whole class of silent, scene-order-dependent HUD failures.
+            Instance.AdoptMissingReferencesFrom(this);
             Destroy(gameObject);
             return;
         }
@@ -93,11 +106,39 @@ public class ResourceManager : MonoBehaviour
         UpdateUI();
     }
 
+    private void AdoptMissingReferencesFrom(ResourceManager other)
+    {
+        if (other == null) return;
+        if (inventoryTitleText == null) inventoryTitleText = other.inventoryTitleText;
+        if (woodText == null) woodText = other.woodText;
+        if (stoneText == null) stoneText = other.stoneText;
+        if (foodText == null) foodText = other.foodText;
+        if (diamondsText == null) diamondsText = other.diamondsText;
+        if (woodFill == null) woodFill = other.woodFill;
+        if (stoneFill == null) stoneFill = other.stoneFill;
+        if (foodFill == null) foodFill = other.foodFill;
+        if (woodPopup == null) woodPopup = other.woodPopup;
+        if (stonePopup == null) stonePopup = other.stonePopup;
+        if (foodPopup == null) foodPopup = other.foodPopup;
+        _lastShown = -1;   // force the counters to redraw against the new widgets
+    }
+
     private void Update()
     {
         int targetWood = isCamp ? stashWood : runWood;
         int targetStone = isCamp ? stashStone : runStone;
         int targetFood = isCamp ? stashFood : runFood;
+
+        // The counters are redrawn from HERE, next to the bars, and not only from
+        // UpdateUI.
+        //
+        // The bars were lerped every frame while the numbers were written only by
+        // whoever remembered to call UpdateUI — so any path that changed a total
+        // without that call left a bar creeping up beside a stale number, which is
+        // exactly what the chest payout looked like. Sharing one per-frame pass
+        // makes the two physically incapable of disagreeing, and the change guard
+        // means it still costs nothing on the frames where nothing moved.
+        RefreshCounters();
 
         if (woodFill != null)
             woodFill.fillAmount = Mathf.Lerp(woodFill.fillAmount, (float)targetWood / GetCurrentMax("Wood"), Time.deltaTime * fillLerpSpeed);
@@ -330,6 +371,43 @@ public class ResourceManager : MonoBehaviour
         SaveStash();
     }
 
+    // Bank the backpack at the cart WITHOUT leaving.
+    //
+    // Dying used to erase everything carried, which makes exploring strictly
+    // worse than not exploring: the further you push after a good chest, the more
+    // you stand to lose, so the correct play is to walk straight home the moment
+    // anything valuable lands. That is the opposite of what a chest is for.
+    //
+    // The cart fixes it by being a SAVE POINT rather than only an exit. Carrying
+    // is still a risk — the walk back to the cart is the risk — but the risk is
+    // now a run of your choosing between two banks instead of the whole session.
+    // Returns what was actually stored; anything over the stash cap stays in the
+    // backpack rather than evaporating, and is worth diamonds on a real
+    // extraction.
+    public bool StowRunToStash(out int storedWood, out int storedStone, out int storedFood)
+    {
+        storedWood = Mathf.Clamp(Mathf.Min(GetMax("Wood") - stashWood, runWood), 0, runWood);
+        storedStone = Mathf.Clamp(Mathf.Min(GetMax("Stone") - stashStone, runStone), 0, runStone);
+        storedFood = Mathf.Clamp(Mathf.Min(GetMax("Food") - stashFood, runFood), 0, runFood);
+
+        if (storedWood + storedStone + storedFood <= 0) return false;
+
+        stashWood += storedWood;
+        stashStone += storedStone;
+        stashFood += storedFood;
+        runWood -= storedWood;
+        runStone -= storedStone;
+        runFood -= storedFood;
+
+        if (storedWood > 0) { ShowResourceToast(storedWood, "Wood", new Color(0.85f, 0.6f, 0.35f)); BounceText(woodText); }
+        if (storedStone > 0) { ShowResourceToast(storedStone, "Stone", new Color(0.8f, 0.8f, 0.85f)); BounceText(stoneText); }
+        if (storedFood > 0) { ShowResourceToast(storedFood, "Food", new Color(0.7f, 0.95f, 0.5f)); BounceText(foodText); }
+
+        SaveStash();
+        UpdateUI();
+        return true;
+    }
+
     public void ClearRunInventory()
     {
         runWood = 0; runStone = 0; runFood = 0;
@@ -348,40 +426,44 @@ public class ResourceManager : MonoBehaviour
             inventoryTitleText.text = LocalizationManager.Tr(isCamp ? "CAMP STASH" : "BACKPACK");
         }
 
-        if (isCamp)
-        {
-            int maxStashWood = GetMax("Wood");
-            int maxStashStone = GetMax("Stone");
-            int maxStashFood = GetMax("Food");
-
-            if (woodText) woodText.text = $"( {stashWood} / {maxStashWood} )";
-            if (stoneText) stoneText.text = $"( {stashStone} / {maxStashStone} )";
-            if (foodText) foodText.text = $"( {stashFood} / {maxStashFood} )";
-        }
-        else
-        {
-            int maxRunWood = GetRunMax("Wood");
-            int maxRunStone = GetRunMax("Stone");
-            int maxRunFood = GetRunMax("Food");
-
-            string wColor = runWood >= maxRunWood ? "<color=#8B2E2E>" : "";
-            string wEnd = runWood >= maxRunWood ? "</color>" : "";
-
-            string sColor = runStone >= maxRunStone ? "<color=#8B2E2E>" : "";
-            string sEnd = runStone >= maxRunStone ? "</color>" : "";
-
-            string fColor = runFood >= maxRunFood ? "<color=#8B2E2E>" : "";
-            string fEnd = runFood >= maxRunFood ? "</color>" : "";
-
-            if (woodText) woodText.text = $"( {wColor}{runWood}{wEnd} / {maxRunWood} )";
-            if (stoneText) stoneText.text = $"( {sColor}{runStone}{sEnd} / {maxRunStone} )";
-            if (foodText) foodText.text = $"( {fColor}{runFood}{fEnd} / {maxRunFood} )";
-        }
+        RefreshCounters(force: true);
 
         // Diamond text is handled by the tween in Update — start a new
         // tween from the currently-displayed number to the new total so
         // gains and spends are legible rather than jumping.
         StartDiamondTween(diamonds);
+    }
+
+    // Writes the three "( n / max )" counters. Cheap to call every frame: it
+    // fingerprints what it last drew and returns immediately when nothing moved,
+    // so the string building only happens on the frames a total actually changed.
+    private long _lastShown = -1;
+
+    private void RefreshCounters(bool force = false)
+    {
+        bool camp = isCamp;
+        int w = camp ? stashWood : runWood;
+        int s = camp ? stashStone : runStone;
+        int f = camp ? stashFood : runFood;
+        int maxW = camp ? GetMax("Wood") : GetRunMax("Wood");
+        int maxS = camp ? GetMax("Stone") : GetRunMax("Stone");
+        int maxF = camp ? GetMax("Food") : GetRunMax("Food");
+
+        long fingerprint = (camp ? 1L : 0L)
+                         + ((long)w * 3) + ((long)s * 5003) + ((long)f * 7919)
+                         + ((long)maxW * 104729) + ((long)maxS * 1299709) + ((long)maxF * 15485863);
+        if (!force && fingerprint == _lastShown) return;
+        _lastShown = fingerprint;
+
+        // Full backpacks read red, so "the counter stopped going up" is visibly a
+        // capacity problem rather than a bug. Only in a run — the camp stash
+        // overflow is handled by the extraction maths instead.
+        string Mark(int value, int max) =>
+            !camp && value >= max ? $"<color=#8B2E2E>{value}</color>" : value.ToString();
+
+        if (woodText) woodText.text = $"( {Mark(w, maxW)} / {maxW} )";
+        if (stoneText) stoneText.text = $"( {Mark(s, maxS)} / {maxS} )";
+        if (foodText) foodText.text = $"( {Mark(f, maxF)} / {maxF} )";
     }
 
     // -------- Diamond count animation --------

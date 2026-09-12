@@ -58,6 +58,12 @@ public static class BuildReliquarySetTool
 
     // The region's own enemies, so a guarded site is guarded by the things that
     // live there rather than by a separate cast nobody recognises.
+    // The project's existing pickups, reused so a chest's supplies land as the
+    // same objects the player already picks up off the ground everywhere else.
+    private const string WoodDrop = "Assets/Prefabs/Pickup/Log_Pickup.prefab";
+    private const string StoneDrop = "Assets/Prefabs/Pickup/Stone_Pickup.prefab";
+    private const string FoodDrop = "Assets/Prefabs/Pickup/Berry_Red.prefab";
+
     private static readonly string[] Guardians =
     {
         "Assets/Prefabs/Skeleton_Warrior.prefab",
@@ -98,6 +104,9 @@ public static class BuildReliquarySetTool
         set.archPrefab = One(Arch);
         set.lanternPrefab = One(Lantern);
         set.guardianPrefabs = Many(Guardians);
+        set.woodDrop = One(WoodDrop);
+        set.stoneDrop = One(StoneDrop);
+        set.foodDrop = One(FoodDrop);
 
         if (isNew) AssetDatabase.CreateAsset(set, Path);
         EditorUtility.SetDirty(set);
@@ -117,6 +126,11 @@ public static class BuildReliquarySetTool
                              "grades will fall back to a lower chest, so the site's grade will not read from the " +
                              "chest itself.");
         }
+
+        if (set.woodDrop == null || set.stoneDrop == null || set.foodDrop == null)
+            Debug.LogWarning("[Reliquary] A supply pickup prefab is missing. Those resources will be credited " +
+                             "straight to the backpack instead of bursting out of the chest — correct, but invisible, " +
+                             "which is the exact thing the visible payout exists to fix.");
 
         if (set.banners.Length == 0)
             Debug.LogWarning("[Reliquary] No banner prefabs resolved. Banners ARE the landmark — without them the " +

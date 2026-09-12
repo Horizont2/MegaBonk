@@ -52,8 +52,9 @@ public class WorldGenerator : MonoBehaviour
     public GameObject cagedAllyPrefab;
     [Range(0f, 1f)]
     [Tooltip("Chance a road dead-end hosts a caged-ally event instead of an altar.")]
-    public float cagedAllyChance = 0.85f;
-    public int maxCagedAllies = 4;
+    public float cagedAllyChance = 0.95f;
+    [Tooltip("Freeing prisoners is the one thing on the map that hands the player a fighting companion, so a region with only a couple of them barely reads as a mechanic. Raised from 4.")]
+    public int maxCagedAllies = 7;
     private int spawnedCagedAllies = 0;
 
     [Header("Ambient Birds")]

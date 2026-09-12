@@ -2531,6 +2531,9 @@ public static class LocalizationManager
         Add5("PROMPT_PET_CAT",              "[E] Погладить кота",      "[E] Acariciar gato",        "[E] Katze streicheln",       "[E] Caresser le chat",         "[E] Pogłaszcz kota");
         Add5("PROMPT_EVACUATE",             "Нажми E чтобы эвакуироваться","Pulsa E para evacuar",  "E drücken zur Evakuierung",  "Appuie sur E pour évacuer",    "Naciśnij E by ewakuować");
         Add5("PROMPT_MOUNT_HORSE",          "[E] Оседлать коня и бежать","[E] Montar caballo y huir","[E] Pferd besteigen und fliehen","[E] Monter le cheval et fuir","[E] Wsiądź na konia i uciekaj");
+        Add5("PROMPT_EVACUATE_OR_STOW",     "[E] Эвакуация   ·   [{0}] Сложить припасы в повозку","[E] Evacuar   ·   [{0}] Guardar provisiones en el carro","[E] Evakuieren   ·   [{0}] Vorräte im Karren verstauen","[E] Évacuer   ·   [{0}] Ranger les vivres dans la charrette","[E] Ewakuacja   ·   [{0}] Schowaj zapasy do wozu");
+        Add5("PROMPT_STOWED",               "Сложено {0} припасов — они уцелеют, если ты погибнешь","Guardadas {0} provisiones: a salvo si caes","{0} Vorräte verstaut — sicher, falls du fällst","{0} vivres rangés — à l'abri si tu tombes","Schowano {0} zapasów — przetrwają twoją śmierć");
+        Add5("PROMPT_STOW_NOTHING",         "Нечего складывать",       "No hay nada que guardar",   "Nichts zu verstauen",        "Rien à ranger",                "Nie ma czego chować");
         Add5("PROMPT_TALK_ELIAS",           "[E] Поговорить с Элиасом","[E] Hablar con Elias",      "[E] Mit Elias sprechen",     "[E] Parler à Elias",           "[E] Porozmawiaj z Eliasem");
         Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
         Add5("TUTORIAL_TIP_DEFAULT",        "СОВЕТ",                   "PISTA",                     "TIPP",                       "ASTUCE",                       "PORADA");
@@ -3936,6 +3939,11 @@ public static class LocalizationManager
         Add("PROMPT_TALK_STRANGER", "[E] Talk to Stranger", "[E] Поговорити з незнайомцем");
         Add("PROMPT_PET_CAT", "[E] Pet Cat", "[E] Погладити кота");
         Add("PROMPT_EVACUATE", "Press E to Evacuate", "Натисни E щоб евакуюватися");
+        Add("PROMPT_EVACUATE_OR_STOW",
+            "[E] Evacuate   ·   [{0}] Stow supplies at the cart",
+            "[E] Евакуація   ·   [{0}] Скласти припаси до воза");
+        Add("PROMPT_STOWED", "Stowed {0} supplies — safe if you fall", "Складено {0} припасів — вони вціліють, якщо ти загинеш");
+        Add("PROMPT_STOW_NOTHING", "Nothing to stow", "Нема чого складати");
         Add("PROMPT_MOUNT_HORSE", "[E] Mount Horse & Escape", "[E] Осідлати коня і втекти");
         Add("PROMPT_UPGRADE_ELIAS_FIRST",
             "<color=#FF4444>Upgrade Elias's Lodge first!</color>",

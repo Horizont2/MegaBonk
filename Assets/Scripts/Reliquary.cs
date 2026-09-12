@@ -49,6 +49,29 @@ public class Reliquary : MonoBehaviour
     [Header("Grade")]
     public Grade grade = Grade.Wayside;
 
+    // ==== WHY THIS COMPONENT ASSEMBLES ITSELF ====
+    //
+    // The first version could only be built by a director that hunted for a clear
+    // patch of terrain and assembled the whole site out of loose prefabs at
+    // runtime. That put every part of the feature behind one search that could
+    // fail — and did, silently, for several rounds: if no site passed the
+    // clearance test, nothing existed and nothing said why.
+    //
+    // Now the site is a PREFAB. Drop Reliquary_Shrine into a location built by
+    // hand, add that location to the generator's POI list, and the chest brings
+    // its own guardians, seal and channel with it. Nothing has to find anywhere.
+    // The director still exists and still scatters them across open ground, but it
+    // is now one way to place a prefab rather than the only path that works.
+    [Header("Self-assembly")]
+    [Tooltip("Post guardians around the chest on Start. Leave on: the guardians ARE the lock, and a site without them is a free pickup.")]
+    public bool spawnGuardians = true;
+    [Tooltip("How far out the guardians stand. Widen it for a big hand-built location so they are not standing in the walls.")]
+    public float guardRadius = 4f;
+    [Tooltip("Override the guardian count for this site. -1 keeps the count the grade implies (0 / 1 / 4).")]
+    public int guardianCountOverride = -1;
+    [Tooltip("Also scatter banners, stones and bones around the chest. OFF for a prefab dropped into a hand-built location — the location already has its own dressing — and ON for a site the director places on bare ground.")]
+    public bool buildDecor = false;
+
     [Header("Payout")]
     [Tooltip("Scales supplies only. Armour odds live in ArmourLootTable so the economy has one owner.")]
     [Range(0.5f, 3f)] public float richness = 1f;
@@ -86,11 +109,32 @@ public class Reliquary : MonoBehaviour
         _ => new Color(0.95f, 0.88f, 0.65f),
     };
 
+    // Everything the prefab needs to become a live site, without a director.
+    private void Start()
+    {
+        if (_chest == null) Bind(GetComponentInChildren<LootChest>(true));
+        if (_chest == null)
+        {
+            Debug.LogWarning($"[Reliquary] '{name}' has no LootChest under it — there is nothing here to open. " +
+                             "Use the prefabs from Tools > Exploration > Build Reliquary Prefabs.", this);
+            enabled = false;
+            return;
+        }
+
+        var set = ReliquarySet.Load();
+        if (buildDecor && set != null) Raise(set);
+        if (spawnGuardians && _guardians.Count == 0) PostGuardians(set, guardRadius);
+    }
+
     public void Bind(LootChest chest)
     {
+        if (_chest == chest) return;
         _chest = chest;
         if (_chest == null) return;
         _chest.Opened += OnOpened;
+        // The reward lands when the lid is UP, not when the player commits — see
+        // LootChest.LidOpened.
+        _chest.LidOpened += OnLidOpened;
         // The reliquary owns the interaction. Leaving the chest's own press-to-
         // open live alongside the channel is how a player skips the fight.
         //
@@ -102,7 +146,9 @@ public class Reliquary : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (_chest != null) _chest.Opened -= OnOpened;
+        if (_chest == null) return;
+        _chest.Opened -= OnOpened;
+        _chest.LidOpened -= OnLidOpened;
     }
 
     // ---- the site ------------------------------------------------------------
@@ -176,7 +222,10 @@ public class Reliquary : MonoBehaviour
             _lantern.shadows = LightShadows.None;
         }
 
-        PostGuardians(set, ring);
+        // Guardians are NOT posted here. Decor and guards are separate decisions:
+        // a prefab dropped into a hand-built ruin wants the guards and none of the
+        // dressing, and Start owns that call.
+        guardRadius = ring;
     }
 
     // Dormant until approached. Built out of the ordinary enemy AI rather than a
@@ -185,8 +234,20 @@ public class Reliquary : MonoBehaviour
     // they fight like every other enemy once woken instead of like a special case.
     private void PostGuardians(ReliquarySet set, float ring)
     {
-        int count = grade switch { Grade.Barrow => 4, Grade.Shrine => 1, _ => 0 };
-        if (count == 0 || set.guardianPrefabs == null || set.guardianPrefabs.Length == 0) return;
+        int count = guardianCountOverride >= 0
+                  ? guardianCountOverride
+                  : grade switch { Grade.Barrow => 4, Grade.Shrine => 1, _ => 0 };
+        if (count == 0) return;
+        if (set == null || set.guardianPrefabs == null || set.guardianPrefabs.Length == 0)
+        {
+            // A sealed chest with nothing to unseal it is a chest nobody can ever
+            // open, so this is loud rather than a shrug.
+            Debug.LogWarning($"[Reliquary] '{name}' wants {count} guardians but the ReliquarySet has no guardian " +
+                             "prefabs. Run Tools > Exploration > Build Reliquary Set, or the seal can never break.", this);
+            return;
+        }
+
+        if (ring <= 0.1f) ring = 4f;
 
         for (int i = 0; i < count; i++)
         {
@@ -194,7 +255,7 @@ public class Reliquary : MonoBehaviour
             if (prefab == null) continue;
 
             float a = (i / (float)count) * Mathf.PI * 2f + Mathf.PI * 0.5f;
-            Vector3 p = Offset(a, ring * 0.78f);
+            Vector3 p = Offset(a, ring);
             var go = Instantiate(prefab, p, Quaternion.identity, null);
 
             var ai = go.GetComponent<EnemyAI>();
@@ -448,31 +509,186 @@ public class Reliquary : MonoBehaviour
 
     // ---- the payout ----------------------------------------------------------
 
+    // The player committed. Nothing is paid here — see OnLidOpened.
     private void OnOpened()
     {
+        if (_lantern != null) _lantern.enabled = false;
+        ReliquaryDirector.NoteOpened(this);
+    }
+
+    // The lid is up. Everything the reward consists of happens now, in one beat.
+    private void OnLidOpened()
+    {
         bool gaveArmour = Random.value < ArmourLootTable.ArmourChance(grade) && GrantArmour();
+
+        // ==== HOW MUCH, AND WHY IT IS NOT ALWAYS THE SAME ====
+        //
+        // The first pass paid a flat 35-70 wood, 25-55 stone and 15-35 food, and
+        // that was wrong twice over. It was too much — the backpack holds 100 / 50
+        // / 30, so ONE roadside chest filled it and every chest after that in the
+        // run was worth nothing. And it was the same every time, so after two
+        // chests the player knew exactly what the third contained and opening it
+        // stopped being a question.
+        //
+        // So the payout is a FRACTION OF WHAT YOU CAN CARRY, rolled against a
+        // fortune table. A wayside find is normally a handful; occasionally it is
+        // a real haul. A barrow is normally a real haul; rarely it is more than
+        // you can carry home, which is a good problem and a memorable one.
+        int fortune = RollFortune();
+        float share = GradeShare() * FortuneScale(fortune)
+                    // Distance still pays, but modestly — this used to more than
+                    // double the payout on a far site, which is how a single
+                    // chest ended a run's need to gather anything.
+                    * Mathf.Lerp(1f, 1.35f, Mathf.InverseLerp(1f, 2.1f, richness));
+
+        var caps = ResourceManager.Instance;
+        int capWood = caps != null ? caps.GetRunMax("Wood") : 100;
+        int capStone = caps != null ? caps.GetRunMax("Stone") : 50;
+        int capFood = caps != null ? caps.GetRunMax("Food") : 30;
+
+        // Not every chest holds everything. A crate of salted meat, an ore cache,
+        // a woodpile — a chest with a CHARACTER is worth remembering, and three
+        // even piles every time is worth nothing.
+        bool anyWood = false, anyStone = false, anyFood = false;
+        int kinds = grade == Grade.Barrow ? Random.Range(2, 4)
+                  : grade == Grade.Shrine ? Random.Range(1, 4)
+                  : Random.Range(1, 3);
+        // Drawn with replacement, so asking for two kinds sometimes yields one —
+        // which is the point: the spread itself varies, not only the amount.
+        for (int i = 0; i < kinds; i++)
+            switch (Random.Range(0, 3))
+            {
+                case 0: anyWood = true; break;
+                case 1: anyStone = true; break;
+                default: anyFood = true; break;
+            }
+
+        // Concentrated when there are fewer kinds, so a single-resource chest is
+        // a proper pile rather than a third of one.
+        int present = (anyWood ? 1 : 0) + (anyStone ? 1 : 0) + (anyFood ? 1 : 0);
+        float focus = present <= 1 ? 1.6f : present == 2 ? 1.25f : 1f;
+
+        int Amount(bool included, int cap) =>
+            included ? Mathf.Max(1, Mathf.RoundToInt(cap * share * focus * Random.Range(0.85f, 1.15f))) : 0;
+
+        int wood = Amount(anyWood, capWood);
+        int stone = Amount(anyStone, capStone);
+        int food = Amount(anyFood, capFood);
+
+        // The XP and crystals the chest itself scatters ride the same roll, so a
+        // rich chest is rich in every way at once instead of the two payouts
+        // disagreeing about how good the find was. Set before SpawnLoot, which
+        // runs on the very next line of LootChest's open sequence.
+        if (_chest != null)
+        {
+            float k = FortuneScale(fortune);
+            _chest.minLootItems = Mathf.Max(1, Mathf.RoundToInt(_chest.minLootItems * k));
+            _chest.maxLootItems = Mathf.Max(_chest.minLootItems, Mathf.RoundToInt(_chest.maxLootItems * k));
+        }
+
+        // SUPPLIES COME OUT AS OBJECTS, not as a number that changes.
+        //
+        // Crediting the backpack directly is the cheap version and it reads as
+        // nothing happening: the lid opens on an empty box while a counter ticks
+        // somewhere at the edge of the screen. Throwing physical pickups out of
+        // the chest costs a handful of prefabs and turns the payout into the thing
+        // the player actually came for — a pile on the ground they walk through.
+        //
+        // Each pickup carries a share of the total, so the backpack ends up with
+        // the same amount either way; the difference is entirely in the watching.
+        // If a drop prefab is missing the amount is credited instead of being lost.
+        var set = ReliquarySet.Load();
+        Vector3 mouth = _chest != null ? _chest.LootOrigin : transform.position + Vector3.up;
+        int creditWood = Scatter(set != null ? set.woodDrop : null, ResourceDrop.ResourceType.Wood, wood, mouth);
+        int creditStone = Scatter(set != null ? set.stoneDrop : null, ResourceDrop.ResourceType.Stone, stone, mouth);
+        int creditFood = Scatter(set != null ? set.foodDrop : null, ResourceDrop.ResourceType.Food, food, mouth);
 
         var rm = ResourceManager.Instance;
         if (rm != null)
         {
-            float scale = richness * grade switch { Grade.Barrow => 1.8f, Grade.Shrine => 1.3f, _ => 1f };
-            // The RUN backpack, not the camp stash.
-            //
-            // Stash resources are invisible mid-run: the player opens a chest,
-            // the backpack still reads 0/100, and it reads as the reward having
-            // failed. Putting it in the backpack means they see it land AND they
-            // still have to carry it home, which is the interesting version.
-            rm.AddRunResources(
-                Mathf.RoundToInt(Random.Range(35f, 70f) * scale),
-                Mathf.RoundToInt(Random.Range(25f, 55f) * scale),
-                Mathf.RoundToInt(Random.Range(15f, 35f) * scale));
+            if (creditWood + creditStone + creditFood > 0)
+                rm.AddRunResources(creditWood, creditStone, creditFood);
             // No diamonds on top of a piece of armour — see ArmourLootTable.
-            if (!gaveArmour) rm.AddDiamonds(Mathf.RoundToInt(Random.Range(12f, 26f) * scale));
+            if (!gaveArmour)
+                rm.AddDiamonds(Mathf.Max(1, Mathf.RoundToInt(Random.Range(8f, 18f) * GradeCoin() * FortuneScale(fortune))));
             rm.UpdateUI();
         }
+    }
 
-        if (_lantern != null) _lantern.enabled = false;
-        ReliquaryDirector.NoteOpened(this);
+    // 0 meagre, 1 fair, 2 rich, 3 hoard. Weighted by grade: a wayside find is
+    // usually a handful and a barrow is usually worth the fight, but neither is
+    // guaranteed, and that uncertainty is the only reason opening one is a moment.
+    private int RollFortune()
+    {
+        int[] weights = grade switch
+        {
+            Grade.Barrow => new[] { 10, 35, 40, 15 },
+            Grade.Shrine => new[] { 30, 42, 22, 6 },
+            _            => new[] { 55, 33, 10, 2 },
+        };
+        int total = 0;
+        foreach (int w in weights) total += w;
+        int roll = Random.Range(0, total);
+        for (int i = 0; i < weights.Length; i++)
+        {
+            roll -= weights[i];
+            if (roll < 0) return i;
+        }
+        return 0;
+    }
+
+    private static float FortuneScale(int fortune) => fortune switch
+    {
+        3 => 2.6f,   // hoard — rare enough to be talked about
+        2 => 1.6f,
+        1 => 1.0f,
+        _ => 0.6f,
+    };
+
+    // Fraction of the BACKPACK a fair find is worth. Everything is expressed
+    // against carrying capacity rather than in absolute numbers so a change to the
+    // backpack size cannot silently make chests trivial or overwhelming.
+    private float GradeShare() => grade switch
+    {
+        Grade.Barrow => 0.38f,
+        Grade.Shrine => 0.24f,
+        _            => 0.14f,
+    };
+
+    private float GradeCoin() => grade switch
+    {
+        Grade.Barrow => 2.0f,
+        Grade.Shrine => 1.4f,
+        _            => 1.0f,
+    };
+
+    // Throws `total` worth of one resource out of the chest as pickups, and hands
+    // back whatever could not be thrown so the caller can credit it directly.
+    private static int Scatter(GameObject prefab, ResourceDrop.ResourceType type, int total, Vector3 mouth)
+    {
+        if (total <= 0) return 0;
+        if (prefab == null) return total;
+
+        // Enough to look like a haul, few enough not to carpet the ground.
+        int pieces = Mathf.Clamp(Mathf.CeilToInt(total / 12f), 3, 8);
+        int per = Mathf.Max(1, total / pieces);
+        int left = total;
+
+        for (int i = 0; i < pieces && left > 0; i++)
+        {
+            int give = (i == pieces - 1) ? left : Mathf.Min(per, left);
+            left -= give;
+
+            var go = Instantiate(prefab, mouth + Random.insideUnitSphere * 0.15f, Random.rotation);
+            var drop = go.GetComponent<ResourceDrop>();
+            if (drop == null) drop = go.AddComponent<ResourceDrop>();
+            drop.resourceType = type;
+            drop.amount = give;
+            // Up and out, so the burst arcs over the open lid rather than
+            // squirting sideways through the chest walls.
+            drop.popForce = Random.Range(4.5f, 7.5f);
+        }
+        return left;
     }
 
     private bool GrantArmour()

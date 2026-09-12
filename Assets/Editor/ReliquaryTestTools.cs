@@ -42,22 +42,26 @@ public static class ReliquaryTestTools
         Vector3 site = pc.transform.position + fwd.normalized * 18f;
         site.y = Ground(site);
 
-        var go = new GameObject($"Reliquary_{grade}_TEST");
-        go.transform.position = site;
-        var rel = go.AddComponent<Reliquary>();
+        // Instantiates THE PREFAB — the same asset the generator places and the
+        // same one a hand-built location would contain. The old version assembled
+        // a chest here by hand, which meant this tool tested a code path that
+        // shipped nowhere: it could look perfect while the real thing was broken,
+        // and it did, for several rounds of "the chest is gigantic".
+        var prefab = set.SiteFor((int)grade);
+        if (prefab == null)
+        {
+            Debug.LogError("[Reliquary/Test] No site prefabs in the set. Run " +
+                           "Tools > Exploration > Build Reliquary Prefabs first.");
+            return;
+        }
+
+        var go = Object.Instantiate(prefab, site, Quaternion.identity);
+        go.name = $"Reliquary_{grade}_TEST";
+        var rel = go.GetComponent<Reliquary>();
+        if (rel == null) { Debug.LogError("[Reliquary/Test] The prefab has no Reliquary component."); return; }
         rel.grade = grade;
         rel.richness = 1.5f;
-
-        var root = new GameObject("Chest");
-        root.transform.SetParent(go.transform, false);
-        root.transform.position = site;
-        Object.Instantiate(set.ChestFor((int)grade), root.transform, false);
-        var chest = root.AddComponent<LootChest>();
-        chest.possibleLoot = set.chestLoot;
-        chest.minLootItems = 4; chest.maxLootItems = 9;
-
-        rel.Bind(chest);
-        rel.Raise(set);
+        rel.buildDecor = true;   // dropped on bare ground, so it dresses itself
 
         Debug.Log($"[Reliquary/Test] {grade} placed 18m ahead of the player at {site}. " +
                   "Walk to it — guardians wake on approach, then hold [E].");
