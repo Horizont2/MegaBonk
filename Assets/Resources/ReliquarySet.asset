@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5b9cefda583eb84c9b47ca2d4cbf3ea, type: 3}
+  m_Name: ReliquarySet
+  m_EditorClassIdentifier: Assembly-CSharp::ReliquarySet
+  chestByGrade:
+  - {fileID: 7056306788243686916, guid: 511198219d384134c8311337315ae660, type: 3}
+  - {fileID: 6359029334351881624, guid: 21e1a44ae31baec42bce7d17f5ff3d6f, type: 3}
+  - {fileID: 5791374329373783010, guid: 69beb7d8398acdb44b9866760561cce2, type: 3}
+  chestLoot:
+  - {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
+  - {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
+  banners:
+  - {fileID: 1998368968366392, guid: e1032c9b5d7d362489670d42997dceb5, type: 3}
+  - {fileID: 1667062371632208, guid: 002f7a569314a244fb643e8ea8d00376, type: 3}
+  runeStones:
+  - {fileID: 2921669142860546498, guid: 62827684f2773b04c9a21b55023bf41b, type: 3}
+  - {fileID: 2921669142860546498, guid: e55a16918fb405a43bf39954caa1ce88, type: 3}
+  remains:
+  - {fileID: 2809303206482566689, guid: 5daff121de6826f4c8029fda5e22b206, type: 3}
+  - {fileID: 2752266846942812301, guid: 01fba43840893414a83863004e3a487b, type: 3}
+  archPrefab: {fileID: 7156326018753446106, guid: c7b5568dca4600f4fa2ab84085be03ad, type: 3}
+  lanternPrefab: {fileID: 1121335532371418928, guid: c6e8c7e735c8a454ab0f13f9009ef93d, type: 3}
+  guardianPrefabs:
+  - {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
+  - {fileID: 2058852120935944091, guid: c7c47f0ce5b83fa46918e9cf2dbb7155, type: 3}
+  - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
