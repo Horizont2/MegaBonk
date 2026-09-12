@@ -2538,7 +2538,8 @@ public static class LocalizationManager
         Add5("HAUL_FAIR",                   "Найдены припасы",         "Provisiones halladas",      "Vorräte gefunden",           "Vivres trouvés",               "Znaleziono zapasy");
         Add5("HAUL_RICH",                   "Богатый схрон",           "Un rico alijo",             "Ein reicher Hort",           "Une riche cache",              "Bogata skrytka");
         Add5("HAUL_HOARD",                  "Клад!",                   "¡Un tesoro!",               "Ein Schatz!",                "Un trésor !",                  "Skarb!");
-        Add5("ELIAS_HELMET_GIVE",          "Элиас: {0} алмазов. Купи шлем, а потом доплати кузнецу, чтобы закалить его — простой там не спасёт.","Elias: {0} diamantes. Compra un yelmo y luego paga al herrero para templarlo.","Elias: {0} Diamanten. Kauf einen Helm und lass ihn dann härten.","Elias : {0} diamants. Achète un heaume, puis fais-le tremper par le forgeron.","Elias: {0} diamentów. Kup hełm, a potem dopłać kowalowi za hartowanie.");
+        Add5("ELIAS_HELMET_GIVE",          "Элиас: {0} алмазов. Пусть кузнец закалит твой шлем перед выходом — это дёшево и остаётся с тобой.","Elias: {0} diamantes. Que el herrero temple tu yelmo antes de partir: es barato y te acompaña.","Elias: {0} Diamanten. Lass den Schmied deinen Helm härten, bevor du aufbrichst.","Elias : {0} diamants. Fais tremper ton heaume avant de partir.","Elias: {0} diamentów. Niech kowal zahartuje twój hełm przed wymarszem.");
+        Add5("GUIDE_TALK_ELIAS_HELMET",     "Поговори с Элиасом перед выходом","Habla con Elias antes de partir","Sprich mit Elias, bevor du aufbrichst","Parle à Elias avant de partir","Porozmawiaj z Eliasem przed wymarszem");
         Add5("GUIDE_UPGRADE_HELMET",        "Улучши шлем в магазине",  "Mejora un yelmo en la tienda","Rüste einen Helm im Laden auf","Améliore un heaume à la boutique","Ulepsz hełm w sklepie");
         Add5("STEP_HELMET_CATEGORY_TITLE",  "Шлемы",                   "Yelmos",                    "Helme",                      "Heaumes",                      "Hełmy");
         Add5("STEP_HELMET_CATEGORY_BODY",   "Снаряжение разделено по слотам. Открой шлемы.","El equipo se ordena por ranura. Abre los yelmos.","Ausrüstung ist nach Slots sortiert. Öffne die Helme.","L'équipement est trié par emplacement. Ouvre les heaumes.","Ekwipunek podzielony jest na sloty. Otwórz hełmy.");
@@ -4002,8 +4003,9 @@ public static class LocalizationManager
 
         // === The guided first upgrade ===
         Add("ELIAS_HELMET_GIVE",
-            "Elias: {0} diamonds. Buy a helmet, then pay the smith again to temper it — a plain one stops nothing out there.",
-            "Еліас: {0} алмазів. Купи шолом, а тоді доплати ковалю, щоб він його загартував — простий там нічого не спинить.");
+            "Elias: {0} diamonds. Have the smith temper your helmet before you ride out — it is cheap, and it stays with you.",
+            "Еліас: {0} алмазів. Хай коваль загартує твій шолом, перш ніж ти вирушиш — це дешево, і воно лишається з тобою.");
+        Add("GUIDE_TALK_ELIAS_HELMET", "Speak to Elias before you ride out", "Поговори з Еліасом перед виступом");
         Add("GUIDE_UPGRADE_HELMET", "Upgrade a helmet at the shop", "Покращ шолом у магазині");
 
         Add("STEP_HELMET_CATEGORY_TITLE", "Helmets", "Шоломи");
