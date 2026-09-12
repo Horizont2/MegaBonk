@@ -370,6 +370,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [HideInInspector] public bool canDeAggro = true;
     // This enemy's own look and gait. Added in Start; see the note there.
     private EnemyPersonality personality;
+    private Vector3 _lastGaitPos;
+    private float _measuredSpeed;
     [HideInInspector] public float loseSightDuration = 6f;   // grace after sight breaks
     [HideInInspector] public float searchDuration = 9f;      // how long the area is searched
     [HideInInspector] public float searchRoamRadius = 7f;
@@ -453,6 +455,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // silently skips the Add.
             personality = GetComponent<EnemyPersonality>();
             if (personality == null) personality = gameObject.AddComponent<EnemyPersonality>();
+            _lastGaitPos = transform.position;
         }
 
         randomOffset = Random.Range(0f, 100f);
@@ -609,7 +612,23 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // would be eighteen chances to get it backwards. Chasing runs; roaming,
         // searching and walking back to a post do not — which is why the game's
         // patrols have always looked like they were sprinting to nowhere.
-        if (personality != null) personality.SetGait(isAggroed && !isSearching);
+        if (personality != null)
+        {
+            personality.SetGait(isAggroed && !isSearching);
+            // Measured travel, not the intended speed: night buffs, the enrage
+            // multiplier, obstacle steering and the strafe all change how far the
+            // enemy actually gets, and it is the actual distance the feet have to
+            // match or they slide.
+            float dt = Time.deltaTime;
+            if (dt > 0f)
+            {
+                Vector3 moved = transform.position - _lastGaitPos;
+                moved.y = 0f;
+                _measuredSpeed = Mathf.Lerp(_measuredSpeed, moved.magnitude / dt, 1f - Mathf.Exp(-10f * dt));
+                _lastGaitPos = transform.position;
+                personality.MatchLocomotion(_measuredSpeed, isPreparingAttack);
+            }
+        }
 
         // --- Плавна анімація UI ХП (Lerp) ---
         if (healthCanvas != null && healthCanvas.activeInHierarchy)
@@ -1518,6 +1537,21 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // top of the wind-up and is mid-clip by now; re-triggering it here
             // would restart the animation on the frame it is supposed to connect.
             if (animator != null) animator.SetBool("isMoving", false);
+
+            // LAND THE BLOW FROM CODE.
+            //
+            // ExecuteAttackDamage used to be called ONLY by an Animation Event
+            // baked into Melee_1H_Attack_Stab. That is a hidden dependency on one
+            // specific clip, and the moment anything swapped the attack animation
+            // — which the personality layer now does on every swing — the event
+            // went with it and enemies stopped dealing any damage at all. Nothing
+            // errored; they simply became harmless.
+            //
+            // The timing is already correct here: this is the end of the
+            // telegraph, which is where the damage was always meant to land. The
+            // 0.2s guard inside ExecuteAttackDamage means a clip that DOES still
+            // carry the event cannot double-hit, so both paths coexist safely.
+            ExecuteAttackDamage();
             // Swing / lunge SFX at the moment the animator commits — the
             // telegraph beeps as the wind-up, this reads as the strike.
             // Dedupe: if the animation clip ALSO has an Animation Event

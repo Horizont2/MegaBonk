@@ -239,6 +239,64 @@ public static class EnemyAnimationTools
         Selection.activeObject = set;
     }
 
+    // Says what each state of the shared enemy controller is ACTUALLY playing.
+    //
+    // The states are named after the clips they were built with — Idle_A plays
+    // Idle_A — so a state whose clip no longer matches its own name is the
+    // signature of a scrambled controller: clip references are stored as fileIDs
+    // into an FBX, and re-importing that FBX can move which clip sits at each id.
+    // That failure is completely silent in play mode; here it is one line.
+    [MenuItem("Tools/Enemies/Report Enemy Animator States", priority = 19)]
+    public static void ReportStates()
+    {
+        const string path = "Assets/Skeletons/characters/fbx/EnemyAnimator.controller";
+        var ac = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(path);
+        if (ac == null)
+        {
+            Debug.LogWarning($"[EnemyAnim] No controller at {path}.");
+            return;
+        }
+
+        var sb = new System.Text.StringBuilder($"[EnemyAnim] {System.IO.Path.GetFileName(path)} states:\n");
+        int suspicious = 0, empty = 0;
+
+        foreach (var layer in ac.layers)
+        {
+            if (layer.stateMachine == null) continue;
+            foreach (var child in layer.stateMachine.states)
+            {
+                var st = child.state;
+                if (st == null) continue;
+                string clipName = st.motion != null ? st.motion.name : "(none)";
+                if (st.motion == null) empty++;
+
+                // Compare only the leading token, so "Idle_A" matching "Idle_A"
+                // passes while "Idle_A" playing "Death_B" does not.
+                string a = Head(st.name), b = Head(clipName);
+                bool odd = st.motion != null && !string.Equals(a, b, System.StringComparison.OrdinalIgnoreCase);
+                if (odd) suspicious++;
+
+                sb.AppendLine($"  {st.name,-14} -> {clipName}{(odd ? "   <-- does not match its state name" : "")}");
+            }
+        }
+
+        if (suspicious > 0 || empty > 0)
+            Debug.LogWarning(sb + $"\n  {suspicious} state(s) play a clip that does not match their name and {empty} play nothing.\n" +
+                             "  If several look shuffled, the FBX their clips live in was re-imported and the fileID\n" +
+                             "  references moved. Restore it with:\n" +
+                             "    git checkout -- \"Assets/Skeletons/Animations/fbx/Rig_Medium\"\n" +
+                             "  then let Unity reimport.");
+        else
+            Debug.Log(sb + "  All states play a clip matching their name.");
+    }
+
+    private static string Head(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        int i = s.IndexOfAny(new[] { '_', ' ', '|' });
+        return i > 0 ? s.Substring(0, i) : s;
+    }
+
     [MenuItem("Tools/Enemies/List Every Clip Found", priority = 20)]
     public static void ListClips()
     {

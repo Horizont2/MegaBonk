@@ -55,11 +55,22 @@ public class ReliquaryDirector : MonoBehaviour
 
     private IEnumerator PlaceWhenWorldExists()
     {
+        // One frame for MissionInitializer.Start to publish the region, then ask.
+        yield return null;
+        if (!WorldEncounterDirector.IsAnyRegionMode())
+        {
+            Debug.Log("[Reliquary] Not a region mission — no reliquaries here.");
+            Destroy(gameObject);
+            yield break;
+        }
+
         // Sites are chosen against the finished terrain and the finished tree
         // cover, so this waits for a definite signal rather than a guessed number
         // of frames — the failure mode here is silence.
         float deadline = Time.time + 90f;
         while (!WorldGenerator.IsGenerationDone && Time.time < deadline) yield return null;
+        if (!WorldGenerator.IsGenerationDone)
+            Debug.LogWarning("[Reliquary] World generation never reported done — placing against whatever terrain exists.");
         yield return null;
 
         Place();
@@ -291,7 +302,18 @@ public class ReliquaryDirector : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
-        if (!WorldEncounterDirector.IsAnyRegionMode()) return;
+        // NO region check here, and that is the whole reason nothing was ever
+        // placed.
+        //
+        // AfterSceneLoad runs BEFORE Start() on the scene's own objects, so at
+        // this moment GameManager.Instance is usually still null and
+        // MissionInitializer has not published PendingMissionRegion yet.
+        // IsAnyRegionMode therefore answered "not a region" on every single load
+        // and the director was never even created — no component, no log, no
+        // symptom to chase.
+        //
+        // WorldEncounterDirector has always dodged this by waiting a frame before
+        // asking. The check now lives in the coroutine below, after that wait.
         if (FindFirstObjectByType<ReliquaryDirector>() != null) return;
         Reset();
         new GameObject("[Reliquaries]").AddComponent<ReliquaryDirector>();

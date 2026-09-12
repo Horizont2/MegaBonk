@@ -392,6 +392,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             // departures from it rather than as four unrelated animations.
             if (personality != null) personality.ArmAttack(EnemyPersonality.Move.Basic);
             if (animator != null) animator.SetTrigger("Attack");
+            // Same hidden dependency as EnemyAI had: the damage was only ever
+            // applied by an Animation Event on the original clip, so swapping the
+            // clip made the boss's basic attack harmless. Slam, Cleave and Charge
+            // already apply their own damage inline; this one did not.
+            ExecuteAttackDamage();
         }
 
         yield return new WaitForSeconds(0.5f);

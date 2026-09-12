@@ -57,9 +57,15 @@ public class EnemyPersonality : MonoBehaviour
     public bool autoDetectArchetype = true;
     public Archetype archetype = Archetype.Minion;
 
+    [Header("Gait matching")]
+    [Tooltip("Ground speed the WALK clips were authored for, in m/s. The clip is played at travelled-speed divided by this, which is what stops the feet sliding.")]
+    public float walkClipSpeed = 1.4f;
+    [Tooltip("Ground speed the RUN clips were authored for, in m/s.")]
+    public float runClipSpeed = 4.2f;
+
     [Header("Individual variation")]
-    [Tooltip("Animation playback speed range. Small numbers: past about 15% either way a shared clip starts to read as slow motion or fast-forward rather than as a different person.")]
-    public Vector2 speedJitter = new Vector2(0.94f, 1.07f);
+    [Tooltip("A small per-enemy tempo difference riding on top of the gait match. Keep it narrow — past about 10% it stops reading as a different person and starts reading as sliding again.")]
+    public Vector2 speedJitter = new Vector2(0.95f, 1.06f);
     [Tooltip("Build. Deliberately tiny — this scales the collider and the hitbox with the model, so anything larger changes how the fight plays, not just how it looks.")]
     public Vector2 scaleJitter = new Vector2(0.97f, 1.03f);
     public bool varyScale = true;
@@ -80,6 +86,8 @@ public class EnemyPersonality : MonoBehaviour
     // attack state back afterwards.
     private AnimationClip _basicAttack;
     private bool _walking = true;
+    // Per-enemy tempo, applied on top of the gait match rather than instead of it.
+    private float _tempo = 1f;
 
     private void Awake()
     {
@@ -257,21 +265,50 @@ public class EnemyPersonality : MonoBehaviour
 
     private void ApplyBody()
     {
-        float speed = Lerp(speedJitter);
-        switch (archetype)
-        {
-            case Archetype.Boss:    speed *= 0.86f; break;   // heavy, deliberate
-            case Archetype.Warrior: speed *= 0.94f; break;
-            case Archetype.Rogue:   speed *= 1.10f; break;   // light and quick
-            case Archetype.Mage:    speed *= 0.97f; break;
-        }
-        _animator.speed = speed;
+        // Playback rate is NOT set here any more.
+        //
+        // Multiplying animator.speed by an archetype figure and a jitter was
+        // exactly why the run cycle stopped matching the ground: the enemy still
+        // travelled at moveSpeed while its legs ran at 0.86x or 1.10x of whatever
+        // rate the clip was authored for, so it skated. Gait rate is now derived
+        // from how fast the enemy is ACTUALLY moving — see MatchLocomotion — and
+        // the per-enemy character comes from which clips it wears, not from
+        // running the same clip at a different speed.
+        _tempo = Lerp(speedJitter);
 
         if (!varyScale || archetype == Archetype.Boss) return;   // a boss is the size it was authored
         float s = Lerp(scaleJitter);
         if (archetype == Archetype.Warrior) s *= 1.03f;
         if (archetype == Archetype.Rogue) s *= 0.97f;
         transform.localScale *= s;
+    }
+
+    // Keep the legs in step with the ground.
+    //
+    // A locomotion clip is authored for one speed. Play it on a character moving
+    // at a different one and the feet slide — the classic tell that a character
+    // is being dragged rather than walking. The fix is to run the clip at
+    // travelled-speed / authored-speed.
+    //
+    // Only while moving, and never during an attack: animator.speed is global, so
+    // scaling it for the legs would speed the swing up too and desynchronise the
+    // blow from the moment the damage lands.
+    public void MatchLocomotion(float worldSpeed, bool attacking)
+    {
+        if (_animator == null) return;
+
+        if (attacking || worldSpeed < 0.15f)
+        {
+            _animator.speed = _tempo;
+            return;
+        }
+
+        float reference = _walking ? walkClipSpeed : runClipSpeed;
+        if (reference <= 0.01f) { _animator.speed = _tempo; return; }
+
+        // The tempo jitter rides on top as a small per-enemy difference, kept
+        // narrow enough that it reads as gait and not as sliding.
+        _animator.speed = Mathf.Clamp(worldSpeed / reference, 0.45f, 2.2f) * _tempo;
     }
 
     // Nudge the animator off whatever beat everything else spawned on.
