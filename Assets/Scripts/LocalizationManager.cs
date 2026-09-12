@@ -2538,6 +2538,16 @@ public static class LocalizationManager
         Add5("HAUL_FAIR",                   "Найдены припасы",         "Provisiones halladas",      "Vorräte gefunden",           "Vivres trouvés",               "Znaleziono zapasy");
         Add5("HAUL_RICH",                   "Богатый схрон",           "Un rico alijo",             "Ein reicher Hort",           "Une riche cache",              "Bogata skrytka");
         Add5("HAUL_HOARD",                  "Клад!",                   "¡Un tesoro!",               "Ein Schatz!",                "Un trésor !",                  "Skarb!");
+        Add5("ELIAS_HELMET_GIVE",          "Элиас: {0} алмазов. Купи шлем, а потом доплати кузнецу, чтобы закалить его — простой там не спасёт.","Elias: {0} diamantes. Compra un yelmo y luego paga al herrero para templarlo.","Elias: {0} Diamanten. Kauf einen Helm und lass ihn dann härten.","Elias : {0} diamants. Achète un heaume, puis fais-le tremper par le forgeron.","Elias: {0} diamentów. Kup hełm, a potem dopłać kowalowi za hartowanie.");
+        Add5("GUIDE_UPGRADE_HELMET",        "Улучши шлем в магазине",  "Mejora un yelmo en la tienda","Rüste einen Helm im Laden auf","Améliore un heaume à la boutique","Ulepsz hełm w sklepie");
+        Add5("STEP_HELMET_CATEGORY_TITLE",  "Шлемы",                   "Yelmos",                    "Helme",                      "Heaumes",                      "Hełmy");
+        Add5("STEP_HELMET_CATEGORY_BODY",   "Снаряжение разделено по слотам. Открой шлемы.","El equipo se ordena por ranura. Abre los yelmos.","Ausrüstung ist nach Slots sortiert. Öffne die Helme.","L'équipement est trié par emplacement. Ouvre les heaumes.","Ekwipunek podzielony jest na sloty. Otwórz hełmy.");
+        Add5("STEP_HELMET_PICK_TITLE",      "Выбери шлем",             "Elige un yelmo",            "Wähle einen Helm",           "Choisis un heaume",            "Wybierz hełm");
+        Add5("STEP_HELMET_PICK_BODY",       "Выбери любой, чтобы увидеть характеристики.","Elige uno para ver sus estadísticas.","Wähle einen, um die Werte zu sehen.","Choisis-en un pour voir ses stats.","Wybierz jeden, by zobaczyć statystyki.");
+        Add5("STEP_HELMET_BUY_TITLE",       "Закали его",              "Témplalo",                  "Härte ihn",                  "Trempe-le",                    "Zahartuj go");
+        Add5("STEP_HELMET_BUY_BODY",        "Каждый уровень стоит алмазы и навсегда поднимает броню.","Cada nivel cuesta diamantes y sube la armadura para siempre.","Jede Stufe kostet Diamanten und erhöht die Rüstung dauerhaft.","Chaque niveau coûte des diamants et augmente l'armure définitivement.","Każdy poziom kosztuje diamenty i trwale zwiększa pancerz.");
+        Add5("STEP_HELMET_DONE_TITLE",      "Готово",                  "Listo",                     "Fertig",                     "Terminé",                      "Gotowe");
+        Add5("STEP_HELMET_DONE_BODY",       "Эта броня теперь твоя в каждом забеге. Возвращайся в лагерь.","Esa armadura es tuya en cada partida. Vuelve al campamento.","Diese Rüstung gehört dir in jedem Lauf. Kehr ins Lager zurück.","Cette armure est à toi à chaque partie. Rentre au camp.","Ten pancerz jest twój w każdym biegu. Wracaj do obozu.");
         Add5("PRESS_ANY_KEY",               "Нажми любую клавишу, чтобы продолжить","Pulsa cualquier tecla para continuar","Beliebige Taste zum Fortfahren","Appuie sur une touche pour continuer","Naciśnij dowolny klawisz, by kontynuować");
         Add5("PROMPT_TALK_ELIAS",           "[E] Поговорить с Элиасом","[E] Hablar con Elias",      "[E] Mit Elias sprechen",     "[E] Parler à Elias",           "[E] Porozmawiaj z Eliasem");
         Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
@@ -3989,6 +3999,29 @@ public static class LocalizationManager
 
         // === Region victory screen ===
         Add("PRESS_ANY_KEY", "Press any key to continue", "Натисни будь-яку клавішу, щоб продовжити");
+
+        // === The guided first upgrade ===
+        Add("ELIAS_HELMET_GIVE",
+            "Elias: {0} diamonds. Buy a helmet, then pay the smith again to temper it — a plain one stops nothing out there.",
+            "Еліас: {0} алмазів. Купи шолом, а тоді доплати ковалю, щоб він його загартував — простий там нічого не спинить.");
+        Add("GUIDE_UPGRADE_HELMET", "Upgrade a helmet at the shop", "Покращ шолом у магазині");
+
+        Add("STEP_HELMET_CATEGORY_TITLE", "Helmets", "Шоломи");
+        Add("STEP_HELMET_CATEGORY_BODY",
+            "Gear is sorted by slot. Open the helmets.",
+            "Спорядження поділене за слотами. Відкрий шоломи.");
+        Add("STEP_HELMET_PICK_TITLE", "Choose a helmet", "Обери шолом");
+        Add("STEP_HELMET_PICK_BODY",
+            "Pick one to see its stats. Anything you already own can be tempered.",
+            "Обери будь-який, щоб побачити характеристики. Усе, чим ти вже володієш, можна загартувати.");
+        Add("STEP_HELMET_BUY_TITLE", "Temper it", "Загартуй його");
+        Add("STEP_HELMET_BUY_BODY",
+            "Each level costs diamonds and raises armour for good — it carries between runs.",
+            "Кожен рівень коштує алмази й піднімає броню назавжди — вона переходить між забігами.");
+        Add("STEP_HELMET_DONE_TITLE", "Done", "Готово");
+        Add("STEP_HELMET_DONE_BODY",
+            "That armour is yours for every run from now on. Head back to camp when you are ready.",
+            "Ця броня тепер твоя в кожному забігу. Повертайся до табору, коли будеш готовий.");
         Add("PROMPT_MOUNT_HORSE", "[E] Mount Horse & Escape", "[E] Осідлати коня і втекти");
         Add("PROMPT_UPGRADE_ELIAS_FIRST",
             "<color=#FF4444>Upgrade Elias's Lodge first!</color>",

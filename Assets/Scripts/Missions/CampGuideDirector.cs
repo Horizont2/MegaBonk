@@ -309,6 +309,12 @@ public class CampGuideDirector : MonoBehaviour
         // 8. Send them at the second region
         steps.Add(new GuideStep { promptKey = "GUIDE_SEND_ARMY",      target = mapT,      playerPrefsKey = "MercFirstDeployed",     requiredValue = 1 });
 
+        // 8b. Elias has just paid for a helmet. This step points at the shop
+        //     and completes when the upgrade actually lands — the shop's own
+        //     spotlight walkthrough takes over once the player is inside, see
+        //     ShopTutorialDirector.
+        steps.Add(new GuideStep { promptKey = "GUIDE_UPGRADE_HELMET", target = shopT, playerPrefsKey = ShopTutorialDirector.PP_DONE, requiredValue = 1 });
+
         // ---- Camp errands, in their original order ----------------------
         // 9. Build the storage vault so more resource capacity unlocks.
         //    Key derived from the real building above, not hardcoded.

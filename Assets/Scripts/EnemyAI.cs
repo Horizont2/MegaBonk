@@ -176,6 +176,42 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private float stunTimer = 0f;
     private float lastAttackTime;
     private bool isPreparingAttack = false;
+
+    // ==== READABLE WINDOWS ====
+    //
+    // Every enemy used to wind up for exactly the same 0.65 s, which is why a
+    // crowd read as weather rather than as a set of problems. When the tell is
+    // identical on all of them there is nothing to notice, so the only strategy
+    // left is to back away from all of it at once — and being unable to answer a
+    // tell is what makes a fight draining rather than hard.
+    //
+    // Weighting the wind-up by archetype turns the same crowd into a readable
+    // one: the rogue's jab is over before you can react and barely hurts, the
+    // warrior's is the one you time your dodge on, and the boss's is long enough
+    // to walk around behind. The player starts CHOOSING who to hit first, which
+    // is the decision the fight was missing.
+    public bool IsPreparingAttack => isPreparingAttack;
+
+    private float TelegraphScale
+    {
+        get
+        {
+            if (isBoss) return 1.75f;
+            var a = personality != null ? personality.archetype : EnemyPersonality.Archetype.Minion;
+            switch (a)
+            {
+                case EnemyPersonality.Archetype.Boss:        return 1.75f;
+                case EnemyPersonality.Archetype.Warrior:     return 1.15f;
+                case EnemyPersonality.Archetype.Necromancer: return 1.30f;
+                case EnemyPersonality.Archetype.Mage:        return 1.30f;
+                case EnemyPersonality.Archetype.Rogue:       return 0.62f;
+                case EnemyPersonality.Archetype.Archer:      return 1.0f;
+                default:                                     return 0.78f;   // Minion
+            }
+        }
+    }
+
+    private float EffectiveTelegraph => attackTelegraphTime * TelegraphScale;
     private Transform mainCamTransform;
 
     private static Transform s_player;
@@ -1486,11 +1522,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isBoss && AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
 
-        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
+        float telegraph = EffectiveTelegraph;
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, telegraph + 0.2f);
 
         if (isElite && playerTarget != null)
         {
-            playerTarget.OpenPerfectDodgeWindow(transform, attackTelegraphTime + 0.6f);
+            playerTarget.OpenPerfectDodgeWindow(transform, telegraph + 0.6f);
 
             if (weaponGlintVFX != null && ObjectPoolManager.Instance != null)
                 ObjectPoolManager.Instance.SpawnFromPool(weaponGlintVFX, transform.position + Vector3.up * 1.5f, Quaternion.identity);
@@ -1503,11 +1540,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Color baseTele = isEnraged ? Color.black : (isElite ? new Color(1f, 0.5f, 0f) : new Color(1f, 0.15f, 0.05f));
         Color flashTele = Color.white;
         float elapsed = 0f;
-        while (elapsed < attackTelegraphTime)
+        // A heavy swing pulses SLOWER than a light one. The flash rate is the
+        // first thing the eye picks up in a crowd, long before the animation
+        // reads, so it has to carry the same information the length does.
+        float pulseRate = Mathf.Lerp(13f, 5f, Mathf.InverseLerp(0.6f, 1.8f, TelegraphScale));
+        Transform body = animator != null ? animator.transform : null;
+        Vector3 bodyRest = body != null ? body.localScale : Vector3.one;
+        while (elapsed < telegraph)
         {
             elapsed += Time.deltaTime;
-            float pulse = Mathf.PingPong(elapsed * 8f, 1f);
+            float pulse = Mathf.PingPong(elapsed * pulseRate, 1f);
             SetColor(Color.Lerp(baseTele, flashTele, pulse));
+
+            // The body winds up as well as the colour. A heavy attacker visibly
+            // gathers itself — colour alone is a HUD effect painted on a model,
+            // and players read silhouettes far faster than they read tints.
+            if (body != null && TelegraphScale > 0.9f)
+            {
+                float k = Mathf.Clamp01(elapsed / Mathf.Max(0.01f, telegraph));
+                float swell = 1f + Mathf.Sin(k * Mathf.PI) * 0.06f * (TelegraphScale - 0.9f) * 2f;
+                body.localScale = bodyRest * swell;
+            }
 
             // Press the attack IN MOTION instead of freezing: keep facing and
             // lunging toward the player through the wind-up, so the strike lands

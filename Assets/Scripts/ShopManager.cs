@@ -41,6 +41,13 @@ public class ShopManager : MonoBehaviour
     // it ever toggles the pause menu.
     public bool IsInsideCategory { get; private set; }
 
+    // Read by ShopTutorialDirector. Exposed as state rather than as an event so
+    // the tutorial can WATCH the shop instead of the shop having to tell it —
+    // a player who reaches the same state by another route is then credited
+    // exactly the same, which is the difference between a guide and a rail.
+    public bool HasSelection => isViewingWeapon ? selectedWeaponData != null : selectedArmorData != null;
+    public Button exitButton => backToCampButton;
+
     [Header("Arsenal Category Buttons (WEAPONS)")]
     public Button btnCategorySwords;
     public Button btnCategoryAxes;
@@ -1041,6 +1048,13 @@ public class ShopManager : MonoBehaviour
             // on BUY, so upgrading gear you already owned never credited it.
             if (PlayerPrefs.GetInt("ShopFirstPurchase", 0) == 0)
                 PlayerPrefs.SetInt("ShopFirstPurchase", 1);
+
+            // The guided first upgrade. Credited on the UPGRADE actually
+            // landing, never on the button being clicked — a press that failed
+            // for want of diamonds must not tick the objective and tell the
+            // player they did something they did not.
+            if (!isViewingWeapon && PlayerPrefs.GetInt(ShopTutorialDirector.PP_ACTIVE, 0) == 1)
+                PlayerPrefs.SetInt(ShopTutorialDirector.PP_DONE, 1);
         }
 
         PlayerPrefs.Save();

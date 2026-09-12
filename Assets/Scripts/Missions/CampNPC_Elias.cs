@@ -97,6 +97,7 @@ public class CampNPC_Elias : MonoBehaviour
         if (lodgeLvl == 1 && PlayerPrefs.GetInt("Elias_Intro", 0) == 0) return true;
         if (lodgeLvl == 2 && PlayerPrefs.GetInt("Elias_TableBuilt", 0) == 0) return true;
         if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_WarChest", 0) == 0) return true;
+        if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_Helmet", 0) == 0) return true;
         if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_Lore1", 0) == 0) return true;
         if (conqueredCount >= 4 && PlayerPrefs.GetInt("Elias_Lore2", 0) == 0) return true;
         if (lodgeLvl == 3 && PlayerPrefs.GetInt("Elias_DesertBuilt", 0) == 0) return true;
@@ -182,6 +183,25 @@ public class CampNPC_Elias : MonoBehaviour
             yield return StartCoroutine(ShowSubtitle(
                 LocalizationManager.Tr("ELIAS_WARCHEST_GIVE", purse, MercenaryRoster.GuideSquadSize), 5f));
             PlayerPrefs.SetInt("Elias_WarChest", 1);
+        }
+        // The helmet purse. Sits after the war chest and before the lore, so
+        // the first two things Elias does with the player's first victory are
+        // both practical — an army, then armour. A lore aside wedged between
+        // them would break a run of promises the guide plate is making.
+        else if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_Helmet", 0) == 0)
+        {
+            const int purse = 260;
+            yield return StartCoroutine(ShowSubtitle("Elias: One more thing. You went into that province bare-headed, and I would rather not bury you.", 4.5f));
+            yield return StartCoroutine(ShowSubtitle("Elias: There is a smith at the market who will not ask where the coin came from.", 4f));
+            if (ResourceManager.Instance != null) ResourceManager.Instance.AddDiamonds(purse);
+            yield return StartCoroutine(ShowSubtitle(
+                LocalizationManager.Tr("ELIAS_HELMET_GIVE", purse), 5f));
+            PlayerPrefs.SetInt("Elias_Helmet", 1);
+            // Arms the guided upgrade. The shop's tutorial director only exists
+            // while this is set, so the walkthrough cannot ambush a player who
+            // wandered into the shop for their own reasons.
+            PlayerPrefs.SetInt(ShopTutorialDirector.PP_ACTIVE, 1);
+            PlayerPrefs.Save();
         }
         else if (conqueredCount >= 1 && PlayerPrefs.GetInt("Elias_Lore1", 0) == 0)
         {

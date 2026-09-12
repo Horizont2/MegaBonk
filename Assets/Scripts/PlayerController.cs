@@ -2050,13 +2050,51 @@ public class PlayerController : MonoBehaviour, IDamageable
                 // and displayed but never applied to any damage.
                 float dmgForThis = isEnemy ? finalDmg * currentMultiplier : finalDmg;
 
+                // ==== PAY FOR MOVING ====
+                //
+                // Backing away was strictly the best answer to everything, and
+                // that is what made fights feel like a grind rather than a
+                // fight: there was no reason to ever be anywhere except further
+                // back, so the player's only input was retreat, and the crowd
+                // was weather to be outlasted.
+                //
+                // Two openings change the shape of it. Hitting something that is
+                // WINDING UP punishes the tell the enemy just showed — reading
+                // the crowd now buys something concrete. And hitting something
+                // in the BACK rewards going around a fight rather than standing
+                // off it. Both are things retreating cannot get you, so circling
+                // and picking targets becomes the strong play instead of a
+                // stylish way to lose.
+                bool punished = false, backstab = false;
+                var foe = damageable as EnemyAI;
+                if (foe != null && !foe.IsDead)
+                {
+                    punished = foe.IsPreparingAttack;
+
+                    Vector3 toMe = transform.position - foe.transform.position; toMe.y = 0f;
+                    Vector3 fwd = foe.transform.forward; fwd.y = 0f;
+                    if (toMe.sqrMagnitude > 0.01f && fwd.sqrMagnitude > 0.01f)
+                        backstab = Vector3.Dot(fwd.normalized, toMe.normalized) < -0.35f;
+
+                    // They stack, but not multiplicatively — catching a heavy
+                    // attacker from behind mid-swing should be a great moment,
+                    // not a one-shot that removes the fight it just rewarded.
+                    float bonus = 1f + (punished ? 0.5f : 0f) + (backstab ? 0.35f : 0f);
+                    dmgForThis *= bonus;
+                }
+
                 DamageInfo hitInfo = new DamageInfo
                 {
                     Amount = dmgForThis,
                     IsCritical = isCriticalHit,
                     PushDirection = pushDir,
-                    KnockbackForce = kForce,
-                    StunDuration = isCriticalHit ? 1.0f : 0.4f,
+                    KnockbackForce = punished ? kForce * 1.8f : kForce,
+                    // A punished wind-up STAGGERS. That is the real reward — the
+                    // swing that was about to land does not, so reading the tell
+                    // and answering it removes damage from the fight as well as
+                    // adding it. Without the interrupt the bonus is just a
+                    // number and the player never learns the window exists.
+                    StunDuration = punished ? 1.1f : (isCriticalHit ? 1.0f : 0.4f),
                     HitPoint = col.ClosestPoint(meleePoint.position)
                 };
 
