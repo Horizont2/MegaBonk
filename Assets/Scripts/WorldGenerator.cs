@@ -3720,63 +3720,30 @@ public class WorldGenerator : MonoBehaviour
             GameObject instance = Instantiate(poi.prefab, groundPos, finalRot, poiContainer);
 
             // 3. РОЗУМНЕ ПРИТИСКАННЯ ДО ЗЕМЛІ (Глобальний фікс Pivot'ів)
-            BoxCollider rootBox = instance.GetComponent<BoxCollider>();
-            if (rootBox != null)
+            //
+            // THE VISIBLE GEOMETRY DECIDES, ALWAYS. The root BoxCollider is only
+            // a fallback for a prefab with nothing to render.
+            //
+            // This used to be the other way round: a BoxCollider on the root won
+            // outright and the meshes were never looked at. That is how a whole
+            // hand-built fort ended up hanging in the sky. The branch also never
+            // referenced the ground height at all — it just shifted the instance
+            // by the collider's own bottom offset, so a collider that does not
+            // tightly wrap the build (a default 1×1×1 box someone added for a
+            // trigger, a wide trigger volume, a collider sized around the walls
+            // but not the foundations) put the location wherever its pivot
+            // happened to be. The player does not stand on a collider. They look
+            // at the mesh, and the mesh is what has to touch the ground.
+            bool snapped = TrySnapByMeshes(instance, exactGroundY);
+            if (!snapped)
             {
-                // Метод А: Якщо на руті префабу є BoxCollider (як на Тотемах)
-                float sy = rootBox.size.y * instance.transform.localScale.y;
-                float cy = rootBox.center.y * instance.transform.localScale.y;
-                float bottomOffset = cy - (sy / 2f);
-                instance.transform.position -= new Vector3(0, bottomOffset, 0);
-            }
-            else
-            {
-                // Метод Б: Якщо колайдера немає — скануємо 3D-сітки (Meshes).
-                // We snap the STRUCTURE's base to the ground — but decorative
-                // geometry that is DELIBERATELY sunk below grade (water-mill
-                // wheels dipping into a river, foliage/trees planted deep in the
-                // soil) must be EXCLUDED from that calc. Including them made the
-                // snap lift the whole location so those parts sat on top of the
-                // ground, floating the castle/building in the air.
-                List<float> structuralBottoms = new List<float>(16);
-                List<float> allBottoms = new List<float>(16);
-                foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>(false))
+                BoxCollider rootBox = instance.GetComponent<BoxCollider>();
+                if (rootBox != null)
                 {
-                    if (rend == null || !rend.enabled) continue;
-                    float b = rend.bounds.min.y;
-                    allBottoms.Add(b);
-                    if (!IsBelowGradeDecor(rend.transform, instance.transform)) structuralBottoms.Add(b);
-                }
-                foreach (var rend in instance.GetComponentsInChildren<SkinnedMeshRenderer>(false))
-                {
-                    if (rend == null || !rend.enabled) continue;
-                    float b = rend.bounds.min.y;
-                    allBottoms.Add(b);
-                    if (!IsBelowGradeDecor(rend.transform, instance.transform)) structuralBottoms.Add(b);
-                }
-
-                // Prefer the structural set; fall back to everything if a prefab
-                // is entirely made of "decor"-named parts (so we never skip snap).
-                List<float> bottoms = structuralBottoms.Count > 0 ? structuralBottoms : allBottoms;
-
-                if (bottoms.Count > 0)
-                {
-                    bottoms.Sort();
-                    float lowestY = bottoms[0];
-
-                    // Secondary safety: even among structural parts, reject a lone
-                    // deep outlier (a foundation pile) so it can't rocket the loc up.
-                    if (bottoms.Count >= 3)
-                    {
-                        float span = bottoms[bottoms.Count - 1] - bottoms[0];
-                        float gap = bottoms[1] - bottoms[0];
-                        if (span > 0.01f && gap > span * 0.5f && gap > 1.5f)
-                            lowestY = bottoms[1];
-                    }
-
-                    // Рахуємо різницю між базою моделі та землею і притискаємо об'єкт!
-                    float delta = exactGroundY - lowestY;
-                    instance.transform.position += new Vector3(0f, delta, 0f);
+                    float sy = rootBox.size.y * instance.transform.localScale.y;
+                    float cy = rootBox.center.y * instance.transform.localScale.y;
+                    float bottomOffset = cy - (sy / 2f);
+                    instance.transform.position -= new Vector3(0, bottomOffset, 0);
                 }
             }
 
@@ -3786,6 +3753,75 @@ public class WorldGenerator : MonoBehaviour
         }
 
         GameLog.Info($"[AAA Gen] Успішно згенеровано {plannedPOIs.Count} POI.");
+    }
+
+    // Sits a location's visible base on the ground, and says so when it cannot.
+    //
+    // Returns false only when the prefab has nothing to render, which is the one
+    // case where the root collider is a better answer than nothing.
+    private bool TrySnapByMeshes(GameObject instance, float exactGroundY)
+    {
+        // We snap the STRUCTURE's base to the ground — but decorative geometry
+        // that is DELIBERATELY sunk below grade (water-mill wheels dipping into a
+        // river, foliage/trees planted deep in the soil) must be EXCLUDED from
+        // that calc. Including them made the snap lift the whole location so
+        // those parts sat on top of the ground, floating the building in the air.
+        List<float> structuralBottoms = new List<float>(16);
+        List<float> allBottoms = new List<float>(16);
+
+        foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>(false))
+        {
+            if (rend == null || !rend.enabled) continue;
+            float b = rend.bounds.min.y;
+            allBottoms.Add(b);
+            if (!IsBelowGradeDecor(rend.transform, instance.transform)) structuralBottoms.Add(b);
+        }
+        foreach (var rend in instance.GetComponentsInChildren<SkinnedMeshRenderer>(false))
+        {
+            if (rend == null || !rend.enabled) continue;
+            float b = rend.bounds.min.y;
+            allBottoms.Add(b);
+            if (!IsBelowGradeDecor(rend.transform, instance.transform)) structuralBottoms.Add(b);
+        }
+
+        // Prefer the structural set; fall back to everything if a prefab is
+        // entirely made of "decor"-named parts, so we never skip the snap.
+        List<float> bottoms = structuralBottoms.Count > 0 ? structuralBottoms : allBottoms;
+        if (bottoms.Count == 0) return false;
+
+        bottoms.Sort();
+        float lowestY = bottoms[0];
+
+        // Even among structural parts, reject a lone deep outlier (a foundation
+        // pile, a buried anchor) so it cannot rocket the whole location upward.
+        if (bottoms.Count >= 3)
+        {
+            float span = bottoms[bottoms.Count - 1] - bottoms[0];
+            float gap = bottoms[1] - bottoms[0];
+            if (span > 0.01f && gap > span * 0.5f && gap > 1.5f)
+                lowestY = bottoms[1];
+        }
+
+        float delta = exactGroundY - lowestY;
+
+        // A correction this large is not a pivot offset, it is a broken prefab —
+        // a mis-scaled child, a renderer left at the world origin, a collider
+        // someone parented in from another scene. Applying it would fling the
+        // location into the sky, which is exactly the bug the player reported.
+        // Clamping and NAMING it means the next one is a two-second fix instead
+        // of another round of "why is the fort floating".
+        const float sane = 40f;
+        if (Mathf.Abs(delta) > sane)
+        {
+            Debug.LogWarning($"[AAA Gen] '{instance.name}' wanted a {delta:F1} m vertical correction to sit on the " +
+                             $"ground — that is not a pivot offset, something in the prefab is far from the rest of " +
+                             $"it. Clamped to {Mathf.Sign(delta) * sane:F0} m. Check for a stray renderer or a " +
+                             "mis-scaled child.", instance);
+            delta = Mathf.Sign(delta) * sane;
+        }
+
+        instance.transform.position += new Vector3(0f, delta, 0f);
+        return true;
     }
 
     // Names (on the renderer or any ancestor up to the loc root) that mark

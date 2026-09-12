@@ -2538,6 +2538,7 @@ public static class LocalizationManager
         Add5("HAUL_FAIR",                   "Найдены припасы",         "Provisiones halladas",      "Vorräte gefunden",           "Vivres trouvés",               "Znaleziono zapasy");
         Add5("HAUL_RICH",                   "Богатый схрон",           "Un rico alijo",             "Ein reicher Hort",           "Une riche cache",              "Bogata skrytka");
         Add5("HAUL_HOARD",                  "Клад!",                   "¡Un tesoro!",               "Ein Schatz!",                "Un trésor !",                  "Skarb!");
+        Add5("PRESS_ANY_KEY",               "Нажми любую клавишу, чтобы продолжить","Pulsa cualquier tecla para continuar","Beliebige Taste zum Fortfahren","Appuie sur une touche pour continuer","Naciśnij dowolny klawisz, by kontynuować");
         Add5("PROMPT_TALK_ELIAS",           "[E] Поговорить с Элиасом","[E] Hablar con Elias",      "[E] Mit Elias sprechen",     "[E] Parler à Elias",           "[E] Porozmawiaj z Eliasem");
         Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
         Add5("TUTORIAL_TIP_DEFAULT",        "СОВЕТ",                   "PISTA",                     "TIPP",                       "ASTUCE",                       "PORADA");
@@ -3985,6 +3986,9 @@ public static class LocalizationManager
         Add("HAUL_FAIR", "Supplies Found", "Знайдено припаси");
         Add("HAUL_RICH", "A Rich Cache", "Багатий схрон");
         Add("HAUL_HOARD", "A Hoard!", "Скарб!");
+
+        // === Region victory screen ===
+        Add("PRESS_ANY_KEY", "Press any key to continue", "Натисни будь-яку клавішу, щоб продовжити");
         Add("PROMPT_MOUNT_HORSE", "[E] Mount Horse & Escape", "[E] Осідлати коня і втекти");
         Add("PROMPT_UPGRADE_ELIAS_FIRST",
             "<color=#FF4444>Upgrade Elias's Lodge first!</color>",

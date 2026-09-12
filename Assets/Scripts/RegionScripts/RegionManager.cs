@@ -340,271 +340,139 @@ public class RegionManager : MonoBehaviour
         StartCoroutine(FinalRegionPurificationRoutine(pos));
     }
 
+    // Taking a region: stop the fight, hand over the spoils, show them, leave.
+    //
+    // This replaced a three-hundred-line cinematic — hero beat, heal-the-land
+    // shockwave, bird flythrough, slow-mo, FOV drift, dolly, title card, reward
+    // hold — with fifteen skip points and a dozen globals to restore before the
+    // player could go anywhere. Any one of them failing stranded the player in a
+    // conquered region, and that kept happening across three separate attempts
+    // to fix it. The failure was structural: a path that long always has a
+    // branch that does not reach the end.
+    //
+    // Everything that MUST happen now happens in the first twenty lines, before
+    // any presentation at all. The reward is granted, the region is marked
+    // conquered and the counter is bumped whether or not a single frame of the
+    // screen ever draws. See RegionVictoryScreen for the rest.
     private IEnumerator FinalRegionPurificationRoutine(Vector3 finalTotemPos)
     {
-        // Lock down: stop random spawns + clean lingering bosses so nothing kills
-        // the player mid-victory. Regular EnemyAI will be cleared visually by a
-        // shockwave below, not yanked from the world. GlobalFreeze halts every
-        // surviving enemy instantly so none keeps swinging/wandering during the
-        // ~2s cleanse wave and the camera flythrough.
         EnemySpawner.IsSpawningBlocked = true;
         EnemyAI.GlobalFreeze = true;
         CinematicActive = true;
 
-        TutorialBossAI[] remainingBosses = Object.FindObjectsByType<TutorialBossAI>(FindObjectsSortMode.None);
-        foreach (TutorialBossAI boss in remainingBosses)
-        {
+        foreach (var boss in Object.FindObjectsByType<TutorialBossAI>(FindObjectsSortMode.None))
             if (boss != null) Destroy(boss.gameObject);
-        }
 
+        if (playerController != null) { playerController.isControlBlocked = true; playerController.isCinematicInvincible = true; }
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.HideLevelObjective();
-            GlobalHUD.Instance.ShowCinematicBars();
             GlobalHUD.Instance.SetGameplayPanelsActive(false);
-            GlobalHUD.Instance.ShowSkipPrompt(LocalizationManager.Tr("Press <b>SPACE</b> to Skip"));
-        }
-
-        if (playerController != null) { playerController.isControlBlocked = true; playerController.isCinematicInvincible = true; }
-
-        Camera mainCam = Camera.main;
-        CameraFollow camFollow = mainCam != null ? mainCam.GetComponent<CameraFollow>() : null;
-        if (camFollow != null) camFollow.isCinematicMode = true;
-
-        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
-        if (dnc != null)
-        {
-            dnc.isWeatherLocked = true;
-            dnc.weatherTransitionSpeed = 0.5f;
-            dnc.skyboxFadeSpeed = 0.5f;
-            dnc.ForceWeather(WeatherState.Clear);
-        }
-
-        float mapScale = 200f;
-        if (Terrain.activeTerrain != null) mapScale = Terrain.activeTerrain.terrainData.size.x;
-        // MUCH lower + flatter than before. The old 35–60 m top-down apex flew so
-        // high that the terrain's tree-distance culling kicked in and the forest
-        // vanished, leaving bare ground under the victory shot. Keep it low and
-        // more horizontal so the trees around the totem stay rendered and in frame.
-        float camHeight = Mathf.Clamp(mapScale * 0.06f, 16f, 26f);
-
-        Vector3 apexCamPos = finalTotemPos + new Vector3(0f, camHeight, -camHeight * 1.3f);
-
-        // --- AAA layer: duck the music bed for the whole sequence, rack
-        // cinematic DoF on, and give the camera a living handheld drift.
-        // All three are torn down in EarlyExitRoutine / the normal exit.
-        if (AudioManager.Instance != null) AudioManager.Instance.DuckMusic(0.35f, 0.5f, 8.5f, 2.0f);
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(true);
-        CinematicHandheld.Begin(mainCam, 0.05f, 0.4f, 0.45f);
-
-        // === PHASE 0: hero beat (0.7 s) =============================================
-        // Hold on the player for a breath before anything erupts — the eye
-        // needs an anchor shot so the shockwave that follows has context.
-        // Slow push-in toward the player: classic anticipation framing.
-        if (playerController != null && mainCam != null)
-        {
-            Vector3 preRollStart = mainCam.transform.position;
-            Vector3 toPlayer = (playerController.transform.position + Vector3.up * 1.2f) - preRollStart;
-            Vector3 preRollEnd = preRollStart + toPlayer.normalized * Mathf.Min(0.8f, toPlayer.magnitude * 0.1f);
-            float preRoll = 0f;
-            const float preRollDur = 0.7f;
-            while (preRoll < preRollDur)
-            {
-                if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-                preRoll += Time.unscaledDeltaTime;
-                // Ease-in-out — the push starts and ends gently.
-                float pt = Mathf.SmoothStep(0f, 1f, preRoll / preRollDur);
-                mainCam.transform.position = Vector3.Lerp(preRollStart, preRollEnd, pt);
-                yield return null;
-            }
-        }
-
-        // === PHASE 1: shockwave purifies the world (1.2 s) ===========================
-        // Bounded play — any of these cinematic stingers could be authored with
-        // an internal loop region; PlaySFXOnce stops it after a single pass so a
-        // victory sound can't ring out repeatedly.
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFXOnce(AudioID.Region_Shockwave, 4f);
-        if (camFollow != null) camFollow.TriggerShake(0.5f, 0.4f);
-
-        // Procedural corruption-departure beam — black/dark plume rising from the totem
-        GameObject corruptionBeam = CreateCorruptionBeam(finalTotemPos);
-
-        // Schedule every lingering EnemyAI to "evaporate" in a radial wave from the totem
-        StartCoroutine(CleanseEnemiesWaveRoutine(finalTotemPos));
-
-        if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-        yield return WaitOrSkip(1.2f);
-
-        // === PHASE 2: camera rises to apex (2.0 s) ==================================
-        // Slower than before (1.5 → 2.0 s) with an ease-in-out profile:
-        // the old ease-out-only curve launched at full speed from frame
-        // one, which read as a teleport-ish jolt. A crane operator
-        // accelerates gently, cruises, then brakes into the apex.
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFXOnce(AudioID.Cinematic_Whoosh, 3f);
-
-        Vector3 startCamPos = mainCam.transform.position;
-        Quaternion startCamRot = mainCam.transform.rotation;
-        float startFov = mainCam.fieldOfView;
-
-        float elapsed = 0f;
-        const float riseDuration = 2.0f;
-        while (elapsed < riseDuration)
-        {
-            if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-            elapsed += Time.unscaledDeltaTime;
-            float x = Mathf.Clamp01(elapsed / riseDuration);
-            // Smoother-step (6x^5-15x^4+10x^3): zero velocity AND zero
-            // acceleration at both ends — the camera never jerks.
-            float t = x * x * x * (x * (x * 6f - 15f) + 10f);
-            mainCam.transform.position = Vector3.Lerp(startCamPos, apexCamPos, t);
-            mainCam.fieldOfView = Mathf.Lerp(startFov, 70f, t);
-            mainCam.transform.rotation = Quaternion.Slerp(startCamRot,
-                Quaternion.LookRotation(finalTotemPos - apexCamPos), t);
-            yield return null;
-        }
-
-        // Quest-complete sting at apex. The triumphant VICTORY stinger is saved
-        // for the title-card reveal in phase 4 so it only plays once — firing it
-        // here too stacked a double hit.
-        if (AudioManager.Instance != null)
-        {
-            AudioManager.Instance.PlaySFXOnce(AudioID.UI_QuestComplete, 3f);
-        }
-        if (camFollow != null) camFollow.TriggerShake(0.4f, 0.15f);
-
-        // === PHASE 3: the land heals (bird flight REMOVED per feedback) =========
-        // Keep the good part — the cursed trees blooming + fog/sun warming — but
-        // hold a calm crane on the totem instead of the disliked swooping flight.
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(true);
-        CinematicHandheld.End(mainCam);
-
-        yield return StartCoroutine(HealTheLandRoutine(mainCam, apexCamPos, finalTotemPos, mapScale));
-
-        if (corruptionBeam != null) Destroy(corruptionBeam);
-
-        // === PHASE 4: title card + reward summary (3 s) =============================
-        // AAA rewrite — single subtle "hold" moment instead of the
-        // previous FOV-punch + full-screen flash + slow-mo + double
-        // stinger stack, which read as strobe-disco rather than triumph.
-        //
-        // The beat sheet now:
-        //  1. Small FOV drift (60→57°) over 0.9s — reads as a slow zoom-in
-        //     rather than a punch. Nothing snaps.
-        //  2. Very brief 0.15s slow-mo dip ramping back to 1× over 0.6s,
-        //     so the world feels reverent for a beat but doesn't stutter.
-        //  3. NO screen flash — the sky already brightened during
-        //     phase 3, the title reveal shouldn't nuke the eye.
-        //  4. Only the victory stinger fires (single audio hit).
-        //  5. Title card fades in through CinematicTitleUI's own tween.
-        if (mainCam != null)
-        {
-            float baseFov = mainCam.fieldOfView;
-            StartCoroutine(SmoothFovRoutine(mainCam, baseFov, baseFov * 0.95f, 0.9f));
-        }
-        StartCoroutine(SlowMoRoutine(0.6f, 0.75f));
-
-        if (AudioManager.Instance != null)
-        {
-            // Force a single, bounded play — the stinger event is authored
-            // looping, so plain PlaySFX let it repeat until the scene changed.
-            AudioManager.Instance.PlaySFXOnce(AudioID.Region_VictoryStinger, 6f);
-        }
-
-        if (CinematicTitleUI.Instance != null)
-        {
-            CinematicTitleUI.Instance.ShowTitle(
-                LocalizationManager.Tr("REGION CONQUERED"),
-                LocalizationManager.Tr("THE CURSE HAS BEEN LIFTED"),
-                true);
-        }
-        else if (GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("REGION CONQUERED") + "!");
-        }
-
-        // Slow non-blocking dolly toward the totem while the title +
-        // reward cards sit on screen — a static camera under a title
-        // card is the #1 "prototype" tell. ~1.5 m over the full 3 s.
-        if (mainCam != null)
-        {
-            Vector3 pushDir = (finalTotemPos + Vector3.up * 2f - mainCam.transform.position).normalized;
-            StartCoroutine(SlowDollyRoutine(mainCam, pushDir * 1.5f, 3.0f));
-        }
-
-        if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-        // Minimalist victory screen (per feedback): just the clean title card
-        // holds on screen — no dense multi-line reward-summary prompt block
-        // stacked on top of it. Earned resources are still granted below and
-        // surface through the small side reward toast, exactly like normal
-        // mission play, so the screen stays uncluttered and legible.
-        yield return WaitOrSkip(2.0f);
-
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideSkipPrompt();
-        // AAA layer teardown — handheld off (restores its base transform),
-        // DoF back to gameplay. Duck restores itself on its own timeline.
-        CinematicHandheld.End(mainCam);
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
-        if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
-        if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
-        EnemyAI.GlobalFreeze = false;
-        RegionManager.CinematicActive = false;
-
-        if (currentRegion != null)
-        {
-            // Bump the global conquered counter ONCE per region — this is what
-            // the camp "capture your first region" mission and Elias' lore gate
-            // on. Hand-played totem conquest never touched it before, so the
-            // mission never ticked. Guard against a re-clear double-counting.
-            bool wasAlreadyConquered = PlayerPrefs.GetInt("RegionState_" + currentRegion.regionID, 0) == 2;
-            currentRegion.currentState = RegionState.Conquered;
-            PlayerPrefs.SetInt("RegionState_" + currentRegion.regionID, 2);
-            PlayerPrefs.SetInt("AutoOpenMap", 1);
-            if (!wasAlreadyConquered)
-                PlayerPrefs.SetInt("TotalConqueredRegions", PlayerPrefs.GetInt("TotalConqueredRegions", 0) + 1);
-            PlayerPrefs.Save();
-
-            if (ResourceManager.Instance != null)
-            {
-                ResourceManager.Instance.AddStashResources(currentRegion.woodReward, currentRegion.stoneReward, currentRegion.foodReward);
-                ResourceManager.Instance.diamonds += currentRegion.diamondReward;
-                ResourceManager.Instance.UpdateUI();
-            }
-            // Mirror the pickup popups that resource drops trigger so the
-            // big left-side reward toast shows up on region capture too —
-            // previously only ResourceManager's small +N text next to the
-            // resource panel fired, which felt inconsistent with normal
-            // mission play.
-            ShowRegionRewardToast(currentRegion);
-        }
-
-        // Hold on the reward screen so the player can actually read what they
-        // earned before we leave for camp — it used to fade out instantly.
-        // Skippable with Space / Enter / Esc.
-        yield return StartCoroutine(WaitOrSkip(5f));
-
-        if (dnc != null) dnc.isWeatherLocked = false;
-        // Leaves a mark in the log at the exact hand-over point. If a report of
-        // "it never went back to camp" ever comes in again, this line says
-        // straight away whether the cinematic finished and the load was
-        // requested, or whether the routine died before ever getting here —
-        // which are two completely different bugs.
-        Debug.Log("[RegionManager] Victory sequence finished — requesting CampScene.");
-        if (GlobalHUD.Instance != null)
-        {
             GlobalHUD.Instance.HidePrompt();
-            GlobalHUD.Instance.FadeAndLoadScene("CampScene");
         }
-        else
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFXOnce(AudioID.Region_VictoryStinger, 6f);
+
+        // BANK IT FIRST. Not after the screen, not on the way out — here, where
+        // nothing can be skipped past it.
+        GrantRegionRewards();
+
+        // A breath before the black, so the killing blow reads before the UI
+        // arrives. Unscaled: a level-up card or the pause menu must not stop it.
+        float t = 0f;
+        while (t < 0.7f) { t += Time.unscaledDeltaTime; yield return null; }
+
+        var awards = BuildAwardList();
+        bool leaving = false;
+        RegionVictoryScreen.Show(
+            LocalizationManager.Tr("REGION CONQUERED"),
+            LocalizationManager.Tr("THE CURSE HAS BEEN LIFTED"),
+            awards,
+            () => leaving = true);
+
+        // The screen has its own watchdog; this one guards against the screen
+        // itself never being built. Two independent timers, because "the player
+        // cannot leave the region" is the one failure this must not have again.
+        float guard = 0f;
+        while (!leaving && guard < 60f) { guard += Time.unscaledDeltaTime; yield return null; }
+
+        EnemyAI.GlobalFreeze = false;
+        CinematicActive = false;
+        if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
+        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
+        if (dnc != null) dnc.isWeatherLocked = false;
+
+        Debug.Log("[RegionManager] Victory screen dismissed — loading CampScene.");
+        SceneLoader.LoadScene("CampScene");
+    }
+
+    // The spoils, as rows the victory screen can show. Icons come from the
+    // exploration index because that is where the project already keeps the
+    // three resource sprites resolved for runtime; a missing one costs the row
+    // its picture and nothing else.
+    private List<RegionVictoryScreen.Award> BuildAwardList()
+    {
+        var list = new List<RegionVictoryScreen.Award>(4);
+        if (currentRegion == null) return list;
+
+        var set = ReliquarySet.Load();
+        void Add(Sprite icon, string key, int amount, Color tint)
         {
-            // Robustness: if the HUD singleton is somehow gone (was the cause of
-            // "victory never returns to camp"), load the scene directly so the
-            // player is never stranded on the cleansed region.
-            SceneLoader.LoadScene("CampScene");
+            if (amount <= 0) return;   // never show a reward of nothing
+            list.Add(new RegionVictoryScreen.Award
+            {
+                icon = icon,
+                label = LocalizationManager.Tr(key),
+                amount = amount,
+                tint = tint,
+            });
+        }
+
+        Add(set != null ? set.woodIcon : null, "Wood", currentRegion.woodReward, new Color(0.85f, 0.6f, 0.35f));
+        Add(set != null ? set.stoneIcon : null, "Stone", currentRegion.stoneReward, new Color(0.8f, 0.8f, 0.85f));
+        Add(set != null ? set.foodIcon : null, "Food", currentRegion.foodReward, new Color(0.7f, 0.95f, 0.5f));
+        Add(null, "Diamonds", currentRegion.diamondReward, new Color(0.7f, 0.85f, 1f));
+        return list;
+    }
+
+    // Marks the region taken and pays for it. Idempotent: a second call cannot
+    // double-count the campaign counter, which several camp missions gate on.
+    private void GrantRegionRewards()
+    {
+        if (currentRegion == null) return;
+
+        bool wasAlreadyConquered = PlayerPrefs.GetInt("RegionState_" + currentRegion.regionID, 0) == 2;
+        currentRegion.currentState = RegionState.Conquered;
+        PlayerPrefs.SetInt("RegionState_" + currentRegion.regionID, 2);
+        PlayerPrefs.SetInt("AutoOpenMap", 1);
+        if (!wasAlreadyConquered)
+            PlayerPrefs.SetInt("TotalConqueredRegions", PlayerPrefs.GetInt("TotalConqueredRegions", 0) + 1);
+        PlayerPrefs.Save();
+
+        if (_rewardsGranted) return;
+        _rewardsGranted = true;
+
+        if (ResourceManager.Instance != null)
+        {
+            ResourceManager.Instance.AddStashResources(currentRegion.woodReward, currentRegion.stoneReward, currentRegion.foodReward);
+            ResourceManager.Instance.diamonds += currentRegion.diamondReward;
+            ResourceManager.Instance.SaveStash();
+            ResourceManager.Instance.UpdateUI();
         }
     }
 
+    private bool _rewardsGranted;
+
     // ============================================================
     // Cinematic helpers
+    //
+    // MOSTLY RETIRED. The victory cinematic these served is gone — see
+    // FinalRegionPurificationRoutine for why. They are left in place rather
+    // than swept out in the same change as a behaviour fix, because the block
+    // is interleaved: the corruption-transfer flow between totems still runs
+    // and still uses CreateCorruptionBeam, GroundHeightAt and CreateLifeMotes,
+    // so deleting the range wholesale would take live code with it. Clearing
+    // out the genuinely dead ones is a separate, careful pass.
     // ============================================================
 
     private static bool CheckSkipRequested()
