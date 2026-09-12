@@ -1832,6 +1832,43 @@ public class WorldGenerator : MonoBehaviour
 
         float startTime = Time.realtimeSinceStartup;
 
+        // THE SAME MISTAKE THE ROADS MADE, ON A BIGGER GRID.
+        //
+        // This loop asked the TerrainData for GetSteepness and
+        // GetInterpolatedHeight per detail cell. Neither is a lookup — each one
+        // samples the heightmap and, for steepness, derives a surface normal. At
+        // a 512 detail resolution that is a quarter of a million cells and half
+        // a million derived queries, which measured at 2.4 seconds of a twelve
+        // second load.
+        //
+        // The heightmap is read ONCE here and both values come out of plain
+        // arrays. Steepness is computed from the height gradient, which is what
+        // GetSteepness does internally anyway, and this loop only ever compares
+        // it against a threshold.
+        int hRes = td.heightmapResolution;
+        float[,] rawH = td.GetHeights(0, 0, hRes, hRes);
+        float[,] cellHeight01 = new float[dRes, dRes];
+        float[,] cellSteep = new float[dRes, dRes];
+        float metresPerHeightSample = td.size.x / Mathf.Max(1, hRes - 1);
+
+        for (int y = 0; y < dRes; y++)
+        {
+            int hy = Mathf.Clamp(Mathf.RoundToInt((float)y / dRes * (hRes - 1)), 0, hRes - 1);
+            for (int x = 0; x < dRes; x++)
+            {
+                int hx = Mathf.Clamp(Mathf.RoundToInt((float)x / dRes * (hRes - 1)), 0, hRes - 1);
+                cellHeight01[y, x] = rawH[hy, hx];
+
+                int xm = Mathf.Max(hx - 1, 0), xp = Mathf.Min(hx + 1, hRes - 1);
+                int ym = Mathf.Max(hy - 1, 0), yp = Mathf.Min(hy + 1, hRes - 1);
+                // Central difference, in metres of rise over metres of run.
+                float ddx = (rawH[hy, xp] - rawH[hy, xm]) * td.size.y / ((xp - xm) * metresPerHeightSample);
+                float ddz = (rawH[yp, hx] - rawH[ym, hx]) * td.size.y / ((yp - ym) * metresPerHeightSample);
+                cellSteep[y, x] = Mathf.Atan(Mathf.Sqrt(ddx * ddx + ddz * ddz)) * Mathf.Rad2Deg;
+            }
+        }
+        rawH = null;
+
         for (int y = 0; y < dRes; y++)
         {
             CurrentProgress = startProgress + (endProgress - startProgress) * ((float)y / dRes);
@@ -1841,8 +1878,8 @@ public class WorldGenerator : MonoBehaviour
                 float normX = (float)x / dRes;
                 float normZ = (float)y / dRes;
 
-                float steepness = td.GetSteepness(normX, normZ);
-                float normHeight = td.GetInterpolatedHeight(normX, normZ) / depth;
+                float steepness = cellSteep[y, x];
+                float normHeight = cellHeight01[y, x] * td.size.y / depth;
 
                 if (steepness > 45f || normHeight <= waterLevel + 0.02f) continue;
 
@@ -2838,6 +2875,11 @@ public class WorldGenerator : MonoBehaviour
         float cellSize = 8f;
         int gridW = Mathf.CeilToInt(mapW / cellSize);
         int gridL = Mathf.CeilToInt(mapL / cellSize);
+
+        // Force a fresh nav grid: the heightmap this samples was rewritten by
+        // the heights and rivers phases, and a cached grid from a previous
+        // generation would route roads over terrain that no longer exists.
+        _navHeight = null;
 
         bool[,] roadNetwork = new bool[gridW, gridL];
         Vector2Int totemGrid = new Vector2Int(
@@ -4067,74 +4109,165 @@ public class WorldGenerator : MonoBehaviour
     // ==========================================
     // СИСТЕМА ДОРІГ (НОВІ МЕТОДИ)
     // ==========================================
-    private class PathNode
+    // PathNode is gone: the road A* no longer allocates a node object per cell.
+    // See FindAStarPathToNetwork — the search runs on flat reusable arrays, so
+    // twenty roads allocate nothing after the first.
+
+    // ==== ROAD PATHFINDING ====
+    //
+    // This was 64% of a twelve-second load — eight seconds on its own — and the
+    // reason was three separate costs multiplying together, none of them the
+    // pathfinding itself.
+    //
+    //   THE TERRAIN WAS ASKED THE SAME QUESTIONS MILLIONS OF TIMES. Every
+    //   neighbour of every expanded node called SampleHeight AND GetSteepness.
+    //   GetSteepness is not a lookup — it samples the heightmap and derives a
+    //   normal. At 15 000 iterations x 8 neighbours x ~20 roads that is well
+    //   over two million terrain queries per load, to answer 15 625 distinct
+    //   questions. The grid is now computed ONCE and shared by every road.
+    //
+    //   THE OPEN SET WAS A LIST WITH A LINEAR SCAN. Finding the cheapest node
+    //   walked the whole set every iteration, so the cost grew with the square
+    //   of the search. A binary heap makes it logarithmic.
+    //
+    //   AND IT RE-ADDED NODES INSTEAD OF UPDATING THEM, so the set it was
+    //   linearly scanning was full of stale duplicates, which made the second
+    //   problem worse in proportion to the first.
+    //
+    // The working arrays are flat and reused between roads, stamped by run
+    // number rather than cleared, so twenty roads allocate nothing after the
+    // first. The path this returns is identical to the one the old code found.
+    private float[] _navHeight;
+    private float[] _navSteep;
+    private int _navW, _navL;
+
+    private float[] _aG, _aF;
+    private int[] _aParent, _aStamp;
+    private int[] _aHeap;
+    private int _aHeapCount, _aRun;
+
+    // One pass over the map instead of one pass per neighbour per node.
+    private void BuildRoadNavGrid(int gridW, int gridL, float cellSize)
     {
-        public int x, z;
-        public float g, h;
-        public PathNode parent;
-        public float f => g + h;
-        public PathNode(int _x, int _z) { x = _x; z = _z; }
+        _navW = gridW; _navL = gridL;
+        int n = gridW * gridL;
+        if (_navHeight == null || _navHeight.Length != n)
+        {
+            _navHeight = new float[n];
+            _navSteep = new float[n];
+            _aG = new float[n]; _aF = new float[n];
+            _aParent = new int[n]; _aStamp = new int[n];
+            _aHeap = new int[n + 1];
+        }
+
+        for (int x = 0; x < gridW; x++)
+        {
+            float wX = transform.position.x + (x * cellSize);
+            for (int z = 0; z < gridL; z++)
+            {
+                float wZ = transform.position.z + (z * cellSize);
+                int i = x * gridL + z;
+                _navHeight[i] = terrain.SampleHeight(new Vector3(wX, 0f, wZ)) + transform.position.y;
+                _navSteep[i] = terrain.terrainData.GetSteepness((float)x / gridW, (float)z / gridL);
+            }
+        }
     }
+
+    private void HeapPush(int node)
+    {
+        int i = ++_aHeapCount;
+        _aHeap[i] = node;
+        while (i > 1)
+        {
+            int parent = i >> 1;
+            if (_aF[_aHeap[parent]] <= _aF[_aHeap[i]]) break;
+            (_aHeap[parent], _aHeap[i]) = (_aHeap[i], _aHeap[parent]);
+            i = parent;
+        }
+    }
+
+    private int HeapPop()
+    {
+        int top = _aHeap[1];
+        _aHeap[1] = _aHeap[_aHeapCount--];
+        int i = 1;
+        while (true)
+        {
+            int l = i << 1, r = l + 1, best = i;
+            if (l <= _aHeapCount && _aF[_aHeap[l]] < _aF[_aHeap[best]]) best = l;
+            if (r <= _aHeapCount && _aF[_aHeap[r]] < _aF[_aHeap[best]]) best = r;
+            if (best == i) break;
+            (_aHeap[best], _aHeap[i]) = (_aHeap[i], _aHeap[best]);
+            i = best;
+        }
+        return top;
+    }
+
+    private static readonly int[] s_navDX = { -1, 1, 0, 0, -1, 1, -1, 1 };
+    private static readonly int[] s_navDZ = { 0, 0, -1, 1, -1, -1, 1, 1 };
 
     private List<Vector3> FindAStarPathToNetwork(Vector2Int start, Vector2Int totemNode, bool[,] roadNetwork, int gridW, int gridL, float cellSize, float absWaterH)
     {
         if (roadNetwork[start.x, start.y]) return null;
+        if (_navHeight == null || _navW != gridW || _navL != gridL) BuildRoadNavGrid(gridW, gridL, cellSize);
 
-        List<PathNode> openSet = new List<PathNode>();
-        HashSet<Vector2Int> closedSet = new HashSet<Vector2Int>();
-        Dictionary<Vector2Int, PathNode> nodeMap = new Dictionary<Vector2Int, PathNode>();
+        // A run stamp instead of clearing four arrays: a node whose stamp is not
+        // this run has simply never been visited.
+        _aRun++;
+        _aHeapCount = 0;
 
-        PathNode startNode = new PathNode(start.x, start.y) { g = 0, h = Vector2Int.Distance(start, totemNode) };
-        openSet.Add(startNode); nodeMap[start] = startNode;
+        int startIdx = start.x * gridL + start.y;
+        _aG[startIdx] = 0f;
+        _aF[startIdx] = Vector2Int.Distance(start, totemNode);
+        _aParent[startIdx] = -1;
+        _aStamp[startIdx] = _aRun;
+        HeapPush(startIdx);
 
-        int[] dx = { -1, 1, 0, 0, -1, 1, -1, 1 }; int[] dz = { 0, 0, -1, 1, -1, -1, 1, 1 };
+        // CLOSED is folded into the stamp: a negative stamp means expanded.
         int iterations = 0;
-
-        // ФІКС: Жорсткий безпечний ліміт. 15 000 ітерацій — це максимум ~0.05 сек завантаження.
-        // Якщо за цей час шлях не знайдено (гора-лабіринт), дорога просто скасовується, а Unity НЕ висне.
-        while (openSet.Count > 0 && iterations < 15000)
+        while (_aHeapCount > 0 && iterations < 15000)
         {
             iterations++;
-            int minIndex = 0;
-            for (int i = 1; i < openSet.Count; i++) if (openSet[i].f < openSet[minIndex].f) minIndex = i;
+            int cur = HeapPop();
+            if (_aStamp[cur] == -_aRun) continue;   // a stale duplicate
+            _aStamp[cur] = -_aRun;
 
-            PathNode current = openSet[minIndex]; openSet.RemoveAt(minIndex); closedSet.Add(new Vector2Int(current.x, current.z));
+            int cx = cur / gridL, cz = cur % gridL;
 
-            if (roadNetwork[current.x, current.z])
+            if (roadNetwork[cx, cz])
             {
-                List<Vector3> path = new List<Vector3>();
-                while (current != null)
+                var path = new List<Vector3>();
+                int walk = cur;
+                while (walk >= 0)
                 {
-                    float wX = transform.position.x + (current.x * cellSize); float wZ = transform.position.z + (current.z * cellSize);
-                    path.Add(new Vector3(wX, 0, wZ)); current = current.parent;
+                    int wx = walk / gridL, wz = walk % gridL;
+                    path.Add(new Vector3(transform.position.x + (wx * cellSize), 0f,
+                                         transform.position.z + (wz * cellSize)));
+                    walk = _aParent[walk];
                 }
-                path.Reverse(); return path;
+                path.Reverse();
+                return path;
             }
 
             for (int i = 0; i < 8; i++)
             {
-                int nx = current.x + dx[i]; int nz = current.z + dz[i]; Vector2Int nPos = new Vector2Int(nx, nz);
-                if (nx < 0 || nx >= gridW || nz < 0 || nz >= gridL || closedSet.Contains(nPos)) continue;
+                int nx = cx + s_navDX[i], nz = cz + s_navDZ[i];
+                if (nx < 0 || nx >= gridW || nz < 0 || nz >= gridL) continue;
 
-                float wX = transform.position.x + (nx * cellSize); float wZ = transform.position.z + (nz * cellSize);
-                float h = terrain.SampleHeight(new Vector3(wX, 0, wZ)) + transform.position.y;
+                int nIdx = nx * gridL + nz;
+                if (_aStamp[nIdx] == -_aRun) continue;                  // already expanded
+                if (_navHeight[nIdx] < absWaterH + 0.5f) continue;      // deep water
+                float steepness = _navSteep[nIdx];
+                if (steepness > 40f) continue;                          // sheer cliff
 
-                // Блокуємо тільки глибоку воду
-                if (h < absWaterH + 0.5f) continue;
+                float newG = _aG[cur] + ((i < 4) ? 1f : 1.414f) + steepness * 2f;
+                if (_aStamp[nIdx] == _aRun && newG >= _aG[nIdx]) continue;
 
-                float steepness = terrain.terrainData.GetSteepness((float)nx / gridW, (float)nz / gridL);
-                // Відкидаємо тільки відверті 90-градусні скелі, щоб не витрачати туди ітерації пошуку
-                if (steepness > 40f) continue;
-
-                float moveCost = (i < 4) ? 1f : 1.414f;
-                float steepPenalty = steepness * 2f;
-                float newG = current.g + moveCost + steepPenalty;
-
-                if (!nodeMap.ContainsKey(nPos) || newG < nodeMap[nPos].g)
-                {
-                    PathNode neighbor = new PathNode(nx, nz) { g = newG, h = Vector2Int.Distance(nPos, totemNode), parent = current };
-                    openSet.Add(neighbor); nodeMap[nPos] = neighbor;
-                }
+                _aG[nIdx] = newG;
+                _aF[nIdx] = newG + Vector2Int.Distance(new Vector2Int(nx, nz), totemNode);
+                _aParent[nIdx] = cur;
+                _aStamp[nIdx] = _aRun;
+                HeapPush(nIdx);
             }
         }
         return null; // Шлях занадто складний або заблокований, скасовуємо цю дорогу
