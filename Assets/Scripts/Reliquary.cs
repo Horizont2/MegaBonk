@@ -136,6 +136,7 @@ public class Reliquary : MonoBehaviour
     private int _waveIndex;
     private int _spawnedByWaves;
     private float _awayFor;
+    private MapEventMarker _marker;
 
     private static bool IsPlayerDead()
     {
@@ -183,6 +184,19 @@ public class Reliquary : MonoBehaviour
         var set = ReliquarySet.Load();
         if (buildDecor && set != null) Raise(set);
         if (spawnGuardians && _guardians.Count == 0) PostGuardians(set, guardRadius);
+
+        // A map presence, added here rather than baked into the prefab so the
+        // grade and the marker can never disagree — the grade is the whole
+        // promise the marker is making.
+        var marker = gameObject.GetComponent<MapEventMarker>();
+        if (marker == null) marker = gameObject.AddComponent<MapEventMarker>();
+        marker.kind = grade switch
+        {
+            Grade.Barrow => MapEventIcons.Kind.ChestBarrow,
+            Grade.Shrine => MapEventIcons.Kind.ChestShrine,
+            _ => MapEventIcons.Kind.ChestWayside,
+        };
+        _marker = marker;
 
         _chestRest = _chest.transform.localPosition;
         if (showBeacon && set != null)
@@ -724,6 +738,10 @@ public class Reliquary : MonoBehaviour
         // The light goes out the moment the chest commits, not when the loot
         // lands — it is the "come here" signal, and it has served its purpose.
         if (_beacon != null) _beacon.Extinguish();
+        // The map stops pointing at it. A marker over an emptied chest sends the
+        // player back across the valley to nothing, which is worse than never
+        // having marked it.
+        if (_marker != null) _marker.MarkDone();
         ReliquaryDirector.NoteOpened(this);
     }
 

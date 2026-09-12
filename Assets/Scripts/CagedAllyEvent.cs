@@ -52,6 +52,7 @@ public class CagedAllyEvent : MonoBehaviour
     private Transform player;
 
     private GameObject minimapMarker;
+    private MapEventMarker eventMarker;
 
     private void Start()
     {
@@ -60,6 +61,15 @@ public class CagedAllyEvent : MonoBehaviour
         // A cyan marker on the minimap so the player can find the rescue event
         // (matches the enemies' red minimap dots). Removed when the ally is freed.
         minimapMarker = CreateMinimapMarker(transform.position, new Color(0.35f, 0.85f, 1f));
+
+        // The world-space dot above says WHERE; this says WHAT, with an icon and
+        // a reveal radius set alongside every other event in one place. See
+        // MapEventIcons — a prisoner is deliberately findable from further off
+        // than a chest, because missing one costs the player a companion and
+        // teaches them nothing.
+        eventMarker = gameObject.GetComponent<MapEventMarker>();
+        if (eventMarker == null) eventMarker = gameObject.AddComponent<MapEventMarker>();
+        eventMarker.kind = MapEventIcons.Kind.CagedAlly;
 
         // Spawn the captive from a prefab if none was placed by hand.
         if (allyObject == null && allyPrefab != null)
@@ -228,6 +238,7 @@ public class CagedAllyEvent : MonoBehaviour
         cleared = true;
 
         if (minimapMarker != null) { Destroy(minimapMarker); minimapMarker = null; }
+        if (eventMarker != null) eventMarker.MarkDone();
 
         if (promptShowing && GlobalHUD.Instance != null) { GlobalHUD.Instance.HidePrompt(); promptShowing = false; }
 

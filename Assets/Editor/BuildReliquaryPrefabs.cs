@@ -29,6 +29,10 @@ public static class BuildReliquaryPrefabsTool
 {
     private const string Folder = "Assets/Prefabs/Exploration";
 
+    // Used only if the model somehow has no controller AND the set has none.
+    private const string FallbackController =
+        "Assets/Animated Fantasy Polygon Chest/Animation/Fantasy_Polygon_Chest_Animation_Controller.controller";
+
     // Grade, chest model, finished height in metres, guardian ring.
     //
     // The heights are the whole point of this file. The pack's meshes are
@@ -109,7 +113,32 @@ public static class BuildReliquaryPrefabsTool
                 // timer, which is what "the opening animation doesn't work" was.
                 var anim = art.GetComponentInChildren<Animator>(true);
                 if (anim == null) anim = art.AddComponent<Animator>();
-                anim.runtimeAnimatorController = set.chestAnimatorController;
+
+                // NEVER write a null controller over a good one.
+                //
+                // This is the bug that made "the opening animation doesn't work"
+                // survive three rounds of fixes. The chest models ALREADY carry a
+                // working Animator with the right controller — but this line used
+                // to assign set.chestAnimatorController unconditionally, and when
+                // the set had not been rebuilt yet that value was null. Unity then
+                // recorded "m_Controller = none" as a PREFAB OVERRIDE, which beats
+                // the source prefab's correct one forever after. The result was a
+                // chest that looked perfectly wired in the inspector, silently
+                // swallowed SetTrigger("Open"), and left LootChest falling back to
+                // a plain timer with the lid shut.
+                //
+                // So: only ever assign something real, and only when there is
+                // nothing there already.
+                if (anim.runtimeAnimatorController == null)
+                {
+                    var controller = set.chestAnimatorController;
+                    if (controller == null)
+                        controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(FallbackController);
+                    if (controller != null) anim.runtimeAnimatorController = controller;
+                    else Debug.LogError($"[Reliquary] {grade}: the chest model has no animator controller and none " +
+                                        "could be found. The lid will not move. Run Tools > Exploration > " +
+                                        "Build Reliquary Set first.");
+                }
                 anim.applyRootMotion = false;
                 anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
