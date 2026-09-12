@@ -168,7 +168,6 @@ public class CampGuideDirector : MonoBehaviour
         if (currentStepIndex >= 0 && currentStepIndex < steps.Count)
         {
             if (!missionPlate.gameObject.activeSelf) missionPlate.gameObject.SetActive(true);
-            if (initial) missionPlate.animateAppearance = true; // slide-in on first show
             GuideStep step = steps[currentStepIndex];
             string body = step.promptArg >= 0
                 ? LocalizationManager.Tr(step.promptKey, step.promptArg)
@@ -273,6 +272,21 @@ public class CampGuideDirector : MonoBehaviour
         // 3. Open the world map
         steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "MapOpenedOnce",         requiredValue = 1 });
         // 4. Conquer the first (hand-built) region — R1 Old Lumberyard
+        // 3b/3c. THE UPGRADE LESSON, BEFORE THE FIRST FIGHT.
+        //
+        // This used to sit ten steps later, behind the whole mercenary arc, so
+        // the player learned that gear can be improved only after they had
+        // already fought a region without improving any. Teaching a system
+        // after the moment it would first have helped is teaching it twice.
+        //
+        // Elias funds it, the trail points at the shop, and the shop's own
+        // spotlight walkthrough takes over once they are inside — see
+        // ShopTutorialDirector. Both steps sit on the critical path because a
+        // player who skips this arrives at their first region with the weakest
+        // helmet in the game and no idea that was a choice.
+        steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS_HELMET", target = eliasT, playerPrefsKey = "Elias_Helmet",           requiredValue = 1 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_UPGRADE_HELMET",    target = shopT,  playerPrefsKey = ShopTutorialDirector.PP_DONE, requiredValue = 1 });
+
         steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 1 });
 
         // ---- The mercenary arc ------------------------------------------
@@ -308,12 +322,6 @@ public class CampGuideDirector : MonoBehaviour
         steps.Add(new GuideStep { promptKey = "GUIDE_HIRE_SQUAD",     target = barracksT, playerPrefsKey = MercenaryRoster.PP_HIRED_TOTAL, requiredValue = MercenaryRoster.GuideSquadSize, promptArg = MercenaryRoster.GuideSquadSize });
         // 8. Send them at the second region
         steps.Add(new GuideStep { promptKey = "GUIDE_SEND_ARMY",      target = mapT,      playerPrefsKey = "MercFirstDeployed",     requiredValue = 1 });
-
-        // 8b. Elias has just paid for a helmet. This step points at the shop
-        //     and completes when the upgrade actually lands — the shop's own
-        //     spotlight walkthrough takes over once the player is inside, see
-        //     ShopTutorialDirector.
-        steps.Add(new GuideStep { promptKey = "GUIDE_UPGRADE_HELMET", target = shopT, playerPrefsKey = ShopTutorialDirector.PP_DONE, requiredValue = 1 });
 
         // ---- Camp errands, in their original order ----------------------
         // 9. Build the storage vault so more resource capacity unlocks.
