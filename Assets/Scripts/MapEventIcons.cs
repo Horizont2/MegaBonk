@@ -65,7 +65,7 @@ public class MapEventIcons : ScriptableObject
         public float size = 26f;
 
         [Tooltip("Fade the marker in over the last few metres of the reveal radius instead of popping it on. A marker that appears instantly reads as a bug the first few times.")]
-        public float fadeBand = 25f;
+        public float fadeBand = 40f;
 
         [Tooltip("Keep showing it once seen, even after walking back out of range. Right for anything the player might want to return to; wrong for anything that is only interesting while you are near it.")]
         public bool rememberOnceSeen = true;
@@ -75,14 +75,14 @@ public class MapEventIcons : ScriptableObject
     // reasoning above is visible as numbers rather than only as prose.
     public List<Entry> entries = new List<Entry>
     {
-        new Entry { kind = Kind.CagedAlly,     revealRadius = 150f, tint = new Color(1f, 0.85f, 0.45f), size = 28f },
-        new Entry { kind = Kind.ChestWayside,  revealRadius = 70f,  tint = new Color(0.42f, 1f, 0.52f), size = 22f },
-        new Entry { kind = Kind.ChestShrine,   revealRadius = 130f, tint = new Color(0.34f, 0.62f, 1f), size = 26f },
-        new Entry { kind = Kind.ChestBarrow,   revealRadius = 230f, tint = new Color(1f, 0.82f, 0.32f), size = 32f },
-        new Entry { kind = Kind.Altar,         revealRadius = 180f, tint = new Color(0.85f, 0.45f, 1f), size = 28f },
-        new Entry { kind = Kind.Extraction,    revealRadius = 400f, tint = new Color(0.7f, 0.9f, 1f),   size = 30f },
-        new Entry { kind = Kind.Camp,          revealRadius = 110f, tint = new Color(1f, 0.55f, 0.35f), size = 24f },
-        new Entry { kind = Kind.Watchtower,    revealRadius = 160f, tint = new Color(0.9f, 0.4f, 0.4f), size = 26f },
+        new Entry { kind = Kind.CagedAlly,     revealRadius = 260f, tint = new Color(1f, 0.85f, 0.45f), size = 28f },
+        new Entry { kind = Kind.ChestWayside,  revealRadius = 140f,  tint = new Color(0.42f, 1f, 0.52f), size = 22f },
+        new Entry { kind = Kind.ChestShrine,   revealRadius = 220f, tint = new Color(0.34f, 0.62f, 1f), size = 26f },
+        new Entry { kind = Kind.ChestBarrow,   revealRadius = 380f, tint = new Color(1f, 0.82f, 0.32f), size = 32f },
+        new Entry { kind = Kind.Altar,         revealRadius = 300f, tint = new Color(0.85f, 0.45f, 1f), size = 28f },
+        new Entry { kind = Kind.Extraction,    revealRadius = 600f, tint = new Color(0.7f, 0.9f, 1f),   size = 30f },
+        new Entry { kind = Kind.Camp,          revealRadius = 190f, tint = new Color(1f, 0.55f, 0.35f), size = 24f },
+        new Entry { kind = Kind.Watchtower,    revealRadius = 270f, tint = new Color(0.9f, 0.4f, 0.4f), size = 26f },
         new Entry { kind = Kind.ResourceNode,  revealRadius = 0f,   tint = Color.white,                 size = 18f },
     };
 
