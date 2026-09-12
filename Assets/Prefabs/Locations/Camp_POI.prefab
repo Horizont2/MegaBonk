@@ -153,8 +153,8 @@ MonoBehaviour:
   flattenRadius: 4
   yOffset: 0
   maxAllowedSlope: 10
-  spawnWeight: 1.0
-  regionAppearChance: 1.0
+  spawnWeight: 1
+  regionAppearChance: 1
   maxPerRegion: 0
 --- !u!1 &9212952561292515356
 GameObject:

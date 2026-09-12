@@ -19,7 +19,7 @@ MonoBehaviour:
   chestLoot:
   - {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
   - {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
-  chestAnimatorController: {fileID: 0}
+  chestAnimatorController: {fileID: 9100000, guid: 529b61144c97e3e4f92f4a56a5defdc5, type: 2}
   banners:
   - {fileID: 1998368968366392, guid: e1032c9b5d7d362489670d42997dceb5, type: 3}
   - {fileID: 1667062371632208, guid: 002f7a569314a244fb643e8ea8d00376, type: 3}
@@ -39,6 +39,10 @@ MonoBehaviour:
   - {fileID: 7580130135382885485, guid: 8ae9ec3e75ea42041ac19a40ac2cf0db, type: 3}
   - {fileID: 1297559245931649848, guid: 87108343d3e59f2479fb59dd3af34cee, type: 3}
   - {fileID: 1154799505154584271, guid: 831c8f7a7f0c04c4ba3a4461f2182dcd, type: 3}
-  woodDrop: {fileID: 0}
-  stoneDrop: {fileID: 0}
-  foodDrop: {fileID: 0}
+  beamMaterial: {fileID: 2100000, guid: d3130300b4babd744a976ba0f66c7cfc, type: 2}
+  woodIcon: {fileID: 456167851, guid: e6087bf72726c1440bdc1ffc8cde7ccf, type: 3}
+  stoneIcon: {fileID: 1914097800, guid: e6087bf72726c1440bdc1ffc8cde7ccf, type: 3}
+  foodIcon: {fileID: -737478651, guid: e6087bf72726c1440bdc1ffc8cde7ccf, type: 3}
+  woodDrop: {fileID: 1558540992293105036, guid: b2069a990000a2e47aaecdf06f4d68b4, type: 3}
+  stoneDrop: {fileID: 4209158938728457358, guid: 725a49cddebab314ca5335aedfc23f71, type: 3}
+  foodDrop: {fileID: 4974451591028166963, guid: 20a2049a67389164998d1464b536d198, type: 3}
