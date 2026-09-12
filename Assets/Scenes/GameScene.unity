@@ -2109,6 +2109,9 @@ MonoBehaviour:
   poiPrefabs:
   - {fileID: 8142392612343546995, guid: 41ecda8a1339cd44791b517be79ca6e9, type: 3}
   - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
+  - {fileID: 472382735203061453, guid: e1907ee825553ca4cbb8a5095efed3e9, type: 3}
+  - {fileID: 1335958607354298, guid: 6d9ffac09535f23449762fd769a551d4, type: 3}
+  - {fileID: 986185504386416560, guid: 6d37dd13f909d9f4d94ae65aa61b50d5, type: 3}
   maxPOIs: 80
   maxPOISteepness: 10
   poiClearanceRadius: 10
@@ -2119,6 +2122,11 @@ MonoBehaviour:
   maxGiantTrees: 40
   giantTreeMinSpacing: 30
   tagDecorationAsNature: 1
+  tintGroundBySeason: 1
+  autumnGroundTint: {r: 0.72, g: 0.55, b: 0.3, a: 1}
+  autumnGroundBlend: 0.62
+  winterGroundTint: {r: 0.93, g: 0.96, b: 1, a: 1}
+  winterGroundBlend: 0.85
 --- !u!154 &240858630
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -2609,6 +2617,18 @@ MonoBehaviour:
   godRayMaxScale: 1
   snowVFX: {fileID: 316599055}
   dustVFX: {fileID: 0}
+  winterLighting: 1
+  winterMaxSunElevation: 34
+  winterSunTint: {r: 0.74, g: 0.83, b: 1, a: 1}
+  winterSunTintBlend: 0.55
+  winterNightAmbientBonus: 0.1
+  winterNightTint: {r: 0.62, g: 0.74, b: 1, a: 1}
+  winterFogMultiplier: 1.5
+  winterGroundDrift: 1
+  stormDimAtDay: 0.2
+  stormDimAtNight: 0.8
+  minNightIntensity: 0.16
+  nightAmbientBoost: 0.06
   lightningVFXPrefab: {fileID: 8974203713140315807, guid: 709b0bd6b0b625249a98409dd7a87343, type: 3}
   lightningSpawnRadius: 60
   weatherBoxSize: 75
@@ -7982,6 +8002,94 @@ MonoBehaviour:
         Data3: 1964989079
         Data4: -245983134
       Path: event:/ENemy/Boss/Cinematic Whoosh
+  trailerDread:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerStoneStress:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerStoneCrack:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerStoneBurst:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerRubble:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWarHorn:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerMarchLoop:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBoneRattle:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBossStep:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerCrows:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWindDesolate:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   encounterCleared:
     fmodEvent:
       Guid:
@@ -17094,6 +17202,7 @@ MonoBehaviour:
   patrolClearReward: 3
   campClearReward: 5
   blockRandomSpawnerOnStart: 1
+  ambientSpawnerThrottle: 0.6
   spawnInConqueredRegion: 1
   conqueredCountMultiplier: 0.4
   conqueredPatrolsOnly: 1
