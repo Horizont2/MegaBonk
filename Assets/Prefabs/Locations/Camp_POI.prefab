@@ -57,6 +57,7 @@ MonoBehaviour:
   maxLootItems: 8
   delayForLoot: 1.2
   destroyDelay: 8
+  suppressOwnInteraction: 0
 --- !u!65 &7926171736806676778
 BoxCollider:
   m_ObjectHideFlags: 0

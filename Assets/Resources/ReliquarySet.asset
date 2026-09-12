@@ -19,6 +19,7 @@ MonoBehaviour:
   chestLoot:
   - {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
   - {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
+  chestAnimatorController: {fileID: 0}
   banners:
   - {fileID: 1998368968366392, guid: e1032c9b5d7d362489670d42997dceb5, type: 3}
   - {fileID: 1667062371632208, guid: 002f7a569314a244fb643e8ea8d00376, type: 3}
@@ -34,3 +35,10 @@ MonoBehaviour:
   - {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
   - {fileID: 2058852120935944091, guid: c7c47f0ce5b83fa46918e9cf2dbb7155, type: 3}
   - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+  sitePrefabByGrade:
+  - {fileID: 7580130135382885485, guid: 8ae9ec3e75ea42041ac19a40ac2cf0db, type: 3}
+  - {fileID: 1297559245931649848, guid: 87108343d3e59f2479fb59dd3af34cee, type: 3}
+  - {fileID: 1154799505154584271, guid: 831c8f7a7f0c04c4ba3a4461f2182dcd, type: 3}
+  woodDrop: {fileID: 0}
+  stoneDrop: {fileID: 0}
+  foodDrop: {fileID: 0}
