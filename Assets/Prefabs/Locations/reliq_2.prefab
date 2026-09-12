@@ -245,7 +245,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
   flattenRadius: 5
-  yOffset: 0
+  yOffset: -0.5
   maxAllowedSlope: 8
 --- !u!1 &1576808460891832
 GameObject:
@@ -361,6 +361,26 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300002, guid: b4985f90ce1d8bc46bdeb800679c7363, type: 3}
+--- !u!114 &1455860963301489099
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1576808460891832}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbf9e92c81b1433591c49e871d14fe86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  axle: 0
+  reverse: 0
+  maxDegreesPerSecond: 55
+  idleFraction: 0.18
+  windAtFullSpeed: 1
+  inertia: 2.5
+  disableSpinningMeshCollider: 1
+  variance: 0.15
 --- !u!1 &1636781234506520
 GameObject:
   m_ObjectHideFlags: 0
@@ -649,23 +669,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5295301037478277668, guid: 87108343d3e59f2479fb59dd3af34cee, type: 3}
   m_PrefabInstance: {fileID: 3999853802908515411}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1455860963301489099
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1576808460891832}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bbf9e92c81b1433591c49e871d14fe86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  axle: 0
-  reverse: 0
-  maxDegreesPerSecond: 55
-  idleFraction: 0.18
-  windAtFullSpeed: 1
-  inertia: 2.5
-  disableSpinningMeshCollider: 1
-  variance: 0.15
