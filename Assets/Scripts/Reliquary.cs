@@ -135,6 +135,13 @@ public class Reliquary : MonoBehaviour
     private float _nextWave;
     private int _waveIndex;
     private int _spawnedByWaves;
+    private float _awayFor;
+
+    private static bool IsPlayerDead()
+    {
+        var pc = FindFirstObjectByType<PlayerController>();
+        return pc != null && pc.IsDead;
+    }
 
     public bool Sealed => LivingGuardians() > 0;
     private float VigilTime => grade switch
@@ -537,11 +544,42 @@ public class Reliquary : MonoBehaviour
         if (onGround)
         {
             _held += Time.deltaTime;
+            _awayFor = 0f;
 
             if (Time.time >= _nextWave)
             {
                 _nextWave = Time.time + waveInterval;
                 SendWave();
+            }
+        }
+        else
+        {
+            // AWAY. Banked time bleeds rather than freezing.
+            //
+            // Freezing it outright looked kind but it is an exploit: light the
+            // seal, hold four seconds, walk out — the waves stop the moment you
+            // leave — heal up, walk back, hold another four. The siege becomes a
+            // sequence of safe nibbles and the whole point of it evaporates.
+            //
+            // Bleeding is the honest middle. Slipping out for a second costs a
+            // second and a half, which is a real price and not a wiped attempt;
+            // treating the vigil as somewhere to leave and come back to costs
+            // more than it saves.
+            _held = Mathf.Max(0f, _held - Time.deltaTime * 1.5f);
+            _awayFor += Time.deltaTime;
+
+            // Gone for good — dead, or walked off and never came back. The seal
+            // closes and the site resets, because a chest left permanently lit
+            // and rattling in an empty field is worse than one nobody opened.
+            if (_awayFor > 12f || (_player != null && IsPlayerDead()))
+            {
+                _vigilLit = false;
+                _held = 0f;
+                _awayFor = 0f;
+                _waveIndex = 0;
+                _chest.transform.localPosition = _chestRest;
+                if (_beacon != null) _beacon.SetAgitated(false);
+                return;
             }
         }
 
