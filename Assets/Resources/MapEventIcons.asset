@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a44c8e7a3c74f8484edb4c17f2849ed, type: 3}
+  m_Name: MapEventIcons
+  m_EditorClassIdentifier: Assembly-CSharp::MapEventIcons
+  entries:
+  - kind: 0
+    icon: {fileID: 21300000, guid: c4da1c09781115242a04f1422a88e548, type: 3}
+    revealRadius: 150
+    tint: {r: 1, g: 0.85, b: 0.45, a: 1}
+    size: 28
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 1
+    icon: {fileID: 21300000, guid: 2d8aa22bddd168b40a3f04e72a11c34a, type: 3}
+    revealRadius: 70
+    tint: {r: 0.42, g: 1, b: 0.52, a: 1}
+    size: 22
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 2
+    icon: {fileID: 21300000, guid: 8766810e52c92ae41afcc4791bf55afc, type: 3}
+    revealRadius: 130
+    tint: {r: 0.34, g: 0.62, b: 1, a: 1}
+    size: 26
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 3
+    icon: {fileID: 21300000, guid: 64cbd8be96026684ba949ff7a5c4a0ef, type: 3}
+    revealRadius: 230
+    tint: {r: 1, g: 0.82, b: 0.32, a: 1}
+    size: 32
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 4
+    icon: {fileID: 21300000, guid: c4379514b113cda48b988b05455d8107, type: 3}
+    revealRadius: 180
+    tint: {r: 0.85, g: 0.45, b: 1, a: 1}
+    size: 28
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 5
+    icon: {fileID: 0}
+    revealRadius: 400
+    tint: {r: 0.7, g: 0.9, b: 1, a: 0}
+    size: 30
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 6
+    icon: {fileID: 0}
+    revealRadius: 110
+    tint: {r: 1, g: 0.55, b: 0.35, a: 0}
+    size: 24
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 7
+    icon: {fileID: 21300000, guid: 5a9ac31024c962641b776f1451a6b625, type: 3}
+    revealRadius: 160
+    tint: {r: 0.9, g: 0.4, b: 0.4, a: 1}
+    size: 26
+    fadeBand: 25
+    rememberOnceSeen: 1
+  - kind: 8
+    icon: {fileID: 0}
+    revealRadius: 0
+    tint: {r: 1, g: 1, b: 1, a: 0}
+    size: 18
+    fadeBand: 25
+    rememberOnceSeen: 1
