@@ -45,6 +45,7 @@ public class ReliquaryDirector : MonoBehaviour
     public static int Opened { get; private set; }
 
     private static readonly List<Reliquary> s_live = new List<Reliquary>(4);
+    private static readonly Collider[] s_clearance = new Collider[32];
 
     private void Start() => StartCoroutine(PlaceWhenWorldExists());
 
@@ -102,14 +103,19 @@ public class ReliquaryDirector : MonoBehaviour
         {
             if (!TryFindSite(start, taken, out Vector3 site)) continue;
 
-            var go = new GameObject(taken.Count == 0 ? "Reliquary" : $"Reliquary_{taken.Count}");
+            float roll = Random.value;
+            var rollGrade = roll < pBarrow ? Reliquary.Grade.Barrow
+                          : roll < pBarrow + pShrine ? Reliquary.Grade.Shrine
+                          : Reliquary.Grade.Wayside;
+
+            // Named by grade so a hierarchy search for "Reliquary" both finds
+            // them and says what each one is without clicking it.
+            var go = new GameObject($"Reliquary_{rollGrade}_{taken.Count}");
             go.transform.position = site;
 
             var rel = go.AddComponent<Reliquary>();
-            float roll = Random.value;
-            rel.grade = roll < pBarrow ? Reliquary.Grade.Barrow
-                      : roll < pBarrow + pShrine ? Reliquary.Grade.Shrine
-                      : Reliquary.Grade.Wayside;
+            rel.grade = rollGrade;
+
             // Distance from the start is the only honest way to pay for a walk.
             float d = Vector3.Distance(site, start);
             rel.richness = Mathf.Lerp(1f, 2.1f, Mathf.InverseLerp(minDistanceFromStart, minDistanceFromStart + 260f, d));
@@ -128,10 +134,15 @@ public class ReliquaryDirector : MonoBehaviour
             Debug.LogWarning($"[Reliquary] Wanted {want} but found no site with {clearRadius}m of clear ground " +
                              $"at least {minDistanceFromStart}m from the player. Lower clearRadius on a dense map.");
         else
+        {
+            var where = new System.Text.StringBuilder();
+            foreach (var r in s_live)
+                where.Append($"\n    {r.grade} at {r.transform.position}  ({Vector3.Distance(r.transform.position, start):F0}m from start)");
             Debug.Log($"[Reliquary] Placed {Placed} " +
                       $"({s_live.FindAll(r => r.grade == Reliquary.Grade.Barrow).Count} barrow, " +
                       $"{s_live.FindAll(r => r.grade == Reliquary.Grade.Shrine).Count} shrine). " +
-                      $"Lifetime armour granted: {ArmourLootTable.LifetimeFound}.");
+                      $"Lifetime armour granted: {ArmourLootTable.LifetimeFound}." + where);
+        }
     }
 
     // Wraps a chest MODEL in the interactive parts.
@@ -190,7 +201,20 @@ public class ReliquaryDirector : MonoBehaviour
 
         // Room for the banners, and flat enough that a shrine does not end up
         // half-buried in a slope.
-        if (Physics.CheckSphere(p + Vector3.up * 1.5f, clearRadius, ~0, QueryTriggerInteraction.Ignore)) return false;
+        //
+        // TerrainColliders are skipped explicitly, and that is not a detail: a
+        // sphere of this radius sitting a metre above the ground ALWAYS
+        // intersects the terrain it is standing on, so a plain CheckSphere
+        // rejected every candidate site and no reliquary was ever placed
+        // anywhere. The test is "is anything built or grown here", not "is there
+        // ground here" — there had better be ground here.
+        int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * 1.5f, clearRadius, s_clearance, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            if (s_clearance[i] == null) continue;
+            if (s_clearance[i] is TerrainCollider) continue;
+            return false;
+        }
 
         float h1 = terrain.SampleHeight(p + new Vector3(clearRadius, 0f, 0f)) + o.y;
         float h2 = terrain.SampleHeight(p + new Vector3(-clearRadius, 0f, 0f)) + o.y;

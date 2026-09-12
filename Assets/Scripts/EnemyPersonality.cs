@@ -42,6 +42,17 @@ public class EnemyPersonality : MonoBehaviour
 {
     public enum Archetype { Minion, Warrior, Rogue, Mage, Necromancer, Archer, Boss }
 
+    // Master switch, read from PlayerPrefs so it can be flipped without a
+    // rebuild. This layer rewrites which clip every enemy state plays, so when
+    // something looks wrong with enemy animation it is the first thing worth
+    // ruling out — and being stuck waiting for a code change to do that is not
+    // acceptable. Set "EnemyPersonality" to 0 to switch it off entirely and get
+    // the stock shared animator back.
+    public static bool Enabled => PlayerPrefs.GetInt("EnemyPersonality", 1) == 1;
+
+    [Tooltip("Log the clip-to-role mapping for each enemy on spawn. The mapping is inferred from clip names, so this is the fastest way to see WHY a state is playing the wrong animation.")]
+    public bool logMapping = false;
+
     [Tooltip("Leave at Auto-detect unless a prefab is named in a way the detector cannot read.")]
     public bool autoDetectArchetype = true;
     public Archetype archetype = Archetype.Minion;
@@ -72,6 +83,8 @@ public class EnemyPersonality : MonoBehaviour
 
     private void Awake()
     {
+        if (!Enabled) { enabled = false; return; }
+
         _animator = GetComponentInChildren<Animator>();
         if (_animator == null || _animator.runtimeAnimatorController == null) { enabled = false; return; }
 
@@ -83,6 +96,7 @@ public class EnemyPersonality : MonoBehaviour
         _rng = new System.Random(GetInstanceID());
 
         if (autoDetectArchetype) archetype = Detect(gameObject.name);
+        if (PlayerPrefs.GetInt("EnemyPersonalityLog", 0) == 1) logMapping = true;
 
         BuildOverride();
         ApplyBody();
@@ -105,20 +119,38 @@ public class EnemyPersonality : MonoBehaviour
     {
         _override = new AnimatorOverrideController(_animator.runtimeAnimatorController);
 
-        // Read the real key names off the controller. They are matched loosely so
-        // a renamed clip does not quietly disable the whole system.
+        // Work out which clip in the controller belongs to which role.
+        //
+        // The previous version walked the clips ONCE through an if/else-if chain,
+        // and that was the animation mess. Each clip could only ever be tested
+        // against the first role it happened to match, and roles were claimed in
+        // whatever order GetOverrides returned — so the bow attack, which is
+        // simply the alphabetically earlier clip containing "attack", claimed the
+        // attack role and the real melee swing was never mapped at all. Any
+        // reordering shuffled which state got which clip.
+        //
+        // Now each role is resolved independently, by its own scored predicate,
+        // over the whole list — and a clip already taken by one role cannot be
+        // claimed by another. Deterministic regardless of order.
         var pairs = new List<KeyValuePair<AnimationClip, AnimationClip>>();
         _override.GetOverrides(pairs);
-        foreach (var p in pairs)
-        {
-            if (p.Key == null) continue;
-            string n = p.Key.name.ToLowerInvariant();
-            if (_idleKey == null && n.Contains("idle") && !n.Contains("dizzy") && !n.Contains("aim")) _idleKey = p.Key.name;
-            else if (_runKey == null && (n.Contains("running") || n.Contains("run"))) _runKey = p.Key.name;
-            else if (_hitKey == null && n.Contains("hit")) _hitKey = p.Key.name;
-            else if (_deathKey == null && (n.Contains("death") || n.Contains("die"))) _deathKey = p.Key.name;
-            else if (_attackKey == null && (n.Contains("attack") || n.Contains("stab") || n.Contains("slice"))) _attackKey = p.Key.name;
-        }
+
+        var names = new List<string>(pairs.Count);
+        foreach (var p in pairs) if (p.Key != null) names.Add(p.Key.name);
+
+        var claimed = new HashSet<string>();
+        _attackKey = Claim(names, claimed, n =>
+            (n.Contains("attack") || n.Contains("stab") || n.Contains("slice") || n.Contains("chop"))
+            && !n.Contains("bow") && !n.Contains("ranged") && !n.Contains("hit"));
+        _hitKey = Claim(names, claimed, n => n.Contains("hit") && !n.Contains("attack"));
+        _deathKey = Claim(names, claimed, n => n.Contains("death") || n.Contains("die"));
+        _idleKey = Claim(names, claimed, n =>
+            n.Contains("idle") && !n.Contains("dizzy") && !n.Contains("aim") && !n.Contains("bow"));
+        _runKey = Claim(names, claimed, n => n.Contains("running") || n.Contains("walking") || n.Contains("run"));
+
+        if (logMapping)
+            Debug.Log($"[Personality] {name} ({archetype}) mapped — attack:{_attackKey ?? "-"} hit:{_hitKey ?? "-"} " +
+                      $"death:{_deathKey ?? "-"} idle:{_idleKey ?? "-"} run:{_runKey ?? "-"}  from [{string.Join(", ", names)}]");
 
         AnimationClip idle = PickIdle();
         AnimationClip death = EnemyAnimationSet.Pick(_set.deaths, _rng);
@@ -133,6 +165,19 @@ public class EnemyPersonality : MonoBehaviour
         Set(_runKey, _walkClip ?? _runClip);   // starts calm; SetGait corrects it
 
         _animator.runtimeAnimatorController = _override;
+    }
+
+    // First clip matching `want` that no other role has taken.
+    private static string Claim(List<string> names, HashSet<string> claimed, System.Func<string, bool> want)
+    {
+        foreach (var n in names)
+        {
+            if (claimed.Contains(n)) continue;
+            if (!want(n.ToLowerInvariant())) continue;
+            claimed.Add(n);
+            return n;
+        }
+        return null;
     }
 
     private void Set(string key, AnimationClip clip)

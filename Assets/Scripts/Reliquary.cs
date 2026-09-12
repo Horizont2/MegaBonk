@@ -93,7 +93,11 @@ public class Reliquary : MonoBehaviour
         _chest.Opened += OnOpened;
         // The reliquary owns the interaction. Leaving the chest's own press-to-
         // open live alongside the channel is how a player skips the fight.
-        _chest.enabled = false;
+        //
+        // A flag rather than disabling the component: a disabled MonoBehaviour
+        // cannot start a coroutine, so ForceOpen did nothing and the chest
+        // opened empty.
+        _chest.suppressOwnInteraction = true;
     }
 
     private void OnDestroy()

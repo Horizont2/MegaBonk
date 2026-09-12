@@ -41,7 +41,7 @@ public class LootChest : MonoBehaviour
 
     private void Update()
     {
-        if (isInteracted || player == null) return;
+        if (isInteracted || player == null || suppressOwnInteraction) return;
 
         // sqrMagnitude — sqrt was firing every frame per chest.
         float rangeSqr = interactRange * interactRange;
@@ -76,21 +76,29 @@ public class LootChest : MonoBehaviour
     public event System.Action Opened;
     public bool IsOpened => isInteracted;
 
-    // Open it from outside, bypassing the [E] prompt.
+    [HideInInspector]
+    // Set by a Reliquary, which owns the interaction itself: the chest there is
+    // sealed behind guardians and a channel, so its own [E] must not offer a way
+    // to skip that.
     //
-    // A Reliquary switches this component off so its own press-to-open never
-    // runs — the chest there is sealed behind guardians and a channel — and then
-    // calls this once the player has actually earned it. Without it a reliquary
-    // would have to either duplicate the whole open sequence or leave the plain
-    // interaction live alongside its own, which is how a player ends up able to
-    // skip the fight by pressing E at the right moment.
+    // A FLAG, not `enabled = false`, and that distinction is the bug this
+    // replaced: a disabled MonoBehaviour cannot start a coroutine, so ForceOpen
+    // silently did nothing and the chest opened with no loot at all.
+    public bool suppressOwnInteraction = false;
+
+    // Open it from outside, bypassing the [E] prompt.
     public void ForceOpen()
     {
         if (isInteracted) return;
+        if (!isActiveAndEnabled)
+        {
+            Debug.LogWarning($"[LootChest] ForceOpen on '{name}' while the component is disabled — " +
+                             "the open coroutine cannot run and the loot would be lost. Use " +
+                             "suppressOwnInteraction instead of disabling the component.");
+            return;
+        }
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         isPromptShowing = false;
-        // Runs on this component even when it is disabled — StartCoroutine needs
-        // the GameObject active, not the behaviour enabled.
         StartCoroutine(OpenSequence());
     }
 

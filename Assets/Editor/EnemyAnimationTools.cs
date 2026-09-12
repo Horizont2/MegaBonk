@@ -32,7 +32,19 @@ public static class EnemyAnimationTools
 {
     private const string MediumDir = "Assets/HeroAnimations/Animations/fbx/Rig_Medium";
     private const string LargeDir = "Assets/HeroAnimations/Animations/fbx/Rig_Large";
-    private const string SkeletonDir = "Assets/Skeletons/Animations/fbx/Rig_Medium";
+
+    // Assets/Skeletons/Animations/fbx/Rig_Medium is DELIBERATELY NOT IMPORTED.
+    //
+    // EnemyAnimator.controller — the one every enemy in the game runs on — has
+    // its Idle, Hit and Death states pointing at clips inside those FBXs, and it
+    // stores those references as fileIDs. Re-importing the file regenerates the
+    // clip definitions and therefore the internalIDs behind those fileIDs, so
+    // the controller's states silently end up on whichever clip now sits at that
+    // id. That is a scrambled animator: attacks playing hit reactions, idles
+    // playing deaths, and nothing in the console to say why.
+    //
+    // Those libraries are byte-identical copies of two of the eight in
+    // HeroAnimations, so nothing is lost by leaving them alone.
     private const string SetPath = "Assets/Resources/" + EnemyAnimationSet.ResourceName + ".asset";
 
     [MenuItem("Tools/Enemies/1 - Import Animation Libraries", priority = 1)]
@@ -128,7 +140,7 @@ public static class EnemyAnimationTools
     private static List<string> LibraryFiles()
     {
         var files = new List<string>();
-        foreach (var dir in new[] { MediumDir, LargeDir, SkeletonDir })
+        foreach (var dir in new[] { MediumDir, LargeDir })
         {
             if (!Directory.Exists(dir)) continue;
             files.AddRange(Directory.GetFiles(dir, "*.fbx", SearchOption.TopDirectoryOnly)

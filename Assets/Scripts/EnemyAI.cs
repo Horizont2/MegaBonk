@@ -773,7 +773,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Commit to the swing slightly before fully closing — the wind-up
             // lunge (in AttackRoutine) covers the remaining gap, so the attack
             // starts while still advancing instead of only after stopping.
-            if (isAttackReady && distanceToPlayer <= attackRange * 1.15f && MayCommitSwing())
+            if (isAttackReady && distanceToPlayer <= attackRange * 1.15f)
             {
                 StartCoroutine(AttackRoutine());
             }
@@ -1408,37 +1408,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
         return orb;
     }
 
-    // Enemies take turns instead of all swinging on the same frame.
+    // REMOVED: the global crowd swing gate.
     //
-    // A crowd that commits together is the single thing that makes a swarm look
-    // wrong: eight skeletons raising eight weapons in perfect unison reads as a
-    // chorus line, not a fight, and the player has one moment to react to all of
-    // it rather than a stream of separate threats to read. Spacing the
-    // commitments out means the same enemies, the same damage over time, and a
-    // fight that looks like it has a rhythm.
+    // The idea was that enemies should take turns rather than all raising a
+    // weapon on the same frame. The implementation was wrong in a way that broke
+    // the fight: when the gate refused, the enemy fell through the attack branch
+    // into the STRAFE branch, so a crowd in attack range spent almost all of its
+    // time side-stepping back and forth instead of swinging. That is the zigzag,
+    // and it is also why enemies stopped doing damage — they were barely ever
+    // reaching AttackRoutine at all.
     //
-    // A timestamp rather than a counter, deliberately: there is nothing to leak
-    // when an enemy dies mid-swing, which a counter would need careful unwinding
-    // to survive. With one enemy on the field it is always in the past and the
-    // gate does nothing at all.
-    private static float s_nextCrowdSwing = 0f;
-    [Tooltip("Minimum gap between two enemies COMMITTING to a swing. Not a cooldown on any one of them — it staggers the crowd.")]
-    public float crowdSwingSpacing = 0.32f;
-
-    private bool MayCommitSwing()
-    {
-        // Bosses and elites never queue behind fodder.
-        if (isBoss || isElite) return true;
-
-        // Self-healing against a stale timestamp: Time.time restarts with the
-        // scene, so a value left over from the last run would sit in the future
-        // and silently stop every enemy from ever attacking again.
-        float now = Time.time;
-        if (s_nextCrowdSwing > now && s_nextCrowdSwing - now < 5f) return false;
-
-        s_nextCrowdSwing = now + Mathf.Max(0f, crowdSwingSpacing);
-        return true;
-    }
+    // Desynchronising a crowd does not need a runtime gate. Each enemy now takes
+    // a random slice off its FIRST cooldown at spawn (see Start), so they arrive
+    // at their first swing at different moments and stay out of phase from then
+    // on, with nothing to go wrong mid-fight.
 
     private IEnumerator AttackRoutine()
     {
