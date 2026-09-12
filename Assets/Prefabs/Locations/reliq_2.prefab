@@ -245,7 +245,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
   flattenRadius: 5
-  yOffset: -0.5
+  yOffset: -0.6
   maxAllowedSlope: 8
   spawnWeight: 0.3
   regionAppearChance: 0.5
@@ -628,7 +628,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5295301037478277668, guid: 87108343d3e59f2479fb59dd3af34cee, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.432
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5295301037478277668, guid: 87108343d3e59f2479fb59dd3af34cee, type: 3}
       propertyPath: m_LocalPosition.z
