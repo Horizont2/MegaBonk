@@ -186,7 +186,10 @@ public static class EnemyAnimationTools
         set.runs = A("Running_A", "Running_B");
         set.runHoldingBow = C("Running_HoldingBow");
 
-        set.attacksUnarmed = A("Melee_Unarmed_Attack_Punch_A", "Melee_Unarmed_Attack_Kick");
+        // NO KICKS. Melee_Unarmed_Attack_Kick reads as a brawl move on a
+        // skeleton carrying a sword, and it was showing up on rank-and-file
+        // enemies mid-fight. Armed swings only.
+        set.attacksUnarmed = A("Melee_Unarmed_Attack_Punch_A");
         set.attacks1H = A("Melee_1H_Attack_Chop", "Melee_1H_Attack_Slice_Diagonal",
                           "Melee_1H_Attack_Slice_Horizontal", "Melee_1H_Attack_Stab");
         set.attacks2H = A("Melee_2H_Attack_Chop", "Melee_2H_Attack_Slice",
@@ -207,7 +210,9 @@ public static class EnemyAnimationTools
         set.taunts = A("Skeletons_Taunt", "Skeletons_Taunt_Longer");
         set.resurrect = C("Skeletons_Death_Resurrect");
 
-        set.bossAttacks = A("Melee_2H_Attack", "Melee_1H_Slash", "Melee_Unarmed_Smash", "Melee_Unarmed_Punch");
+        // Smash stays — it is a two-fisted overhead, not a kick — but nothing
+        // else unarmed.
+        set.bossAttacks = A("Melee_2H_Attack", "Melee_1H_Slash", "Melee_Unarmed_Smash");
         set.bossSlam = C("Melee_2H_Slam") ?? C("Melee_Unarmed_Smash");
 
         if (isNew) AssetDatabase.CreateAsset(set, SetPath);

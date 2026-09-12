@@ -209,9 +209,25 @@ public class ReliquaryDirector : MonoBehaviour
         var root = new GameObject("Chest");
         root.transform.SetParent(parent, false);
         root.transform.position = site;
-        root.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
-        Instantiate(model, root.transform, false);
+        // Scaled to a chest-sized chest, and grounded by its bounds.
+        //
+        // The Fantasy Polygon meshes are authored several metres tall in their
+        // own units, so instantiating them as-is put a chest the size of a house
+        // in the middle of every site — which is what the screenshots showed.
+        // Same treatment every other prop gets; see Reliquary.PlaceProp.
+        var model3d = Reliquary.PlaceProp(model, site, Random.Range(0f, 360f),
+                                          grade == Reliquary.Grade.Barrow ? 1.35f : 1.1f, root.transform);
+
+        // The pack's prefabs carry the rig but no Animator, so the lid never
+        // moved. LootChest looks for one in its children and finds nothing, then
+        // silently falls back to a plain timer.
+        if (model3d != null && model3d.GetComponentInChildren<Animator>() == null)
+        {
+            var anim = model3d.AddComponent<Animator>();
+            anim.runtimeAnimatorController = set.chestAnimatorController;
+            anim.applyRootMotion = false;
+        }
 
         var chest = root.AddComponent<LootChest>();
         chest.possibleLoot = set.chestLoot;

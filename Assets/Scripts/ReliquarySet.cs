@@ -17,6 +17,9 @@ public class ReliquarySet : ScriptableObject
     [Tooltip("What a chest scatters when it opens. Read off the project's existing chest so a reliquary drops exactly what an ordinary one does.")]
     public GameObject[] chestLoot;
 
+    [Tooltip("The chest pack's animator. Its prefabs carry the rig but no Animator component, so without this the lid never moves.")]
+    public RuntimeAnimatorController chestAnimatorController;
+
     [Tooltip("The landmark. Tall, coloured, and the one prop that reads across broken terrain.")]
     public GameObject[] banners;
 

@@ -22,6 +22,11 @@ public static class BuildReliquarySetTool
         "Assets/Animated Fantasy Polygon Chest/Prefab/Fantasy_Polygon_Chest_level_03.prefab",
     };
 
+    // The pack's prefabs carry the rig but no Animator component, so the lid
+    // never moved until this was attached at build time.
+    private const string ChestController =
+        "Assets/Animated Fantasy Polygon Chest/Animation/Fantasy_Polygon_Chest_Animation_Controller.controller";
+
     // What the existing chest scatters, so a reliquary drops what an ordinary
     // one does rather than inventing a second loot list to keep in step.
     private static readonly string[] Loot =
@@ -85,6 +90,8 @@ public static class BuildReliquarySetTool
 
         set.chestByGrade = Many(ChestsByGrade);
         set.chestLoot = Many(Loot);
+        set.chestAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ChestController);
+        if (set.chestAnimatorController == null) missing.Add(ChestController);
         set.banners = Many(Banners);
         set.runeStones = Many(RuneStones);
         set.remains = Many(Remains);

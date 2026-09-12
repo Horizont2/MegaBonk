@@ -122,7 +122,9 @@ public class Reliquary : MonoBehaviour
             var prefab = set.PickBanner();
             if (prefab == null) break;
             float a = (i / (float)banners) * Mathf.PI * 2f + Mathf.PI * 0.25f;
-            Strip(Instantiate(prefab, Offset(a, ring), Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f), transform));
+            // Tall on purpose: the banners ARE the landmark, so they are the one
+            // prop allowed to be bigger than a person.
+            Strip(PlaceProp(prefab, Offset(a, ring), -a * Mathf.Rad2Deg, 3.4f, transform));
         }
 
         // Rune stones make it a shrine rather than a picnic. Odd count and
@@ -133,33 +135,37 @@ public class Reliquary : MonoBehaviour
             var prefab = set.PickRuneStone();
             if (prefab == null) break;
             float a = (i / (float)stones) * Mathf.PI * 2f + Random.Range(-0.18f, 0.18f);
-            var go = Instantiate(prefab, Offset(a, ring * 0.62f), Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), transform);
-            go.transform.localScale *= Random.Range(0.85f, 1.25f);
+            var go = PlaceProp(prefab, Offset(a, ring * 0.62f), Random.Range(0f, 360f),
+                               Random.Range(1.3f, 1.9f), transform);
             Strip(go, keepColliders: true);   // stones are cover; let them block
         }
 
         if (barrow)
         {
             if (set.archPrefab != null)
-                Strip(Instantiate(set.archPrefab, Offset(0f, ring * 1.25f), Quaternion.Euler(0f, 180f, 0f), transform), keepColliders: true);
+                Strip(PlaceProp(set.archPrefab, Offset(0f, ring * 1.25f), 180f, 4.2f, transform), keepColliders: true);
 
             for (int i = 0; i < 6; i++)
             {
                 var bone = set.PickRemains();
                 if (bone == null) break;
-                var go = Instantiate(bone, Offset(Random.Range(0f, Mathf.PI * 2f), Random.Range(1.4f, ring)),
-                                     Quaternion.Euler(Random.Range(-14f, 14f), Random.Range(0f, 360f), Random.Range(-14f, 14f)), transform);
+                // Yaw only. A skull given a random pitch and roll floats at an
+                // angle instead of lying where somebody dropped it.
+                var go = PlaceProp(bone, Offset(Random.Range(0f, Mathf.PI * 2f), Random.Range(1.4f, ring)),
+                                   Random.Range(0f, 360f), Random.Range(0.28f, 0.45f), transform);
                 Strip(go);
             }
         }
 
         if (set.lanternPrefab != null && grade != Grade.Wayside)
         {
-            var lamp = Instantiate(set.lanternPrefab, Offset(Mathf.PI, ring * 0.5f), Quaternion.identity, transform);
+            var lamp = PlaceProp(set.lanternPrefab, Offset(Mathf.PI, ring * 0.5f),
+                                 Random.Range(0f, 360f), 2.1f, transform);
             Strip(lamp);
             var go = new GameObject("Lantern");
             go.transform.SetParent(transform, false);
-            go.transform.position = lamp.transform.position + Vector3.up * 1.6f;
+            go.transform.position = (lamp != null ? lamp.transform.position : Offset(Mathf.PI, ring * 0.5f))
+                                  + Vector3.up * 1.6f;
             _lantern = go.AddComponent<Light>();
             _lantern.type = LightType.Point;
             _lantern.color = Accent;
@@ -267,6 +273,52 @@ public class Reliquary : MonoBehaviour
                                + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 1.15f
                                + Vector3.up * (1.3f + Mathf.Sin(Time.time * 1.7f + _phase) * 0.12f);
         }
+    }
+
+    // Place a prop at a sane real-world size, upright, sitting on the ground.
+    //
+    // THIS IS WHY THE SITES LOOKED LIKE A PILE OF ASSETS. Every prefab in the set
+    // has localScale 1, but they come from five different packs and their MESHES
+    // are authored in wildly different units — the chest is several metres tall
+    // in its own space and the "lantern" is a street lamp. Instantiating them as
+    // they are gives a shrine where the chest dwarfs the player and the banners
+    // are the size of buildings.
+    //
+    // So nothing is placed at its authored scale. Each prop is measured and
+    // scaled to the size it should be IN THIS WORLD, then grounded by its own
+    // bounds rather than by its pivot — pivots across packs sit at the base, the
+    // centre or nowhere in particular, which is the other half of why things
+    // floated and sank. Rotation is yaw only: a banner given a random pitch lies
+    // down, and a lying banner is not a landmark.
+    public static GameObject PlaceProp(GameObject prefab, Vector3 groundPos, float yawDegrees,
+                                       float targetHeight, Transform parent)
+    {
+        if (prefab == null) return null;
+
+        var go = Instantiate(prefab, groundPos, Quaternion.Euler(0f, yawDegrees, 0f), parent);
+
+        var rends = go.GetComponentsInChildren<Renderer>();
+        if (rends.Length == 0) return go;
+
+        Bounds b = rends[0].bounds;
+        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+
+        if (b.size.y > 0.001f && targetHeight > 0.01f)
+        {
+            float k = targetHeight / b.size.y;
+            go.transform.localScale *= k;
+
+            // Bounds move with the scale, so they have to be re-read before the
+            // grounding step or the object is placed using its old footprint.
+            rends = go.GetComponentsInChildren<Renderer>();
+            b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+        }
+
+        // Sit the BOTTOM of the mesh on the ground, whatever the pivot says.
+        float lift = groundPos.y - b.min.y;
+        go.transform.position += Vector3.up * lift;
+        return go;
     }
 
     private Vector3 Offset(float angle, float radius)
@@ -404,7 +456,13 @@ public class Reliquary : MonoBehaviour
         if (rm != null)
         {
             float scale = richness * grade switch { Grade.Barrow => 1.8f, Grade.Shrine => 1.3f, _ => 1f };
-            rm.AddStashResources(
+            // The RUN backpack, not the camp stash.
+            //
+            // Stash resources are invisible mid-run: the player opens a chest,
+            // the backpack still reads 0/100, and it reads as the reward having
+            // failed. Putting it in the backpack means they see it land AND they
+            // still have to carry it home, which is the interesting version.
+            rm.AddRunResources(
                 Mathf.RoundToInt(Random.Range(35f, 70f) * scale),
                 Mathf.RoundToInt(Random.Range(25f, 55f) * scale),
                 Mathf.RoundToInt(Random.Range(15f, 35f) * scale));

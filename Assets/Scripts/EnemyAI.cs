@@ -34,8 +34,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     [Header("Combat Settings")]
     public float attackRange = 1.6f;
-    public float attackCooldown = 1.5f;
-    public float attackTelegraphTime = 0.5f;
+    [Tooltip("Seconds between one enemy's swings. Raised from 1.5: with several enemies each on their own timer, a short individual cooldown adds up to a wall of blows the player has no gap to act in.")]
+    public float attackCooldown = 2.1f;
+    [Tooltip("Wind-up before the blow lands. This is the player's whole window to read the attack and move, so it is a readability number, not a difficulty one.")]
+    public float attackTelegraphTime = 0.65f;
     public GameObject weaponGlintVFX;
 
     [Header("Ranged (Archer)")]
