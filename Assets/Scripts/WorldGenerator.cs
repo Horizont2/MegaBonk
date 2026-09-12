@@ -828,6 +828,18 @@ public class WorldGenerator : MonoBehaviour
 
         SpawnAmbientCrows();
 
+        // Exploration sites are placed from here, the same way the birds are,
+        // and for the same reason: this is a per-scene call that runs after the
+        // world exists.
+        //
+        // They used to install themselves from RuntimeInitializeOnLoadMethod,
+        // which fires ONCE per play session in whatever scene starts first — the
+        // menu. The director was created there, found no region, and was never
+        // created again when the game scene loaded. Not a single reliquary ever
+        // existed and there was no log to say so, because the code that would
+        // have logged it was never running.
+        ReliquaryDirector.Install();
+
         CurrentProgress = 1f;
         IsGenerationDone = true;
         EndGenerationPerfMode();

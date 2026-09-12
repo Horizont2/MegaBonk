@@ -789,10 +789,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             bool isAttackReady = Time.time >= lastAttackTime + attackCooldown;
 
-            // Commit to the swing slightly before fully closing — the wind-up
-            // lunge (in AttackRoutine) covers the remaining gap, so the attack
-            // starts while still advancing instead of only after stopping.
-            if (isAttackReady && distanceToPlayer <= attackRange * 1.15f)
+            // Commit only once genuinely in range.
+            //
+            // This used to fire at 1.15x, on the theory that the wind-up lunge
+            // would cover the last of the gap. In practice the two compounded:
+            // the enemy started its swing well short AND then chased the player
+            // through the whole telegraph, so backing off did nothing and hits
+            // seemed to land from outside the range the player could see. Wind up
+            // on arrival, not on approach.
+            if (isAttackReady && distanceToPlayer <= attackRange)
             {
                 StartCoroutine(AttackRoutine());
             }
@@ -1513,10 +1518,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 {
                     Vector3 dir = to.normalized;
                     transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 12f * Time.deltaTime);
-                    // Only close the gap — don't overshoot into/through the player.
-                    if (to.magnitude > attackRange * 0.7f)
+                    // A step into the blow, NOT a chase.
+                    //
+                    // At 0.55x speed for the whole telegraph the enemy could
+                    // follow a retreating player right through its own wind-up,
+                    // which meant backing away from a telegraphed attack bought
+                    // nothing — and being unable to answer a tell is what made
+                    // fights feel unfair rather than hard. It now closes only the
+                    // last of the gap, and stops sooner.
+                    if (to.magnitude > attackRange * 0.9f)
                     {
-                        Vector3 nextPos = transform.position + dir * (actualMoveSpeed * 0.55f) * Time.deltaTime;
+                        Vector3 nextPos = transform.position + dir * (actualMoveSpeed * 0.3f) * Time.deltaTime;
                         nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                         SetPositionSafe(nextPos);
                         // Run the LEGS while lunging so the enemy doesn't slide with

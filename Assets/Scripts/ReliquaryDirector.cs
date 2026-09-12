@@ -299,21 +299,17 @@ public class ReliquaryDirector : MonoBehaviour
         Opened = 0;
     }
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Install()
+    // Called by WorldGenerator once the world exists.
+    //
+    // NOT from RuntimeInitializeOnLoadMethod, which was the bug: that fires ONCE
+    // per play session, in whatever scene starts first. The director was built
+    // in the menu, found no region, and was never built again when the game
+    // scene loaded — so no reliquary ever existed anywhere, and there was no log
+    // saying why because the code that would log it never ran.
+    //
+    // WorldGenerator installs the ambient birds the same way, and those work.
+    public static void Install()
     {
-        // NO region check here, and that is the whole reason nothing was ever
-        // placed.
-        //
-        // AfterSceneLoad runs BEFORE Start() on the scene's own objects, so at
-        // this moment GameManager.Instance is usually still null and
-        // MissionInitializer has not published PendingMissionRegion yet.
-        // IsAnyRegionMode therefore answered "not a region" on every single load
-        // and the director was never even created — no component, no log, no
-        // symptom to chase.
-        //
-        // WorldEncounterDirector has always dodged this by waiting a frame before
-        // asking. The check now lives in the coroutine below, after that wait.
         if (FindFirstObjectByType<ReliquaryDirector>() != null) return;
         Reset();
         new GameObject("[Reliquaries]").AddComponent<ReliquaryDirector>();
