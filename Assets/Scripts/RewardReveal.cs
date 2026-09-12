@@ -30,6 +30,7 @@ public class RewardReveal : MonoBehaviour
     public float iconSize = 240f;
     [Tooltip("How far past its final size the icon overshoots on the way in. A little is impact; a lot is a bouncy castle.")]
     public float overshoot = 1.14f;
+    [Tooltip("How many sun rays radiate from behind the icon.")]
     public float rayCount = 12f;
     public float raySpinSpeed = 18f;
 
@@ -93,7 +94,7 @@ public class RewardReveal : MonoBehaviour
         // Layer order matters: rays behind the soft burst, burst behind the icon.
         _raysRT = MakeChild("Rays", 0f).GetComponent<RectTransform>();
         var rays = _raysRT.gameObject.AddComponent<Image>();
-        rays.sprite = BuildRaySprite();
+        rays.sprite = BuildRaySprite(Mathf.Max(3, Mathf.RoundToInt(rayCount)));
         rays.raycastTarget = false;
         _raysRT.sizeDelta = new Vector2(iconSize * 4.2f, iconSize * 4.2f);
 
@@ -140,7 +141,7 @@ public class RewardReveal : MonoBehaviour
 
     // A radial starburst, drawn once into a texture. Generated rather than
     // authored so there is no art dependency and nothing to wire.
-    private static Sprite BuildRaySprite()
+    private static Sprite BuildRaySprite(int lobes)
     {
         const int S = 256;
         var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
@@ -156,7 +157,7 @@ public class RewardReveal : MonoBehaviour
                 float ang = Mathf.Atan2(d.y, d.x);
                 // Alternating wedges, softened at the tips and hollow in the
                 // middle so the icon is never sitting on a bright disc.
-                float wedge = Mathf.Pow(Mathf.Abs(Mathf.Cos(ang * 6f)), 8f);
+                float wedge = Mathf.Pow(Mathf.Abs(Mathf.Cos(ang * lobes * 0.5f)), 8f);
                 float radial = Mathf.Clamp01(1f - r) * Mathf.Clamp01((r - 0.22f) * 4f);
                 px[y * S + x] = new Color(1f, 1f, 1f, wedge * radial * 0.85f);
             }

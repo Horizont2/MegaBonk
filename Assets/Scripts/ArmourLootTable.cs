@@ -63,52 +63,116 @@ public static class ArmourLootTable
     }
 
     // Pick a piece, or null when there is nothing left worth giving.
+    //
+    // Three rules, in this order:
+    //
+    //   1. ROLL A RARITY. Weighted so the good tiers are rare — the roll is over
+    //      the FULL table, not just tiers with stock, so the intended
+    //      distribution is a fixed thing rather than something that silently
+    //      inflates as the player empties the bottom of the shop.
+    //
+    //   2. ALREADY OWN IT? TAKE ANOTHER OF THE SAME RARITY. Only unowned pieces
+    //      are ever in the buckets, so this falls out for free.
+    //
+    //   3. WHOLE RARITY EXHAUSTED? DROP TO THE WEAKEST STILL AVAILABLE. It walks
+    //      DOWN first and only goes up when there is nothing below. A player who
+    //      has completed the low tiers should be handed the next weakest thing
+    //      they are missing, not bumped up into legendaries because the common
+    //      shelf happens to be empty — that would turn finishing a tier into a
+    //      reward, which is the opposite of what the taper is for.
     public static ArmorData Roll(Reliquary.Grade grade)
     {
         bool legendary = grade == Reliquary.Grade.Barrow;
         var pool = WeaponIndex.UnownedArmour();
         if (pool.Count == 0) return null;
 
-        // Bucket what is actually still available. Rolling a tier the player has
-        // already cleared out and then giving up would make the drop rate
-        // silently collapse as they complete the set.
         var byTier = new Dictionary<int, List<ArmorData>>();
         foreach (var a in pool)
         {
             int tier = TierOf(a);
-            if (tier < 2) continue;
+            if (tier < 2) continue;   // T1 is free; the player owns it already
             if (!byTier.TryGetValue(tier, out var list)) byTier[tier] = list = new List<ArmorData>();
             list.Add(a);
         }
         if (byTier.Count == 0) return null;
 
-        float[] weights = legendary ? LegendaryWeights : NormalWeights;
-        float bias = TaperTierBias;
+        int wanted = RollTier(legendary ? LegendaryWeights : NormalWeights, TaperTierBias);
+        var bucket = NearestStock(byTier, wanted);
+        return bucket == null ? null : PickWithinTier(bucket);
+    }
 
+    // The intended rarity, before availability is considered.
+    private static int RollTier(float[] weights, float bias)
+    {
         float total = 0f;
-        var tiers = new List<int>(byTier.Keys);
-        var scores = new List<float>(tiers.Count);
-        foreach (int tier in tiers)
+        var scored = new float[weights.Length];
+        for (int tier = 2; tier < weights.Length; tier++)
         {
-            // The bias divides high tiers harder than low ones, so a well-supplied
-            // player drifts toward the bottom of the table rather than off it.
-            float w = weights[Mathf.Clamp(tier, 0, weights.Length - 1)];
+            float w = weights[tier];
+            // The taper divides high tiers harder than low ones, so a well
+            // supplied player drifts toward the bottom of the table rather than
+            // off the top of it.
             if (tier >= 4) w /= Mathf.Pow(bias, tier - 3);
-            scores.Add(w);
+            scored[tier] = w;
             total += w;
         }
-        if (total <= 0f) return null;
+        if (total <= 0f) return 2;
 
         float roll = Random.value * total;
-        for (int i = 0; i < tiers.Count; i++)
+        for (int tier = 2; tier < scored.Length; tier++)
         {
-            roll -= scores[i];
-            if (roll > 0f) continue;
-            var list = byTier[tiers[i]];
-            return list[Random.Range(0, list.Count)];
+            roll -= scored[tier];
+            if (roll <= 0f) return tier;
         }
+        return 2;
+    }
+
+    // Rule 3: the wanted tier, else the nearest one BELOW it, else the lowest above.
+    private static List<ArmorData> NearestStock(Dictionary<int, List<ArmorData>> byTier, int wanted)
+    {
+        if (byTier.TryGetValue(wanted, out var exact)) return exact;
+        for (int t = wanted - 1; t >= 2; t--)
+            if (byTier.TryGetValue(t, out var lower)) return lower;
+        for (int t = wanted + 1; t <= 6; t++)
+            if (byTier.TryGetValue(t, out var higher)) return higher;
         return null;
     }
+
+    // Within one rarity, the weaker piece is likelier.
+    //
+    // The tiers carry most of the difference, but colour variants inside a tier
+    // are not always identical, and "rarer AND stronger is less likely" should
+    // hold at every level rather than only between tiers.
+    private static ArmorData PickWithinTier(List<ArmorData> list)
+    {
+        if (list.Count == 1) return list[0];
+
+        float total = 0f;
+        var scores = new float[list.Count];
+        for (int i = 0; i < list.Count; i++)
+        {
+            float power = Power(list[i]);
+            // Inverse, softened: a flat 1/power makes a marginally better piece
+            // vanishingly rare, which is not the intent inside a single rarity.
+            scores[i] = 1f / Mathf.Max(1f, Mathf.Pow(power, 0.6f));
+            total += scores[i];
+        }
+        if (total <= 0f) return list[Random.Range(0, list.Count)];
+
+        float roll = Random.value * total;
+        for (int i = 0; i < list.Count; i++)
+        {
+            roll -= scores[i];
+            if (roll <= 0f) return list[i];
+        }
+        return list[list.Count - 1];
+    }
+
+    // One number for "how good is this", folding in the three stats that matter
+    // rather than reading power alone — a piece can be worth more than its power
+    // rating suggests if it carries the health or the mitigation.
+    public static float Power(ArmorData a) =>
+        a == null ? 1f : a.basePower + a.baseHealthBonus * 0.5f + a.baseDamageReduction * 400f;
 
     public static void NoteGranted()
     {

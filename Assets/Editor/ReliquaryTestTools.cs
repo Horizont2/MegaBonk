@@ -1,0 +1,154 @@
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+// Ways to see the exploration systems work without waiting on the dice.
+//
+// A reliquary is deliberately rare, a barrow rarer, and an armour drop rarer
+// still — which is right for play and useless for checking whether any of it
+// functions. These put each piece on screen on demand.
+public static class ReliquaryTestTools
+{
+    [MenuItem("Tools/Exploration/Test/Spawn Wayside At Player", priority = 100)]
+    private static void SpawnWayside() => Spawn(Reliquary.Grade.Wayside);
+
+    [MenuItem("Tools/Exploration/Test/Spawn Shrine At Player", priority = 101)]
+    private static void SpawnShrine() => Spawn(Reliquary.Grade.Shrine);
+
+    [MenuItem("Tools/Exploration/Test/Spawn Barrow At Player", priority = 102)]
+    private static void SpawnBarrow() => Spawn(Reliquary.Grade.Barrow);
+
+    [MenuItem("Tools/Exploration/Test/Spawn Wayside At Player", true)]
+    [MenuItem("Tools/Exploration/Test/Spawn Shrine At Player", true)]
+    [MenuItem("Tools/Exploration/Test/Spawn Barrow At Player", true)]
+    private static bool SpawnValidate() => Application.isPlaying;
+
+    private static void Spawn(Reliquary.Grade grade)
+    {
+        var set = ReliquarySet.Load();
+        if (set == null || !set.IsUsable)
+        {
+            Debug.LogError("[Reliquary/Test] No usable ReliquarySet. Run Tools > Exploration > Build Reliquary Set.");
+            return;
+        }
+
+        var pc = Object.FindFirstObjectByType<PlayerController>();
+        if (pc == null) { Debug.LogError("[Reliquary/Test] No player in the scene."); return; }
+
+        // Well clear of the player, so the guardians do not wake in their face
+        // and the site can actually be walked up to the way a real one is.
+        Vector3 fwd = pc.transform.forward; fwd.y = 0f;
+        if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
+        Vector3 site = pc.transform.position + fwd.normalized * 18f;
+        site.y = Ground(site);
+
+        var go = new GameObject($"Reliquary_{grade}_TEST");
+        go.transform.position = site;
+        var rel = go.AddComponent<Reliquary>();
+        rel.grade = grade;
+        rel.richness = 1.5f;
+
+        var root = new GameObject("Chest");
+        root.transform.SetParent(go.transform, false);
+        root.transform.position = site;
+        Object.Instantiate(set.ChestFor((int)grade), root.transform, false);
+        var chest = root.AddComponent<LootChest>();
+        chest.possibleLoot = set.chestLoot;
+        chest.minLootItems = 4; chest.maxLootItems = 9;
+
+        rel.Bind(chest);
+        rel.Raise(set);
+
+        Debug.Log($"[Reliquary/Test] {grade} placed 18m ahead of the player at {site}. " +
+                  "Walk to it — guardians wake on approach, then hold [E].");
+    }
+
+    // ---------------------------------------------------------------------
+
+    [MenuItem("Tools/Exploration/Test/Preview Reward Reveal", priority = 110)]
+    private static void PreviewReveal()
+    {
+        var index = WeaponIndex.Load();
+        if (index == null || index.armour == null || index.armour.Length == 0)
+        {
+            Debug.LogError("[Reliquary/Test] No WeaponIndex. Run Tools > Shop > Build Weapon Index.");
+            return;
+        }
+
+        // Something with a real icon, so the preview shows what a drop shows.
+        ArmorData pick = null;
+        foreach (var a in index.armour) { if (a != null && a.icon != null) { pick = a; break; } }
+        if (pick == null) { Debug.LogError("[Reliquary/Test] No armour in the index has an icon."); return; }
+
+        int tier = ArmourLootTable.TierOf(pick);
+        RewardReveal.Show(pick.icon, pick.armorName,
+            LocalizationManager.Tr("REVEAL_ARMOUR_SUB",
+                                   LocalizationManager.Tr(ArmourLootTable.TierNameKey(tier)),
+                                   pick.category.ToString(), pick.basePower),
+            ArmourLootTable.TierColour(tier));
+    }
+
+    [MenuItem("Tools/Exploration/Test/Preview Reward Reveal", true)]
+    private static bool PreviewValidate() => Application.isPlaying;
+
+    // ---------------------------------------------------------------------
+
+    // Rolls the loot table many times and prints the distribution, so the odds
+    // can be checked against intent instead of guessed at from a few drops.
+    [MenuItem("Tools/Exploration/Test/Simulate 1000 Armour Rolls", priority = 120)]
+    private static void Simulate()
+    {
+        var index = WeaponIndex.Load();
+        if (index == null || index.armour == null || index.armour.Length == 0)
+        {
+            Debug.LogError("[Reliquary/Test] No WeaponIndex. Run Tools > Shop > Build Weapon Index.");
+            return;
+        }
+
+        var sb = new StringBuilder("[Reliquary/Test] 1000 rolls per grade, against the CURRENT save " +
+                                   $"(lifetime found: {ArmourLootTable.LifetimeFound}, so the taper is already applied)\n");
+
+        foreach (Reliquary.Grade grade in System.Enum.GetValues(typeof(Reliquary.Grade)))
+        {
+            var counts = new int[8];
+            int nulls = 0;
+            for (int i = 0; i < 1000; i++)
+            {
+                var a = ArmourLootTable.Roll(grade);
+                if (a == null) { nulls++; continue; }
+                counts[Mathf.Clamp(ArmourLootTable.TierOf(a), 0, 7)]++;
+            }
+
+            sb.Append($"  {grade,-8} armour chance {ArmourLootTable.ArmourChance(grade):P0}  ->  ");
+            for (int t = 2; t <= 6; t++) sb.Append($"T{t}:{counts[t] / 10f:F1}%  ");
+            if (nulls > 0) sb.Append($"(nothing left: {nulls / 10f:F1}%)");
+            sb.AppendLine();
+        }
+
+        int owned = 0;
+        foreach (var a in index.armour)
+            if (a != null && a.price > 0 && PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, 0) == 1) owned++;
+        sb.AppendLine($"  Player owns {owned} of {index.armour.Length} indexed pieces.");
+
+        Debug.Log(sb.ToString());
+    }
+
+    [MenuItem("Tools/Exploration/Test/Reset Armour Find History", priority = 121)]
+    private static void ResetHistory()
+    {
+        if (!EditorUtility.DisplayDialog("Reset armour find history",
+            "Clears the lifetime count that tapers armour drop odds. Does NOT un-own any armour.",
+            "Reset", "Cancel")) return;
+        PlayerPrefs.DeleteKey("CacheArmourFound");
+        PlayerPrefs.Save();
+        Debug.Log("[Reliquary/Test] Armour find history cleared — drop odds back to full.");
+    }
+
+    private static float Ground(Vector3 p)
+    {
+        if (Physics.Raycast(p + Vector3.up * 120f, Vector3.down, out RaycastHit hit, 400f, ~0, QueryTriggerInteraction.Ignore))
+            return hit.point.y;
+        var t = Terrain.activeTerrain;
+        return t != null ? t.SampleHeight(p) + t.transform.position.y : p.y;
+    }
+}
