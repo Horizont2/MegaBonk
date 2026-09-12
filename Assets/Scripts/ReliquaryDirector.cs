@@ -313,5 +313,13 @@ public class ReliquaryDirector : MonoBehaviour
         if (FindFirstObjectByType<ReliquaryDirector>() != null) return;
         Reset();
         new GameObject("[Reliquaries]").AddComponent<ReliquaryDirector>();
+        // Logged synchronously, at the moment of creation.
+        //
+        // Every previous round of "they still are not spawning" was impossible to
+        // diagnose from the outside because silence meant two completely
+        // different things: the code did not run, or it ran and bailed. This line
+        // separates them. If it is absent from the console, nothing here executed
+        // at all and the problem is upstream of this file.
+        Debug.Log("[Reliquary] Director installed by WorldGenerator — placement decision follows.");
     }
 }
