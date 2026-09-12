@@ -240,8 +240,12 @@ public class ReliquaryDirector : MonoBehaviour
         var gen = FindFirstObjectByType<WorldGenerator>();
         if (gen == null) return site;
 
-        float radius = grade switch { Reliquary.Grade.Barrow => 9f, Reliquary.Grade.Shrine => 7f, _ => 5f };
-        gen.FlattenTerrainRobust(site, radius, radius * 1.8f, site.y);
+        // Wider than the site itself. The pad has to cover the ground the
+        // guardians stand on and the vigil is fought over, not just the footprint
+        // of the chest — a shrine on a level disc surrounded by a slope is a
+        // shrine you fight on a slope.
+        float radius = grade switch { Reliquary.Grade.Barrow => 14f, Reliquary.Grade.Shrine => 11f, _ => 7f };
+        gen.FlattenTerrainRobust(site, radius, radius * 2f, site.y);
 
         // Re-sample: SetHeights has just moved the surface, and every prop about
         // to be placed will raycast against the NEW one.
@@ -262,7 +266,20 @@ public class ReliquaryDirector : MonoBehaviour
         Vector3 o = terrain.transform.position;
         Vector3 s = terrain.terrainData.size;
 
-        float margin = Mathf.Min(edgeMargin * ease, Mathf.Min(s.x, s.z) * 0.4f);
+        // THE EDGE MARGIN IS NOT RELAXED. This is the bug that put every
+        // reliquary on the rim of the map.
+        //
+        // Relaxing it looked like just another constraint to loosen, but it is
+        // the one that runs backwards: the interior is full of trees, rocks and
+        // locations, so it fails the clearance test, while the outer band is
+        // empty precisely BECAUSE the generator does not dress it. Widening the
+        // search outward therefore does not find more places, it finds the only
+        // places left — a ring of bare ground around the edge of the world,
+        // which is the least interesting spot on the map and the furthest from
+        // anywhere the player has a reason to be.
+        //
+        // So the margin holds, and everything else gives instead.
+        float margin = Mathf.Min(edgeMargin, Mathf.Min(s.x, s.z) * 0.35f);
         Vector3 p = new Vector3(
             Random.Range(o.x + margin, o.x + s.x - margin),
             0f,
@@ -270,6 +287,13 @@ public class ReliquaryDirector : MonoBehaviour
         p.y = terrain.SampleHeight(p) + o.y;
 
         float minStart = minDistanceFromStart * ease;
+        // Pull candidates toward the middle. Two uniform draws averaged is a
+        // triangular distribution — cheap, and it puts the density where the
+        // world is actually built rather than spread evenly out to the border.
+        p.x = (p.x + Random.Range(o.x + margin, o.x + s.x - margin)) * 0.5f;
+        p.z = (p.z + Random.Range(o.z + margin, o.z + s.z - margin)) * 0.5f;
+        p.y = terrain.SampleHeight(p) + o.y;
+
         if ((p - start).sqrMagnitude < minStart * minStart) return false;
         float spacing = minSpacing * ease;
         foreach (var t in taken)

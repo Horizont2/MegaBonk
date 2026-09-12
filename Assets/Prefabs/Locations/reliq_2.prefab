@@ -244,7 +244,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dadd7e805a860b64f8442a9f9d11c47f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
-  flattenRadius: 5
+  flattenRadius: 15
   yOffset: -0.6
   maxAllowedSlope: 8
   spawnWeight: 0.3
