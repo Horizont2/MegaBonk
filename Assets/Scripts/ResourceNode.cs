@@ -52,6 +52,7 @@ public class ResourceNode : MonoBehaviour, IDamageable
     // on screen is small. What matters is how big it looks, and that is the only
     // number the player can see.
     private float _sizeFactor = -1f;
+    private Vector3 _lastHitDirection = Vector3.zero;
 
     private float SizeFactor01
     {
@@ -85,6 +86,14 @@ public class ResourceNode : MonoBehaviour, IDamageable
             return _sizeFactor;
         }
     }
+
+    [Header("Timber")]
+    [Tooltip("A falling tree crushes whatever is underneath it. It topples away from the last blow, so the player chooses the direction by choosing where to stand.")]
+    public bool crushesEnemies = true;
+    [Tooltip("Damage at full size, scaled down for smaller trees. High on purpose — being under a falling tree should not be survivable for ordinary enemies, or the moment is not worth setting up.")]
+    public float crushBaseDamage = 140f;
+    [Tooltip("How wide the trunk's kill zone is. A little generous, because being clipped by a tree and shrugging it off looks worse than being caught by one that missed slightly.")]
+    public float crushRadius = 1.4f;
 
     [Header("Effects")]
     public ParticleSystem hitEffect;
@@ -159,6 +168,14 @@ public class ResourceNode : MonoBehaviour, IDamageable
         if (isDead) return;
 
         currentHealth -= info.Amount;
+
+        // Which way the blow came from, so the trunk topples AWAY from whoever
+        // is swinging. A tree that falls in a random direction is scenery
+        // collapsing; a tree that falls away from you is a tree you AIMED, and
+        // the whole appeal of felling one onto a crowd is that you chose the
+        // side to stand on.
+        Vector3 push = info.PushDirection; push.y = 0f;
+        if (push.sqrMagnitude > 0.001f) _lastHitDirection = push.normalized;
 
         // Fire the impact SFX at the exact moment damage lands. The old
         // code fired it back in PlayerController.ExecuteAttack, which is
@@ -236,6 +253,57 @@ public class ResourceNode : MonoBehaviour, IDamageable
         transform.localScale = originalScale;
     }
 
+    // Length of the trunk, so the sweep covers the whole thing rather than a
+    // guessed distance. Falls back to something sensible for a node with no
+    // renderers rather than sweeping zero metres and crushing nothing.
+    private float TrunkLength()
+    {
+        var rends = GetComponentsInChildren<Renderer>();
+        if (rends.Length == 0) return 6f;
+        Bounds b = rends[0].bounds;
+        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+        return Mathf.Max(2f, b.size.y);
+    }
+
+    private static readonly Collider[] s_crushBuffer = new Collider[32];
+
+    // Damages anything under the trunk RIGHT NOW, once each.
+    //
+    // Swept every frame of the fall rather than tested once at the end, because
+    // the interesting case is an enemy walking through the arc mid-topple — and
+    // a single check at the end would miss anything that was hit on the way
+    // down and has since been knocked clear.
+    private void SweepCrush(Vector3 pivot, float length, float damage, HashSet<EnemyAI> already, bool finalHit = false)
+    {
+        // The trunk runs from the pivot along the tree's own up axis, which the
+        // rotation is currently sweeping toward the ground.
+        Vector3 tip = pivot + transform.up * length;
+        float radius = crushRadius * (finalHit ? 1.5f : 1f);
+
+        int n = Physics.OverlapCapsuleNonAlloc(pivot + Vector3.up * 0.3f, tip, radius,
+                                               s_crushBuffer, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            if (s_crushBuffer[i] == null) continue;
+            var foe = s_crushBuffer[i].GetComponentInParent<EnemyAI>();
+            if (foe == null || foe.IsDead || already.Contains(foe)) continue;
+            already.Add(foe);
+
+            Vector3 push = (foe.transform.position - pivot); push.y = 0f;
+            if (push.sqrMagnitude < 0.001f) push = transform.up;
+
+            foe.TakeDamage(new DamageInfo
+            {
+                Amount = damage,
+                IsCritical = true,
+                PushDirection = push.normalized,
+                KnockbackForce = 16f,
+                StunDuration = 2f,
+                HitPoint = foe.transform.position,
+            });
+        }
+    }
+
     private IEnumerator DeathRoutine()
     {
         // Kill the last hit rustle with a short fade so it doesn't sing
@@ -274,6 +342,28 @@ public class ResourceNode : MonoBehaviour, IDamageable
             // ���в����� ��������� ����ֲ� ������ �� ���� �� ���� �����
             Quaternion initialRotation = transform.rotation;
 
+            // ==== TIMBER ====
+            //
+            // The trunk used to rotate around its own local right axis, which is
+            // whatever yaw the generator happened to roll — so a felled tree fell
+            // in a random direction and meant nothing. It falls away from the
+            // last blow now, which turns chopping into aiming: stand on the far
+            // side of a crowd, swing, and drop several tonnes of oak on them.
+            //
+            // That is the entire idea. Everything below is in service of making
+            // the moment land — the sweep that actually crushes, the weight of
+            // the impact, and damage that scales with how big the tree was,
+            // because a sapling flattening a warband would be a joke.
+            Vector3 fallDir = _lastHitDirection.sqrMagnitude > 0.001f ? _lastHitDirection : transform.forward;
+            fallDir.y = 0f;
+            if (fallDir.sqrMagnitude < 0.001f) fallDir = Vector3.forward;
+            fallDir.Normalize();
+            Vector3 fallAxis = Vector3.Cross(Vector3.up, fallDir);   // topples along fallDir
+
+            float trunkLength = TrunkLength();
+            float crushDamage = crushBaseDamage * Mathf.Lerp(0.45f, 1f, SizeFactor01);
+            var crushed = new HashSet<EnemyAI>();
+
             float fallDuration = 0.7f;   // natural topple — 0.32 whipped over far too fast
             float fallSpeed = 90f / fallDuration;
             float t = 0;
@@ -281,8 +371,23 @@ public class ResourceNode : MonoBehaviour, IDamageable
             while (t < fallDuration)
             {
                 t += Time.deltaTime;
-                transform.RotateAround(pivotPoint, transform.right, fallSpeed * Time.deltaTime);
+                transform.RotateAround(pivotPoint, fallAxis, fallSpeed * Time.deltaTime);
+                if (crushesEnemies) SweepCrush(pivotPoint, trunkLength, crushDamage, crushed);
                 yield return null;
+            }
+
+            if (crushesEnemies)
+            {
+                // The landing itself. A last, wider sweep so anything the swinging
+                // trunk clipped past still gets flattened by the crown coming
+                // down, and a thump the player can feel.
+                SweepCrush(pivotPoint, trunkLength, crushDamage, crushed, finalHit: true);
+                if (AudioManager.Instance != null)
+                    AudioManager.Instance.PlaySFX3D(AudioID.Env_StoneBreak, pivotPoint + fallDir * trunkLength * 0.6f);
+                // A directional thump along the way the trunk went, so the
+                // weight of it registers in the hands as well as the eyes.
+                if (crushed.Count > 0)
+                    CameraShakeUtil.TryDirectionalShake(fallDir, 0.5f, 0.35f, 0.4f);
             }
 
             if (hitEffect != null)
