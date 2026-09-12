@@ -876,6 +876,11 @@ public class WorldGenerator : MonoBehaviour
         // have logged it was never running.
         ReliquaryDirector.Install();
 
+        // Painted trees become real, choppable objects near the player. Only
+        // does anything when tree painting is on and something was actually
+        // painted — see VegetationHydrator.
+        VegetationHydrator.Install(terrain);
+
         CurrentProgress = 1f;
         IsGenerationDone = true;
         EndGenerationPerfMode();
