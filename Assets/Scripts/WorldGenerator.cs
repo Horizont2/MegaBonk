@@ -34,6 +34,11 @@ public class WorldGenerator : MonoBehaviour
 
     [Header("Dark Fantasy: Water (BITGEM)")]
     public float waterLevel = 0.12f;
+
+    // The world Y that water sits at. Computed in half a dozen places from
+    // `transform.position.y + depth * waterLevel`; anything placing objects needs
+    // it too, and a second hand-rolled copy is a second thing to get wrong.
+    public float AbsoluteWaterHeight => transform.position.y + (depth * waterLevel);
     public Material waterMaterial;
 
     [Header("Side Objectives (Dead End Altars)")]
@@ -3444,7 +3449,11 @@ public class WorldGenerator : MonoBehaviour
         return spawned;
     }
 
-    private void FlattenTerrainRobust(Vector3 center, float radius, float falloff, float targetWorldY)
+    // Public so systems that place their own structures after generation — the
+    // reliquaries, for one — can level the ground under them with the same
+    // routine the generator's own locations use, instead of a second
+    // implementation that behaves subtly differently.
+    public void FlattenTerrainRobust(Vector3 center, float radius, float falloff, float targetWorldY)
     {
         TerrainData td = terrain.terrainData;
         int resolution = td.heightmapResolution;

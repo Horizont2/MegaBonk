@@ -40,6 +40,10 @@ public class ReliquaryDirector : MonoBehaviour
     [Tooltip("Clear ground needed around the site so the banners are not standing inside a tree.")]
     public float clearRadius = 7f;
     public float edgeMargin = 90f;
+    [Tooltip("Metres a site must sit above the water line. Keeps shrines out of lakes AND off the shoreline, where the banners would stand in the shallows.")]
+    public float waterClearance = 2.5f;
+    [Tooltip("Level the ground under the site. Without it a shrine on any slope has half its stones buried and the chest floating.")]
+    public bool flattenGround = true;
 
     public static int Placed { get; private set; }
     public static int Opened { get; private set; }
@@ -108,6 +112,16 @@ public class ReliquaryDirector : MonoBehaviour
                           : roll < pBarrow + pShrine ? Reliquary.Grade.Shrine
                           : Reliquary.Grade.Wayside;
 
+            // Level the ground FIRST, before a single prop is placed.
+            //
+            // Everything the site builds samples the terrain to sit on it — the
+            // banners, the stones, the chest, the guardians. Flattening
+            // afterwards would move the ground out from under all of them and
+            // leave the whole shrine buried or hovering. The site is also
+            // re-sampled after this so the chest sits on the new level, not the
+            // old slope.
+            if (flattenGround) site = LevelGround(site, rollGrade);
+
             // Named by grade so a hierarchy search for "Reliquary" both finds
             // them and says what each one is without clicking it.
             var go = new GameObject($"Reliquary_{rollGrade}_{taken.Count}");
@@ -143,6 +157,29 @@ public class ReliquaryDirector : MonoBehaviour
                       $"{s_live.FindAll(r => r.grade == Reliquary.Grade.Shrine).Count} shrine). " +
                       $"Lifetime armour granted: {ArmourLootTable.LifetimeFound}." + where);
         }
+    }
+
+    // Flatten a pad for the site and hand back the settled ground position.
+    //
+    // Uses the generator's own FlattenTerrainRobust rather than a second
+    // implementation — the roads and the hand-built locations already level
+    // ground with it, and two routines that flatten "almost the same way" is how
+    // a seam appears where they meet. A barrow needs a wider pad than a wayside
+    // find because its ring of props is wider; the falloff blends it back into
+    // the hillside so the pad does not read as a plateau someone stamped out.
+    private Vector3 LevelGround(Vector3 site, Reliquary.Grade grade)
+    {
+        var gen = FindFirstObjectByType<WorldGenerator>();
+        if (gen == null) return site;
+
+        float radius = grade switch { Reliquary.Grade.Barrow => 9f, Reliquary.Grade.Shrine => 7f, _ => 5f };
+        gen.FlattenTerrainRobust(site, radius, radius * 1.8f, site.y);
+
+        // Re-sample: SetHeights has just moved the surface, and every prop about
+        // to be placed will raycast against the NEW one.
+        Terrain t = Terrain.activeTerrain;
+        if (t != null) site.y = t.SampleHeight(site) + t.transform.position.y;
+        return site;
     }
 
     // Wraps a chest MODEL in the interactive parts.
@@ -198,6 +235,14 @@ public class ReliquaryDirector : MonoBehaviour
         if ((p - start).sqrMagnitude < minDistanceFromStart * minDistanceFromStart) return false;
         foreach (var t in taken)
             if ((p - t).sqrMagnitude < minSpacing * minSpacing) return false;
+
+        // NOT IN WATER. Rivers and lakes are carved into the same heightmap this
+        // samples, so a site chosen on height alone lands happily on a lake bed —
+        // and a shrine at the bottom of a river is both unreachable and absurd.
+        // The margin keeps it off the shoreline too, where the banners would
+        // stand in the shallows.
+        var gen = FindFirstObjectByType<WorldGenerator>();
+        if (gen != null && p.y < gen.AbsoluteWaterHeight + waterClearance) return false;
 
         // Room for the banners, and flat enough that a shrine does not end up
         // half-buried in a slope.
