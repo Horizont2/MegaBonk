@@ -870,6 +870,18 @@ public class Reliquary : MonoBehaviour
                     : fS >= fF ? (set != null ? set.stoneIcon : null)
                     : (set != null ? set.foodIcon : null);
 
+        // SAY WHICH HALF FAILED.
+        //
+        // "The icons did not appear" has two completely different causes that
+        // look identical from the player's seat: the reveal never played at all,
+        // or it played with a null sprite and showed only text. One is a broken
+        // call path, the other is an unbuilt ReliquarySet, and guessing between
+        // them has already cost more than this line will ever cost to keep.
+        if (icon == null)
+            Debug.LogWarning("[Reliquary] Paying out a haul with NO resource icon — the reveal will show text " +
+                             "only. ReliquarySet.woodIcon/stoneIcon/foodIcon are empty; run " +
+                             "Tools > Exploration > Build Reliquary Set.", this);
+
         var parts = new List<string>(3);
         if (wood > 0) parts.Add($"{wood} {LocalizationManager.Tr("Wood")}");
         if (stone > 0) parts.Add($"{stone} {LocalizationManager.Tr("Stone")}");
@@ -878,6 +890,8 @@ public class Reliquary : MonoBehaviour
         // Longer than an armour reveal, and longer the more there is to read.
         // Three quantities take real time to parse, and a hoard the player never
         // managed to read is a hoard that may as well have been a handful.
+        Debug.Log($"[Reliquary] {grade} haul: wood {wood}, stone {stone}, food {food} " +
+                  $"(fortune {fortune}) — showing the reward reveal.");
         RewardReveal.Show(icon,
             LocalizationManager.Tr(FortuneTitleKey(fortune)),
             string.Join("   ·   ", parts),

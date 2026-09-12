@@ -208,6 +208,30 @@ public class RewardReveal : MonoBehaviour
         return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
     }
 
+    // The stand-in for a reward whose real icon could not be resolved.
+    private static Sprite s_token;
+    private static Sprite BuildTokenSprite()
+    {
+        if (s_token != null) return s_token;
+        const int S = 128;
+        var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        var px = new Color[S * S];
+        Vector2 c = new Vector2(S * 0.5f, S * 0.5f);
+        for (int y = 0; y < S; y++)
+            for (int x = 0; x < S; x++)
+            {
+                float r = Vector2.Distance(new Vector2(x, y), c) / (S * 0.5f);
+                // A ring, not a disc: unmistakably a placeholder, and it does not
+                // hide behind the glow the way a filled circle would.
+                float a = r < 0.62f ? 0.18f : (r < 0.92f ? 1f : Mathf.Clamp01((1f - r) * 12f));
+                px[y * S + x] = new Color(1f, 1f, 1f, a);
+            }
+        tex.SetPixels(px);
+        tex.Apply();
+        s_token = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
+        return s_token;
+    }
+
     // A soft round falloff — the same trick TrailerSoftSprite uses to stop
     // particles rendering as hard squares.
     private static Sprite BuildGlowSprite()
@@ -235,11 +259,17 @@ public class RewardReveal : MonoBehaviour
     private IEnumerator Routine(Sprite icon, string title, string subtitle, Color accent, float hold)
     {
         float stay = hold > 0f ? hold : holdTime;
-        _icon.sprite = icon;
-        // No icon is not a reason to show nothing — the name still matters, and
-        // a missing sprite would otherwise render as a white box.
-        _icon.enabled = icon != null;
-        _icon.color = Color.white;
+        // A MISSING SPRITE STILL GETS A SHAPE.
+        //
+        // This used to switch the icon off entirely, which is defensible — an
+        // Image with no sprite renders as a white square — but it means a
+        // reveal with an unresolved icon looks exactly like a reveal that never
+        // fired, and those are opposite problems. A tinted disc says "the beat
+        // played, the picture is missing", which is a bug report someone can act
+        // on rather than a mystery.
+        _icon.sprite = icon != null ? icon : BuildTokenSprite();
+        _icon.enabled = true;
+        _icon.color = icon != null ? Color.white : accent;
 
         _title.text = title ?? "";
         _title.color = accent;

@@ -97,6 +97,39 @@ public static class ReliquaryTestTools
 
     // ---------------------------------------------------------------------
 
+    // The supply-haul reveal on demand, without opening a chest.
+    //
+    // "The icons did not appear" is a report with two unrelated causes — the
+    // reveal never fired, or it fired with no sprite — and telling them apart
+    // meant fighting through a fourteen-second vigil each attempt. This shows
+    // the reveal in isolation and prints exactly which icons resolved, so the
+    // answer takes one click instead of one siege.
+    [MenuItem("Tools/Exploration/Test/Preview Haul Reveal", priority = 111)]
+    private static void PreviewHaul()
+    {
+        var set = ReliquarySet.Load();
+        if (set == null)
+        {
+            Debug.LogError("[Reliquary/Test] No ReliquarySet at all. Run Tools > Exploration > Build Reliquary Set.");
+            return;
+        }
+
+        Debug.Log($"[Reliquary/Test] Resource icons — wood: {Name(set.woodIcon)}, stone: {Name(set.stoneIcon)}, " +
+                  $"food: {Name(set.foodIcon)}. Any 'MISSING' here is why a haul reveal shows text with no picture.");
+
+        RewardReveal.Show(set.woodIcon,
+            LocalizationManager.Tr("HAUL_RICH"),
+            $"46 {LocalizationManager.Tr("Wood")}   ·   22 {LocalizationManager.Tr("Stone")}   ·   9 {LocalizationManager.Tr("Food")}",
+            new Color(0.65f, 0.85f, 1f), 4.5f);
+    }
+
+    [MenuItem("Tools/Exploration/Test/Preview Haul Reveal", true)]
+    private static bool PreviewHaulValidate() => Application.isPlaying;
+
+    private static string Name(Sprite s) => s != null ? s.name : "MISSING";
+
+    // ---------------------------------------------------------------------
+
     // Rolls the loot table many times and prints the distribution, so the odds
     // can be checked against intent instead of guessed at from a few drops.
     [MenuItem("Tools/Exploration/Test/Simulate 1000 Armour Rolls", priority = 120)]
