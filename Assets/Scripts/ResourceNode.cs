@@ -90,8 +90,14 @@ public class ResourceNode : MonoBehaviour, IDamageable
     [Header("Timber")]
     [Tooltip("A falling tree crushes whatever is underneath it. It topples away from the last blow, so the player chooses the direction by choosing where to stand.")]
     public bool crushesEnemies = true;
-    [Tooltip("Damage at full size, scaled down for smaller trees. High on purpose — being under a falling tree should not be survivable for ordinary enemies, or the moment is not worth setting up.")]
+    [Tooltip("Damage at full size, scaled down for smaller trees. High on purpose — being under a falling tree should not be survivable for ORDINARY enemies, or the moment is not worth setting up. Elites and bosses are capped separately below.")]
     public float crushBaseDamage = 140f;
+    [Tooltip("Most of an elite's maximum health a single tree may take. Enough to matter, nowhere near enough to replace the fight.")]
+    [Range(0.02f, 0.6f)] public float crushEliteHealthCap = 0.18f;
+    [Tooltip("Most of a boss's maximum health a single tree may take. Deliberately small: a boss fight that ends because a tree fell on it is a boss fight nobody remembers.")]
+    [Range(0f, 0.2f)] public float crushBossHealthCap = 0.06f;
+    [Tooltip("Stagger a boss instead of hurting it much. The tree still lands on it and the boss still reels — it just does not decide the fight.")]
+    public bool crushStaggersBosses = true;
     [Tooltip("How wide the trunk's kill zone is. A little generous, because being clipped by a tree and shrugging it off looks worse than being caught by one that missed slightly.")]
     public float crushRadius = 1.4f;
 
@@ -289,16 +295,51 @@ public class ResourceNode : MonoBehaviour, IDamageable
             if (foe == null || foe.IsDead || already.Contains(foe)) continue;
             already.Add(foe);
 
+            // ==== A TREE DOES NOT DECIDE A BOSS FIGHT ====
+            //
+            // Flat damage is right for trash: a falling oak should simply end
+            // them, and it is the reason setting one up is worth doing. It is
+            // badly wrong for anything the player is supposed to actually fight.
+            // A boss that dies because the player found a convenient tree is a
+            // boss nobody remembers beating, and an elite deleted the same way
+            // stops being an elite.
+            //
+            // So the ceiling is a FRACTION OF THEIR OWN MAXIMUM HEALTH rather
+            // than a flat number. That keeps the physics honest — the tree lands
+            // on them, they reel, it hurts — while leaving the fight where it
+            // belongs. It also scales itself: a tougher boss added later is
+            // automatically no more vulnerable to this than the current ones.
+            float dealt = damage;
+            float stun = 2f;
+            float knock = 16f;
+
+            if (foe.isBoss)
+            {
+                dealt = Mathf.Min(dealt, foe.maxHealth * crushBossHealthCap);
+                // Reeling, not launched. A boss knocked across the arena reads
+                // as a physics accident rather than as a hit.
+                knock = crushStaggersBosses ? 3f : 0f;
+                stun = crushStaggersBosses ? 1.2f : 0f;
+            }
+            else if (foe.isElite)
+            {
+                dealt = Mathf.Min(dealt, foe.maxHealth * crushEliteHealthCap);
+                knock = 8f;
+                stun = 1.4f;
+            }
+
+            if (dealt <= 0.01f) continue;
+
             Vector3 push = (foe.transform.position - pivot); push.y = 0f;
             if (push.sqrMagnitude < 0.001f) push = transform.up;
 
             foe.TakeDamage(new DamageInfo
             {
-                Amount = damage,
+                Amount = dealt,
                 IsCritical = true,
                 PushDirection = push.normalized,
-                KnockbackForce = 16f,
-                StunDuration = 2f,
+                KnockbackForce = knock,
+                StunDuration = stun,
                 HitPoint = foe.transform.position,
             });
         }
