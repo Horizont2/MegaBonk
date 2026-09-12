@@ -64,6 +64,15 @@ public static class BuildReliquarySetTool
     private const string StoneDrop = "Assets/Prefabs/Pickup/Stone_Pickup.prefab";
     private const string FoodDrop = "Assets/Prefabs/Pickup/Berry_Red.prefab";
 
+    // The chest beacon instances and tints this. An asset reference rather than a
+    // Shader.Find, so the shader is guaranteed to ship in the build.
+    private const string BeamMaterial = "Assets/Materials/LightBeam_Mat.mat";
+
+    // The project's resource icon sheet, sliced into three. Which slice is wood,
+    // stone or food is not knowable from the file, so they go in sheet order and
+    // the fields are swappable by hand in the inspector if the order is wrong.
+    private const string ResourceIcons = "Assets/Icons/Resource Icons.png";
+
     private static readonly string[] Guardians =
     {
         "Assets/Prefabs/Skeleton_Warrior.prefab",
@@ -107,6 +116,23 @@ public static class BuildReliquarySetTool
         set.woodDrop = One(WoodDrop);
         set.stoneDrop = One(StoneDrop);
         set.foodDrop = One(FoodDrop);
+
+        set.beamMaterial = AssetDatabase.LoadAssetAtPath<Material>(BeamMaterial);
+        if (set.beamMaterial == null) missing.Add(BeamMaterial);
+
+        // Sub-assets of a sliced sheet, in sheet order. Only overwritten when the
+        // sheet resolves, so a hand-corrected assignment survives a rebuild.
+        var icons = new List<Sprite>(3);
+        foreach (var sub in AssetDatabase.LoadAllAssetsAtPath(ResourceIcons))
+            if (sub is Sprite sp) icons.Add(sp);
+        icons.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+        if (icons.Count >= 3)
+        {
+            set.woodIcon = icons[0];
+            set.stoneIcon = icons[1];
+            set.foodIcon = icons[2];
+        }
+        else missing.Add(ResourceIcons + " (needs 3 sliced sprites)");
 
         if (isNew) AssetDatabase.CreateAsset(set, Path);
         EditorUtility.SetDirty(set);

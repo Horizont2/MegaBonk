@@ -17,33 +17,43 @@ using UnityEngine;
 // ==== WHY IT CANNOT BE GRABBED AND FLED FROM ====
 //
 // A reward you walk up to and collect is not a decision, it is a pickup, and a
-// map of pickups is a chore list. Two locks, layered by grade so the small ones
-// stay quick:
+// map of pickups is a chore list. Two locks, layered so the grades feel like
+// genuinely different encounters rather than the same one at three lengths:
 //
 //   GUARDIANS. Dormant until you are close, then they wake. The chest is visibly
 //   sealed while any of them stand, so the player reads "kill these first"
-//   without being told.
+//   without being told. Even the roadside find has some — a chest with no lock
+//   at all is just a pickup with a lid.
 //
-//   THE CHANNEL. Opening takes time, and at a Barrow the time is long enough
-//   that a wave arrives during it. The question stops being "can I reach it" and
-//   becomes "can I hold this ground for nine seconds".
+//   THE VIGIL. At a shrine and a barrow, killing the guards only earns you the
+//   right to START. Lighting the seal commits you to holding the ground while
+//   waves arrive, and the chest opens if you are still standing there when the
+//   clock runs out. The question is never "can I reach it", it is "can I hold
+//   this for twenty-six seconds".
 //
-// The channel's rule is the important part and it is not the obvious one:
-// DAMAGE DOES NOT INTERRUPT, WALKING AWAY DOES. In a game where something is
-// clipping you almost constantly, cancel-on-damage does not mean "hard", it
-// means "you may never open this during a fight" — and the fight is the whole
-// point. Leaving, on the other hand, should cost the progress.
+// Two rules about the vigil matter more than the numbers. It is NOT a held key —
+// standing still with [E] down is the one thing this game never lets you do, so
+// a hold-to-open bar only ever measured how fast the player got knocked off it.
+// And leaving PAUSES rather than resets: a reset punishes one mistake with the
+// whole attempt and teaches players not to start.
 //
-// And the loot lands at the END of the channel, never the start, or the player
-// could open it and run — the exact thing this exists to prevent.
+// The loot lands at the END, never at the start, or the player could open it and
+// run — the exact thing this exists to prevent.
+//
+// ==== WHAT EACH GRADE IS ALLOWED TO GIVE ====
+//
+// Supplies and crystals from all three; ARMOUR ONLY FROM A BARROW. Armour is
+// shop stock, and the shop is most of the progression, so the moment the common
+// chests could drop it the economy was being fed from encounters that cost
+// nothing. See ArmourLootTable — the odds have exactly one owner.
 [DisallowMultipleComponent]
 public class Reliquary : MonoBehaviour
 {
     public enum Grade
     {
-        Wayside,   // roadside find: no guard, a moment to open
-        Shrine,    // one guardian, a short hold
-        Barrow,    // a warband of them, a long hold, and a wave during it
+        Wayside,   // roadside find: two guards, open on the spot, supplies only
+        Shrine,    // four guards, then a fourteen-second vigil. Supplies, no armour
+        Barrow,    // a warband, a twenty-six-second siege, and the only armour in the world
     }
 
     [Header("Grade")]
@@ -59,7 +69,7 @@ public class Reliquary : MonoBehaviour
     //
     // Now the site is a PREFAB. Drop Reliquary_Shrine into a location built by
     // hand, add that location to the generator's POI list, and the chest brings
-    // its own guardians, seal and channel with it. Nothing has to find anywhere.
+    // its own guardians, seal and vigil with it. Nothing has to find anywhere.
     // The director still exists and still scatters them across open ground, but it
     // is now one way to place a prefab rather than the only path that works.
     [Header("Self-assembly")]
@@ -67,23 +77,48 @@ public class Reliquary : MonoBehaviour
     public bool spawnGuardians = true;
     [Tooltip("How far out the guardians stand. Widen it for a big hand-built location so they are not standing in the walls.")]
     public float guardRadius = 4f;
-    [Tooltip("Override the guardian count for this site. -1 keeps the count the grade implies (0 / 1 / 4).")]
+    [Tooltip("Override the guardian count for this site. -1 keeps the count the grade implies (2 wayside / 4 shrine / 7 barrow).")]
     public int guardianCountOverride = -1;
     [Tooltip("Also scatter banners, stones and bones around the chest. OFF for a prefab dropped into a hand-built location — the location already has its own dressing — and ON for a site the director places on bare ground.")]
     public bool buildDecor = false;
+
+    [Header("Presentation")]
+    [Tooltip("Light coming off the chest, coloured by grade: green wayside, blue shrine, gold barrow. It goes out when the chest is opened — a beacon over an emptied chest walks the player back to nothing.")]
+    public bool showBeacon = true;
+    [Tooltip("How hard the chest rattles as the vigil runs, rising as the seal nears breaking. During a siege the player is watching the ground they are defending, not the HUD, so the progress has to be legible on the object itself.")]
+    public float channelShake = 0.035f;
 
     [Header("Payout")]
     [Tooltip("Scales supplies only. Armour odds live in ArmourLootTable so the economy has one owner.")]
     [Range(0.5f, 3f)] public float richness = 1f;
 
-    [Header("Channel")]
-    public float waysideChannel = 2f;
-    public float shrineChannel = 4f;
-    public float barrowChannel = 9f;
-    [Tooltip("How far the player may drift before the channel starts draining.")]
-    public float channelLeash = 4.5f;
-    [Tooltip("Progress lost per second when out of range, as a fraction of the whole.")]
-    public float drainRate = 0.5f;
+    // ==== THE VIGIL ====
+    //
+    // This used to be a hold-[E] channel: stand still, keep a key down, watch a
+    // bar. It had the right shape on paper and none of it in play — holding a key
+    // is not a decision, and standing still is the one thing a game about being
+    // swarmed never lets you do, so in practice the bar just measured how long it
+    // took the player to get knocked off it.
+    //
+    // A vigil instead. One press lights the seal, and from that moment the site
+    // is a fight on a clock: waves arrive, and the seal only breaks if the player
+    // is still standing on the ground when the clock runs out. No key to hold, so
+    // every second of it is spent playing the game the rest of the game is about.
+    //
+    // Two rules make it a place rather than a timer. LEAVING PAUSES IT — you
+    // cannot light the seal and kite the wave across the valley while it ticks;
+    // the reward is for holding THIS ground. And the clock does not reset when
+    // you slip out, it holds and resumes, because a reset punishes one mistake
+    // with the whole attempt and teaches players never to try.
+    [Header("The vigil")]
+    [Tooltip("Seconds the player must hold the ground once the seal is lit. Zero means the chest simply opens — right for a roadside find, wrong for anything guarded.")]
+    public float waysideVigil = 0f;
+    public float shrineVigil = 14f;
+    public float barrowVigil = 26f;
+    [Tooltip("How far from the chest counts as holding the ground. Generous on purpose: this is a fight, and a leash tight enough to stop you repositioning is a leash that stops you fighting.")]
+    public float vigilRadius = 11f;
+    [Tooltip("Seconds between attacker waves during a vigil.")]
+    public float waveInterval = 7f;
 
     private LootChest _chest;
     private Light _lantern;
@@ -93,20 +128,37 @@ public class Reliquary : MonoBehaviour
     private float _progress;
     private bool _spent;
     private float _guardCheck;
-    private bool _wavesSent;
+    private ChestBeacon _beacon;
+    private Vector3 _chestRest;
+    private bool _vigilLit;
+    private float _held;        // seconds of vigil banked
+    private float _nextWave;
+    private int _waveIndex;
+    private int _spawnedByWaves;
 
     public bool Sealed => LivingGuardians() > 0;
-    private float ChannelTime => grade switch
+    private float VigilTime => grade switch
     {
-        Grade.Barrow => barrowChannel,
-        Grade.Shrine => shrineChannel,
-        _ => waysideChannel,
+        Grade.Barrow => barrowVigil,
+        Grade.Shrine => shrineVigil,
+        _ => waysideVigil,
     };
     private Color Accent => grade switch
     {
         Grade.Barrow => new Color(1.00f, 0.45f, 0.15f),
         Grade.Shrine => new Color(0.85f, 0.45f, 1.00f),
         _ => new Color(0.95f, 0.88f, 0.65f),
+    };
+
+    // The beacon's colour is the ONE thing the player can read before committing
+    // to the fight, so it carries the only fact worth knowing from a distance:
+    // how good this is. Green for a roadside find, blue for a guarded shrine,
+    // gold for the barrow — the one that actually holds armour.
+    private Color BeaconColour => grade switch
+    {
+        Grade.Barrow => new Color(1.00f, 0.82f, 0.32f),
+        Grade.Shrine => new Color(0.34f, 0.62f, 1.00f),
+        _ => new Color(0.42f, 1.00f, 0.52f),
     };
 
     // Everything the prefab needs to become a live site, without a director.
@@ -124,6 +176,12 @@ public class Reliquary : MonoBehaviour
         var set = ReliquarySet.Load();
         if (buildDecor && set != null) Raise(set);
         if (spawnGuardians && _guardians.Count == 0) PostGuardians(set, guardRadius);
+
+        _chestRest = _chest.transform.localPosition;
+        if (showBeacon && set != null)
+            _beacon = ChestBeacon.Attach(_chest.transform, BeaconColour,
+                                         grade == Grade.Barrow ? 2.7f : grade == Grade.Shrine ? 2.3f : 2.0f,
+                                         set.beamMaterial);
     }
 
     public void Bind(LootChest chest)
@@ -234,9 +292,17 @@ public class Reliquary : MonoBehaviour
     // they fight like every other enemy once woken instead of like a special case.
     private void PostGuardians(ReliquarySet set, float ring)
     {
+        // Enough of them to be a fight.
+        //
+        // It was 4 / 1 / 0, and 0 for a wayside meant the commonest chest in the
+        // game had no lock on it at all — walk up, press a key, take the supplies.
+        // One guardian on a shrine was barely more. The guards are the thing that
+        // makes a chest a place rather than a pickup, so there are now enough of
+        // them at every grade for the approach itself to be the encounter, before
+        // the vigil even starts.
         int count = guardianCountOverride >= 0
                   ? guardianCountOverride
-                  : grade switch { Grade.Barrow => 4, Grade.Shrine => 1, _ => 0 };
+                  : grade switch { Grade.Barrow => 7, Grade.Shrine => 4, _ => 2 };
         if (count == 0) return;
         if (set == null || set.guardianPrefabs == null || set.guardianPrefabs.Length == 0)
         {
@@ -426,52 +492,156 @@ public class Reliquary : MonoBehaviour
         }
 
         float dist = Vector3.Distance(transform.position, _player.position);
-        if (dist > _chest.interactRange + channelLeash * 2f) { _progress = Mathf.Max(0f, _progress - Time.deltaTime * drainRate); return; }
+        bool onGround = dist <= vigilRadius;
 
+        // STILL GUARDED. The seal cannot even be lit while a guardian stands, so
+        // the approach is its own fight and the player reads "kill these first"
+        // off the motes without being told.
         if (Sealed)
         {
-            if (dist <= _chest.interactRange + 2f)
+            if (dist <= _chest.interactRange + 6f)
                 ShowBar(LocalizationManager.Tr("RELIQUARY_SEALED", LivingGuardians()), 0f);
-            _progress = 0f;
             return;
         }
 
-        bool inReach = dist <= _chest.interactRange + channelLeash;
-        bool holding = inReach && Input.GetKey(_chest.interactKey);
+        float need = VigilTime;
 
-        if (holding)
+        // NO VIGIL — a roadside find. Guards down, one press, open. The escalation
+        // between grades is the whole design: this one has to stay quick or the
+        // commonest chest in the game becomes a chore.
+        if (need <= 0.01f)
         {
-            if (grade == Grade.Barrow && !_wavesSent && _progress > 0.15f)
+            if (dist <= _chest.interactRange)
             {
-                _wavesSent = true;
-                // The whole point of a Barrow: the ground you have to hold is
-                // contested from the moment you commit to holding it.
-                var alerts = RegionAlertDirector.Instance;
-                if (alerts != null) alerts.RaiseAlert(transform.position, transform);
+                ShowBar(LocalizationManager.Tr("RELIQUARY_PROMPT"), 0f);
+                if (Input.GetKeyDown(_chest.interactKey)) Break();
             }
-            _progress += Time.deltaTime / Mathf.Max(0.1f, ChannelTime);
-        }
-        else if (_progress > 0f)
-        {
-            // Drains rather than resets. Being knocked back for half a second
-            // should cost something, not everything.
-            _progress -= Time.deltaTime * drainRate;
+            return;
         }
 
-        _progress = Mathf.Clamp01(_progress);
-
-        if (_progress > 0f || inReach)
+        // NOT LIT YET. Lighting it is a decision the player makes with their eyes
+        // open — the prompt says how long they are signing up for, because a
+        // twenty-six second siege sprung on someone at 10% health is not a
+        // challenge, it is an ambush by the UI.
+        if (!_vigilLit)
         {
-            string key = holding ? "RELIQUARY_OPENING"
-                       : _progress > 0f ? "RELIQUARY_HOLD"
-                       : "RELIQUARY_PROMPT";
-            ShowBar(LocalizationManager.Tr(key), _progress);
+            if (dist <= _chest.interactRange)
+            {
+                ShowBar(LocalizationManager.Tr("RELIQUARY_LIGHT", Mathf.RoundToInt(need)), 0f);
+                if (Input.GetKeyDown(_chest.interactKey)) LightVigil();
+            }
+            return;
         }
+
+        // THE VIGIL IS RUNNING.
+        if (onGround)
+        {
+            _held += Time.deltaTime;
+
+            if (Time.time >= _nextWave)
+            {
+                _nextWave = Time.time + waveInterval;
+                SendWave();
+            }
+        }
+
+        _progress = Mathf.Clamp01(_held / need);
+
+        // The chest strains harder the closer the seal is to breaking. Feedback on
+        // the OBJECT, not only on a bar at the top of the screen — during a fight
+        // the player is looking at the ground they are defending, not at the HUD.
+        if (channelShake > 0.0001f)
+        {
+            float amp = channelShake * Mathf.Lerp(0.25f, 1.4f, _progress) * (onGround ? 1f : 0.25f);
+            _chest.transform.localPosition = _chestRest + Random.insideUnitSphere * amp;
+        }
+
+        ShowBar(onGround
+                ? LocalizationManager.Tr("RELIQUARY_VIGIL", Mathf.CeilToInt(need - _held))
+                : LocalizationManager.Tr("RELIQUARY_VIGIL_LOST"),
+                _progress);
 
         if (_progress >= 1f)
         {
-            _spent = true;
-            _chest.ForceOpen();   // payout rides on LootChest.Opened
+            // Put it back before handing over: LootChest's own open sequence
+            // shakes from where it thinks the chest lives, and it would inherit
+            // whatever jitter offset this frame happened to end on.
+            _chest.transform.localPosition = _chestRest;
+            Break();
+        }
+    }
+
+    private void Break()
+    {
+        if (_spent) return;
+        _spent = true;
+        _chest.ForceOpen();   // payout rides on LootChest.LidOpened
+    }
+
+    // Lighting the seal is what makes the site hostile. Everything nearby is told
+    // where the player is standing, which is the honest version of "a wave
+    // arrives": the region's own alert system brings the region's own enemies,
+    // rather than a bespoke spawner conjuring a cast nobody recognises.
+    private void LightVigil()
+    {
+        _vigilLit = true;
+        _held = 0f;
+        _nextWave = Time.time + 1.5f;   // the first one comes almost at once
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX3D(AudioID.Env_ChestOpen, transform.position);
+        if (_beacon != null) _beacon.SetAgitated(true);
+    }
+
+    // A wave is SPAWNED, not merely summoned.
+    //
+    // The obvious implementation is to raise the region alarm and let the nearby
+    // patrols converge, and that is still done — it costs nothing and it drags
+    // the region's own enemies into the fight, which is better than a private
+    // cast appearing from nowhere. But it cannot be the whole of it: RaiseAlert
+    // returns false during its own cooldown, while another alert is running, or
+    // during a totem capture, and it summons whatever patrols HAPPEN to be
+    // nearby. On a quiet corner of the map that is a twenty-six second vigil
+    // against nothing at all, which is worse than no mechanic — the player has
+    // learnt the siege is a formality and will never respect it again.
+    //
+    // So the site brings its own attackers, and the alarm is a bonus on top.
+    private void SendWave()
+    {
+        var alerts = RegionAlertDirector.Instance;
+        if (alerts != null) alerts.RaiseAlert(transform.position, _player);
+
+        var set = ReliquarySet.Load();
+        if (set == null || set.guardianPrefabs == null || set.guardianPrefabs.Length == 0) return;
+
+        int cap = grade == Grade.Barrow ? 12 : grade == Grade.Shrine ? 6 : 0;
+        if (cap <= 0 || _spawnedByWaves >= cap) return;
+
+        // Grows wave by wave, so a siege builds instead of arriving flat — the
+        // last ten seconds should be the hard part, not an even trickle.
+        int want = Mathf.Min((grade == Grade.Barrow ? 3 : 2) + _waveIndex, cap - _spawnedByWaves);
+        _waveIndex++;
+
+        for (int i = 0; i < want; i++)
+        {
+            var prefab = set.guardianPrefabs[Random.Range(0, set.guardianPrefabs.Length)];
+            if (prefab == null) continue;
+
+            // Outside the ground being held, so they have to close and the player
+            // gets the half-second of warning that makes it a fight rather than
+            // an ambush that materialises on top of them.
+            float a = Random.Range(0f, Mathf.PI * 2f);
+            Vector3 p = Offset(a, vigilRadius + Random.Range(3f, 8f));
+
+            var go = Instantiate(prefab, p, Quaternion.LookRotation(transform.position - p));
+            var ai = go.GetComponent<EnemyAI>();
+            if (ai == null) continue;
+            // Awake and coming. These are not guards; they are the answer to the
+            // player having lit the thing.
+            ai.startPassive = false;
+            ai.canDeAggro = false;
+            ai.aggroRange = vigilRadius + 25f;
+            ai.leashRange = 90f;
+            _spawnedByWaves++;
         }
     }
 
@@ -513,6 +683,9 @@ public class Reliquary : MonoBehaviour
     private void OnOpened()
     {
         if (_lantern != null) _lantern.enabled = false;
+        // The light goes out the moment the chest commits, not when the loot
+        // lands — it is the "come here" signal, and it has served its purpose.
+        if (_beacon != null) _beacon.Extinguish();
         ReliquaryDirector.NoteOpened(this);
     }
 
@@ -613,7 +786,62 @@ public class Reliquary : MonoBehaviour
                 rm.AddDiamonds(Mathf.Max(1, Mathf.RoundToInt(Random.Range(8f, 18f) * GradeCoin() * FortuneScale(fortune))));
             rm.UpdateUI();
         }
+
+        RevealHaul(set, fortune, wood, stone, food);
     }
+
+    // The haul gets the same centre-screen beat a piece of armour gets.
+    //
+    // Supplies arriving as a stack of small toasts at the edge of the screen is
+    // how a reward becomes bookkeeping: the player is fighting, the numbers move
+    // somewhere in their peripheral vision, and a hoard feels exactly like a
+    // handful. Putting the biggest thing in the chest in the middle of the
+    // screen, with the icon and the rays, makes the size of the find land — and
+    // because the reveal queues, an armour drop still gets its own beat first.
+    private void RevealHaul(ReliquarySet set, int fortune, int wood, int stone, int food)
+    {
+        if (wood + stone + food <= 0) return;
+
+        // One reveal for the whole chest, led by whatever there was most of
+        // relative to what the player can carry — three separate reveals for one
+        // chest would be three times as long and a third as impressive.
+        var rm = ResourceManager.Instance;
+        float fW = wood / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Wood") : 100);
+        float fS = stone / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Stone") : 50);
+        float fF = food / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Food") : 30);
+
+        Sprite icon = fW >= fS && fW >= fF ? (set != null ? set.woodIcon : null)
+                    : fS >= fF ? (set != null ? set.stoneIcon : null)
+                    : (set != null ? set.foodIcon : null);
+
+        var parts = new List<string>(3);
+        if (wood > 0) parts.Add($"{wood} {LocalizationManager.Tr("Wood")}");
+        if (stone > 0) parts.Add($"{stone} {LocalizationManager.Tr("Stone")}");
+        if (food > 0) parts.Add($"{food} {LocalizationManager.Tr("Food")}");
+
+        RewardReveal.Show(icon,
+            LocalizationManager.Tr(FortuneTitleKey(fortune)),
+            string.Join("   ·   ", parts),
+            FortuneColour(fortune));
+    }
+
+    private static string FortuneTitleKey(int fortune) => fortune switch
+    {
+        3 => "HAUL_HOARD",
+        2 => "HAUL_RICH",
+        1 => "HAUL_FAIR",
+        _ => "HAUL_MEAGRE",
+    };
+
+    // Warmer and brighter the better the find, so the colour says how good it was
+    // before a single word is read.
+    private static Color FortuneColour(int fortune) => fortune switch
+    {
+        3 => new Color(1.00f, 0.82f, 0.32f),
+        2 => new Color(0.65f, 0.85f, 1.00f),
+        1 => new Color(0.75f, 0.92f, 0.70f),
+        _ => new Color(0.80f, 0.80f, 0.78f),
+    };
 
     // 0 meagre, 1 fair, 2 rich, 3 hoard. Weighted by grade: a wayside find is
     // usually a handful and a barrow is usually worth the fight, but neither is

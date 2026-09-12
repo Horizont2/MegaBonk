@@ -116,8 +116,30 @@ public class ReliquaryDirector : MonoBehaviour
         var pc = FindFirstObjectByType<PlayerController>();
         if (pc != null) start = pc.transform.position;
 
-        int want = Random.Range(1, Mathf.Max(1, cap) + 1);
+        // STAND DOWN IF THE MAP ALREADY HAS SITES.
+        //
+        // Hand-built locations carrying a reliquary now go in the generator's POI
+        // list with their own rarity, which is the better route — a composed
+        // location beats anything this can scatter on bare ground. But both
+        // systems running blind to each other is how a region ends up with five
+        // of them and the scarcity that the whole economy rests on quietly
+        // evaporates. Whatever the POI pass placed counts against the budget.
+        var already = FindObjectsByType<Reliquary>(FindObjectsSortMode.None);
+        int fromLocations = already != null ? already.Length : 0;
+
+        int want = Random.Range(1, Mathf.Max(1, cap) + 1) - fromLocations;
+        if (want <= 0)
+        {
+            Debug.Log($"[Reliquary] {fromLocations} already placed by hand-built POI locations — " +
+                      "the director is standing down rather than doubling up.");
+            Placed = fromLocations;
+            return;
+        }
+        if (fromLocations > 0)
+            Debug.Log($"[Reliquary] {fromLocations} came from POI locations; placing {want} more on open ground.");
+
         var taken = new List<Vector3>(want);
+        foreach (var r in already) if (r != null) taken.Add(r.transform.position);
 
         // The search RELAXES rather than failing.
         //

@@ -34,9 +34,16 @@ public static class ArmourLootTable
 
     public static int LifetimeFound => PlayerPrefs.GetInt(PP_FOUND, 0);
 
-    // Relative weights by tier. Sum is arbitrary; only the ratios matter.
-    private static readonly float[] NormalWeights   = { 0f, 0f, 46f, 30f, 16f, 6.5f, 1.5f };
-    private static readonly float[] LegendaryWeights = { 0f, 0f, 4f, 12f, 26f, 34f, 24f };
+    // ONE weight table, and it is steep.
+    //
+    // There used to be a second "legendary" table that a Barrow rolled on, with
+    // 24% weight on T6. That is how a player's FIRST chest handed them a
+    // legendary — a roughly one-in-four chance of thirty regions' income before
+    // they had conquered one. A separate generous table for the good chest was
+    // the wrong shape entirely: what makes a Barrow better should be that it is
+    // the only thing that drops armour at all, not that its armour ignores the
+    // rarity curve.
+    private static readonly float[] Weights = { 0f, 0f, 52f, 29f, 12f, 5f, 2f };
 
     // After this many lifetime finds the odds are at their floor. Chosen so a
     // player who explores everything still has a reason to open the next one,
@@ -51,15 +58,51 @@ public static class ArmourLootTable
 
     // The chance a reliquary contains armour at all, before anything is rolled.
     // Everything else it gives — supplies, crystals — is the common case.
+    // ARMOUR COMES FROM BARROWS AND NOWHERE ELSE.
+    //
+    // The wayside and shrine chests used to have a 12% and 35% shot at it, and
+    // because those are the common ones, almost all the armour in the game was
+    // arriving from chests the player barely had to fight for. Two waysides and a
+    // shrine per region added up to roughly a one-in-three chance of armour every
+    // region, from encounters that cost nothing.
+    //
+    // Now the cheap chests pay supplies and crystals — a real reward, and one
+    // that cannot damage the shop — and armour is the single thing that makes a
+    // Barrow worth the siege. It also gives the beacon colours something true to
+    // say: gold means armour, and only gold does.
     public static float ArmourChance(Reliquary.Grade grade)
     {
-        float baseChance = grade switch
-        {
-            Reliquary.Grade.Barrow => 0.85f,   // the one you fought a warband for
-            Reliquary.Grade.Shrine => 0.35f,
-            _ => 0.12f,                        // a wayside find is mostly supplies
-        };
-        return baseChance * Mathf.Lerp(1f, FloorMultiplier, Progress);
+        if (grade != Reliquary.Grade.Barrow) return 0f;
+        // Not a certainty either. A guaranteed drop turns the rarest encounter in
+        // the game into a vending machine you route to.
+        return 0.55f * Mathf.Lerp(1f, FloorMultiplier, Progress);
+    }
+
+    // The best tier the game is currently willing to hand out.
+    //
+    // ==== THE SINGLE MOST IMPORTANT BRAKE ====
+    //
+    // Weights alone cannot stop a jackpot: a 2% chance is still a chance, and the
+    // one time it lands on the player's first chest it deletes the shop for the
+    // rest of the campaign. Rarity should decide WHICH good thing you get, never
+    // WHETHER the game is over.
+    //
+    // So the top of the table is locked and opens with campaign progress. A
+    // legendary is not unlucky-rare, it is unreachable until the player has
+    // conquered eight regions — by which point the shop has already done its job
+    // and a T6 find is a capstone rather than a bypass.
+    //
+    // The extra clamp on the first two finds ever is the "first chest" rule: no
+    // matter what the campaign counter says (a new save on an old profile, a test
+    // build, a gifted region), the first couple of pieces a player is handed are
+    // ordinary. Nobody's introduction to the system should be a jackpot, because
+    // every chest afterwards is then a disappointment.
+    public static int MaxTierAllowed()
+    {
+        int regions = PlayerPrefs.GetInt("TotalConqueredRegions", 0);
+        int ceiling = Mathf.Clamp(2 + regions / 2, 3, 6);
+        if (LifetimeFound < 2) ceiling = Mathf.Min(ceiling, 3);
+        return ceiling;
     }
 
     // Pick a piece, or null when there is nothing left worth giving.
@@ -82,32 +125,35 @@ public static class ArmourLootTable
     //      reward, which is the opposite of what the taper is for.
     public static ArmorData Roll(Reliquary.Grade grade)
     {
-        bool legendary = grade == Reliquary.Grade.Barrow;
         var pool = WeaponIndex.UnownedArmour();
         if (pool.Count == 0) return null;
+
+        int ceiling = MaxTierAllowed();
 
         var byTier = new Dictionary<int, List<ArmorData>>();
         foreach (var a in pool)
         {
             int tier = TierOf(a);
-            if (tier < 2) continue;   // T1 is free; the player owns it already
+            if (tier < 2) continue;        // T1 is free; the player owns it already
+            if (tier > ceiling) continue;  // above the campaign's current ceiling
             if (!byTier.TryGetValue(tier, out var list)) byTier[tier] = list = new List<ArmorData>();
             list.Add(a);
         }
         if (byTier.Count == 0) return null;
 
-        int wanted = RollTier(legendary ? LegendaryWeights : NormalWeights, TaperTierBias);
+        int wanted = RollTier(Weights, TaperTierBias, ceiling);
         var bucket = NearestStock(byTier, wanted);
         return bucket == null ? null : PickWithinTier(bucket);
     }
 
     // The intended rarity, before availability is considered.
-    private static int RollTier(float[] weights, float bias)
+    private static int RollTier(float[] weights, float bias, int ceiling)
     {
         float total = 0f;
         var scored = new float[weights.Length];
         for (int tier = 2; tier < weights.Length; tier++)
         {
+            if (tier > ceiling) break;
             float w = weights[tier];
             // The taper divides high tiers harder than low ones, so a well
             // supplied player drifts toward the bottom of the table rather than

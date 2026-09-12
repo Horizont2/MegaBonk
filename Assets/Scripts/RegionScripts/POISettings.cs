@@ -3,23 +3,46 @@ using UnityEngine;
 public class POISettings : MonoBehaviour
 {
     [Header("Terraforming Passport")]
-    [Tooltip("Радіус землі навколо локації, який буде ідеально вирівняно.")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")]
     public float flattenRadius = 30f;
 
-    [Tooltip("Наскільки глибоко посадити префаб у вирівняну землю (зазвичай мінусове значення, щоб приховати фундамент).")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")]
     public float yOffset = -0.5f;
 
-    [Tooltip("Максимально допустимий перепад висот на цій площі ДО вирівнювання (захист від гір). Для великих сіл став 5-7, для дрібних таборів 10.")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ). пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ 5-7, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 10.")]
     public float maxAllowedSlope = 6f;
 
-    // Цей метод малює жовте коло в редакторі Unity! 
-    // Ти одразу візуально побачиш, скільки місця займе локація і де її нульова точка.
+    // ==== RARITY ====
+    //
+    // The generator used to draw POI prefabs uniformly, which is fine while every
+    // location is ordinary furniture and completely wrong the moment one of them
+    // is an EVENT. With five prefabs in the list and eighty placements, a
+    // reliquary appeared about sixteen times per region вЂ” so the thing that was
+    // supposed to be the find you change your route for became the most common
+    // sight on the map, and the armour economy went with it.
+    //
+    // The odds belong here, on the prefab, rather than in a table inside the
+    // generator: whoever builds a location is the person who knows how rare it
+    // ought to be, and they can set it in the same inspector where they set its
+    // footprint. Adding a prefab to the generator's list stays a one-step job.
+    [Header("Rarity")]
+    [Tooltip("Weight in the ordinary draw, relative to the other eligible locations. 1 = a normal location. Lower makes it rarer WHEN it is eligible; 0 means it is never drawn.")]
+    public float spawnWeight = 1f;
+
+    [Tooltip("Chance this location is eligible AT ALL in a given region, rolled once before anything is placed. This is the knob that makes a location an event: below 1 means some regions simply do not have one, and a region with none is what makes the next one's silhouette worth walking to.")]
+    [Range(0f, 1f)] public float regionAppearChance = 1f;
+
+    [Tooltip("Hard cap per region. 0 = no cap. With a high maxPOIs the cap, not the weight, is what actually enforces scarcity вЂ” weights only decide the order things get picked in.")]
+    public int maxPerRegion = 0;
+
+    // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Unity! 
+    // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.9f, 0f, 0.3f);
         Gizmos.DrawSphere(transform.position + Vector3.up * yOffset, flattenRadius);
 
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, 1f); // Центр (Pivot)
+        Gizmos.DrawWireSphere(transform.position, 1f); // пїЅпїЅпїЅпїЅпїЅ (Pivot)
     }
 }

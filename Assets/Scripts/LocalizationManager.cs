@@ -2534,6 +2534,10 @@ public static class LocalizationManager
         Add5("PROMPT_EVACUATE_OR_STOW",     "[E] Эвакуация   ·   [{0}] Сложить припасы в повозку","[E] Evacuar   ·   [{0}] Guardar provisiones en el carro","[E] Evakuieren   ·   [{0}] Vorräte im Karren verstauen","[E] Évacuer   ·   [{0}] Ranger les vivres dans la charrette","[E] Ewakuacja   ·   [{0}] Schowaj zapasy do wozu");
         Add5("PROMPT_STOWED",               "Сложено {0} припасов — они уцелеют, если ты погибнешь","Guardadas {0} provisiones: a salvo si caes","{0} Vorräte verstaut — sicher, falls du fällst","{0} vivres rangés — à l'abri si tu tombes","Schowano {0} zapasów — przetrwają twoją śmierć");
         Add5("PROMPT_STOW_NOTHING",         "Нечего складывать",       "No hay nada que guardar",   "Nichts zu verstauen",        "Rien à ranger",                "Nie ma czego chować");
+        Add5("HAUL_MEAGRE",                 "Разграблено",             "Saqueado",                  "Ausgeplündert",              "Pillé",                        "Splądrowane");
+        Add5("HAUL_FAIR",                   "Найдены припасы",         "Provisiones halladas",      "Vorräte gefunden",           "Vivres trouvés",               "Znaleziono zapasy");
+        Add5("HAUL_RICH",                   "Богатый схрон",           "Un rico alijo",             "Ein reicher Hort",           "Une riche cache",              "Bogata skrytka");
+        Add5("HAUL_HOARD",                  "Клад!",                   "¡Un tesoro!",               "Ein Schatz!",                "Un trésor !",                  "Skarb!");
         Add5("PROMPT_TALK_ELIAS",           "[E] Поговорить с Элиасом","[E] Hablar con Elias",      "[E] Mit Elias sprechen",     "[E] Parler à Elias",           "[E] Porozmawiaj z Eliasem");
         Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
         Add5("TUTORIAL_TIP_DEFAULT",        "СОВЕТ",                   "PISTA",                     "TIPP",                       "ASTUCE",                       "PORADA");
@@ -3818,13 +3822,44 @@ public static class LocalizationManager
              "Zapieczętowane — pozostało strażników: {0}");
 
         Add7("RELIQUARY_PROMPT",
-             "Hold [E] to break the seal",
-             "Утримуй [E], щоб зламати печатку",
-             "Удерживай [E], чтобы сломать печать",
-             "Mantén [E] para romper el sello",
-             "[E] halten, um das Siegel zu brechen",
-             "Maintiens [E] pour briser le sceau",
-             "Przytrzymaj [E], by złamać pieczęć");
+             "[E] Open",
+             "[E] Відкрити",
+             "[E] Открыть",
+             "[E] Abrir",
+             "[E] Öffnen",
+             "[E] Ouvrir",
+             "[E] Otwórz");
+
+        // {0} = how many seconds the vigil will last. Said UP FRONT, because a
+        // twenty-six second siege sprung on a player at low health is not a
+        // challenge, it is an ambush by the UI.
+        Add7("RELIQUARY_LIGHT",
+             "[E] Light the seal — hold this ground for {0}s",
+             "[E] Запалити печатку — втримай позицію {0} с",
+             "[E] Зажечь печать — удержи позицию {0} с",
+             "[E] Encender el sello: aguanta {0} s",
+             "[E] Siegel entzünden — halte {0} s stand",
+             "[E] Allumer le sceau — tiens {0} s",
+             "[E] Zapal pieczęć — utrzymaj {0} s");
+
+        // {0} = seconds left.
+        Add7("RELIQUARY_VIGIL",
+             "Hold the ground — {0}s",
+             "Тримай позицію — {0} с",
+             "Держи позицию — {0} с",
+             "Aguanta la posición — {0} s",
+             "Halte die Stellung — {0} s",
+             "Tiens la position — {0} s",
+             "Utrzymaj pozycję — {0} s");
+
+        Add7("RELIQUARY_VIGIL_LOST",
+             "You have left the ground — the seal is waiting",
+             "Ти покинув позицію — печатка чекає",
+             "Ты покинул позицию — печать ждёт",
+             "Has abandonado la posición: el sello espera",
+             "Du hast die Stellung verlassen — das Siegel wartet",
+             "Tu as quitté la position — le sceau attend",
+             "Opuściłeś pozycję — pieczęć czeka");
 
         Add7("RELIQUARY_OPENING",
              "Breaking the seal — hold your ground",
@@ -3944,6 +3979,12 @@ public static class LocalizationManager
             "[E] Евакуація   ·   [{0}] Скласти припаси до воза");
         Add("PROMPT_STOWED", "Stowed {0} supplies — safe if you fall", "Складено {0} припасів — вони вціліють, якщо ти загинеш");
         Add("PROMPT_STOW_NOTHING", "Nothing to stow", "Нема чого складати");
+
+        // === Chest haul reveal ===
+        Add("HAUL_MEAGRE", "Picked Over", "Розграбовано");
+        Add("HAUL_FAIR", "Supplies Found", "Знайдено припаси");
+        Add("HAUL_RICH", "A Rich Cache", "Багатий схрон");
+        Add("HAUL_HOARD", "A Hoard!", "Скарб!");
         Add("PROMPT_MOUNT_HORSE", "[E] Mount Horse & Escape", "[E] Осідлати коня і втекти");
         Add("PROMPT_UPGRADE_ELIAS_FIRST",
             "<color=#FF4444>Upgrade Elias's Lodge first!</color>",

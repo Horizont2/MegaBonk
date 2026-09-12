@@ -59,7 +59,41 @@ public class RewardReveal : MonoBehaviour
     public static void Show(Sprite icon, string title, string subtitle, Color accent)
     {
         if (Instance == null) Install();
-        if (Instance != null) Instance.Play(icon, title, subtitle, accent);
+        if (Instance != null) Instance.Enqueue(icon, title, subtitle, accent);
+    }
+
+    // Reveals QUEUE rather than replacing each other.
+    //
+    // A chest can pay out two things at once — a piece of armour and a haul of
+    // supplies — and the second call used to stop the first coroutine mid-beat.
+    // The player saw the armour flash for a fifth of a second and then something
+    // else, which reads as a glitch and, worse, hides the rarer of the two.
+    private struct Pending
+    {
+        public Sprite icon;
+        public string title, subtitle;
+        public Color accent;
+    }
+
+    private readonly System.Collections.Generic.Queue<Pending> _queue = new System.Collections.Generic.Queue<Pending>();
+
+    private void Enqueue(Sprite icon, string title, string subtitle, Color accent)
+    {
+        // A cap, because a queue with no bound is a way for one silly frame to
+        // lock the screen up for a minute.
+        if (_queue.Count >= 4) return;
+        _queue.Enqueue(new Pending { icon = icon, title = title, subtitle = subtitle, accent = accent });
+        if (_playing == null) _playing = StartCoroutine(Drain());
+    }
+
+    private IEnumerator Drain()
+    {
+        while (_queue.Count > 0)
+        {
+            var p = _queue.Dequeue();
+            yield return Routine(p.icon, p.title, p.subtitle, p.accent);
+        }
+        _playing = null;
     }
 
     private void Awake()
@@ -191,12 +225,6 @@ public class RewardReveal : MonoBehaviour
 
     // ---- the beat ------------------------------------------------------------
 
-    private void Play(Sprite icon, string title, string subtitle, Color accent)
-    {
-        if (_playing != null) StopCoroutine(_playing);
-        _playing = StartCoroutine(Routine(icon, title, subtitle, accent));
-    }
-
     private IEnumerator Routine(Sprite icon, string title, string subtitle, Color accent)
     {
         _icon.sprite = icon;
@@ -266,7 +294,6 @@ public class RewardReveal : MonoBehaviour
 
         _group.alpha = 0f;
         _iconRT.anchoredPosition = from;
-        _playing = null;
     }
 
     private void Spin()

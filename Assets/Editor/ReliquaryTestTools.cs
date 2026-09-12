@@ -64,7 +64,7 @@ public static class ReliquaryTestTools
         rel.buildDecor = true;   // dropped on bare ground, so it dresses itself
 
         Debug.Log($"[Reliquary/Test] {grade} placed 18m ahead of the player at {site}. " +
-                  "Walk to it — guardians wake on approach, then hold [E].");
+                  "Walk to it — the guardians wake on approach; once they are down, [E] lights the seal.");
     }
 
     // ---------------------------------------------------------------------
@@ -110,7 +110,10 @@ public static class ReliquaryTestTools
         }
 
         var sb = new StringBuilder("[Reliquary/Test] 1000 rolls per grade, against the CURRENT save " +
-                                   $"(lifetime found: {ArmourLootTable.LifetimeFound}, so the taper is already applied)\n");
+                                   $"(lifetime found: {ArmourLootTable.LifetimeFound}, regions conquered: " +
+                                   $"{PlayerPrefs.GetInt("TotalConqueredRegions", 0)}, so the taper is applied). " +
+                                   $"CEILING RIGHT NOW: T{ArmourLootTable.MaxTierAllowed()} — nothing above it can " +
+                                   "be rolled at all, whatever the weights say.\n");
 
         foreach (Reliquary.Grade grade in System.Enum.GetValues(typeof(Reliquary.Grade)))
         {

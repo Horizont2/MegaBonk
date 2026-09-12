@@ -39,6 +39,16 @@ public class ReliquarySet : ScriptableObject
     [Tooltip("Assets/Prefabs/Exploration/Reliquary_Wayside|Shrine|Barrow. The whole interactive site, authored: chest model at the right SIZE, animator attached, LootChest and Reliquary wired. Drop one into a hand-built location and that location becomes a reliquary. Built by Tools > Exploration > Build Reliquary Prefabs.")]
     public GameObject[] sitePrefabByGrade = new GameObject[3];
 
+    [Header("Beacon")]
+    [Tooltip("Transparent material the chest's light shaft instances and tints. Passed in rather than found at runtime because Shader.Find on a URP package shader is not dependable in a build — an asset reference guarantees the shader ships.")]
+    public Material beamMaterial;
+
+    [Header("Reward reveal icons")]
+    [Tooltip("Shown centre-screen when a chest pays out supplies, the same way a piece of armour is revealed. Sliced out of the project's resource icon sheet; if the three come out in the wrong order, just swap them here.")]
+    public Sprite woodIcon;
+    public Sprite stoneIcon;
+    public Sprite foodIcon;
+
     [Header("Visible payout")]
     [Tooltip("Physical pickups thrown out of the chest as the lid opens, so the reward is something the player watches land and collects — not a number that changes on the HUD.")]
     public GameObject woodDrop;

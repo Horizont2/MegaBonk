@@ -87,6 +87,9 @@ MonoBehaviour:
   flattenRadius: 4
   yOffset: 0
   maxAllowedSlope: 9
+  spawnWeight: 0.45
+  regionAppearChance: 0.75
+  maxPerRegion: 2
 --- !u!4 &992460104047400055 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4228eb4f2763c4a45803db52bfe2205e, type: 3}

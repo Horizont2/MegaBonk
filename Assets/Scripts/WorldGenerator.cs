@@ -3565,18 +3565,59 @@ public class WorldGenerator : MonoBehaviour
         // ==========================================
         int prefabsAssigned = 0;
 
+        // ==== THE DRAW IS WEIGHTED, AND SOME LOCATIONS ARE NOT ELIGIBLE AT ALL ====
+        //
+        // This used to be a flat GetRandomPrefab over the whole list. That is
+        // correct while every entry is ordinary furniture and badly wrong once
+        // one of them is an event: with five prefabs and eighty placements, a
+        // reliquary landed about sixteen times per region, so the thing meant to
+        // be a rare find became the most common sight on the map.
+        //
+        // Eligibility is rolled ONCE per region, before anything is placed, so a
+        // rare location is either in this region or it is not — rather than
+        // getting a fresh chance at every one of eighty grid points, which is the
+        // same thing as always appearing. See POISettings.
+        var pool = new List<POICandidate>(poiPrefabs.Length);
+        var poolReport = new System.Text.StringBuilder();
+        foreach (var candidatePrefab in poiPrefabs)
+        {
+            if (candidatePrefab == null) continue;
+            var s = candidatePrefab.GetComponent<POISettings>();
+            if (s == null)
+            {
+                Debug.LogError($"[AAA Gen] Префаб {candidatePrefab.name} не має скрипта POISettings! Пропускаємо.");
+                continue;
+            }
+            if (s.spawnWeight <= 0f)
+            {
+                poolReport.Append($"\n    {candidatePrefab.name}: weight 0 — never drawn");
+                continue;
+            }
+            if (s.regionAppearChance < 1f && GetRandomFloat() > s.regionAppearChance)
+            {
+                poolReport.Append($"\n    {candidatePrefab.name}: NOT in this region (chance {s.regionAppearChance:P0})");
+                continue;
+            }
+            pool.Add(new POICandidate { prefab = candidatePrefab, settings = s, placed = 0 });
+            poolReport.Append($"\n    {candidatePrefab.name}: weight {s.spawnWeight:0.##}" +
+                              (s.maxPerRegion > 0 ? $", max {s.maxPerRegion}" : ", uncapped"));
+        }
+        GameLog.Info("[AAA Gen] POI pool for this region:" + poolReport);
+        if (pool.Count == 0)
+        {
+            Debug.LogWarning("[AAA Gen] Every POI prefab rolled out of this region — no locations will be placed.");
+            yield break;
+        }
+
         foreach (Vector2 gridPoint in masterGrid)
         {
             if (prefabsAssigned >= maxPOIs) break;
+            if (pool.Count == 0) break;   // everything left has hit its cap
 
-            GameObject prefab = GetRandomPrefab(poiPrefabs);
-            POISettings settings = prefab.GetComponent<POISettings>();
-
-            if (settings == null)
-            {
-                Debug.LogError($"[AAA Gen] Префаб {prefab.name} не має скрипта POISettings! Пропускаємо.");
-                continue;
-            }
+            POICandidate pick = PickWeighted(pool);
+            if (pick == null) break;
+            GameObject prefab = pick.prefab;
+            POISettings settings = pick.settings;
 
             Vector3 centerPos = new Vector3(gridPoint.x, 0, gridPoint.y);
 
@@ -3631,6 +3672,13 @@ public class WorldGenerator : MonoBehaviour
                     settings = settings
                 });
                 prefabsAssigned++;
+
+                // A capped location leaves the pool the moment it is satisfied,
+                // so the remaining weight redistributes to whatever is left
+                // instead of the draw quietly re-rolling something it can no
+                // longer place.
+                pick.placed++;
+                if (settings.maxPerRegion > 0 && pick.placed >= settings.maxPerRegion) pool.Remove(pick);
             }
         }
 
@@ -3913,6 +3961,31 @@ public class WorldGenerator : MonoBehaviour
         public Vector3 worldPosition;
         public GameObject prefab;
         public POISettings settings;
+    }
+
+    // One entry in this region's eligible POI pool. `placed` is what enforces
+    // POISettings.maxPerRegion — with a high maxPOIs the cap, not the weight, is
+    // the thing that actually keeps a rare location rare.
+    private class POICandidate
+    {
+        public GameObject prefab;
+        public POISettings settings;
+        public int placed;
+    }
+
+    private POICandidate PickWeighted(List<POICandidate> pool)
+    {
+        float total = 0f;
+        foreach (var c in pool) total += Mathf.Max(0f, c.settings.spawnWeight);
+        if (total <= 0f) return null;
+
+        float roll = GetRandomFloat() * total;
+        foreach (var c in pool)
+        {
+            roll -= Mathf.Max(0f, c.settings.spawnWeight);
+            if (roll <= 0f) return c;
+        }
+        return pool[pool.Count - 1];   // floating-point slack
     }
 
     // ==========================================
