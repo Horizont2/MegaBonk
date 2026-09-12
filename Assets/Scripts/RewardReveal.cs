@@ -22,7 +22,8 @@ public class RewardReveal : MonoBehaviour
 
     [Header("Timing")]
     public float riseTime = 0.45f;
-    public float holdTime = 1.9f;
+    [Tooltip("Default seconds the reveal sits on screen. Callers can ask for longer — a supply haul is three numbers to read, an armour name is a glance.")]
+    public float holdTime = 2.6f;
     public float fadeTime = 0.5f;
 
     [Header("Look")]
@@ -56,10 +57,15 @@ public class RewardReveal : MonoBehaviour
 
     // The one entry point. Anything that hands the player something rare calls
     // this; it knows nothing about caches, armour or weapons.
-    public static void Show(Sprite icon, string title, string subtitle, Color accent)
+    // `hold` overrides how long it sits on screen. Different rewards need
+    // different reading time and the same number cannot serve both: a piece of
+    // armour is a name and a rarity, read in a glance, while a supply haul is
+    // three quantities the player has to actually parse before the numbers are
+    // worth showing at all.
+    public static void Show(Sprite icon, string title, string subtitle, Color accent, float hold = -1f)
     {
         if (Instance == null) Install();
-        if (Instance != null) Instance.Enqueue(icon, title, subtitle, accent);
+        if (Instance != null) Instance.Enqueue(icon, title, subtitle, accent, hold);
     }
 
     // Reveals QUEUE rather than replacing each other.
@@ -73,16 +79,17 @@ public class RewardReveal : MonoBehaviour
         public Sprite icon;
         public string title, subtitle;
         public Color accent;
+        public float hold;
     }
 
     private readonly System.Collections.Generic.Queue<Pending> _queue = new System.Collections.Generic.Queue<Pending>();
 
-    private void Enqueue(Sprite icon, string title, string subtitle, Color accent)
+    private void Enqueue(Sprite icon, string title, string subtitle, Color accent, float hold)
     {
         // A cap, because a queue with no bound is a way for one silly frame to
         // lock the screen up for a minute.
         if (_queue.Count >= 4) return;
-        _queue.Enqueue(new Pending { icon = icon, title = title, subtitle = subtitle, accent = accent });
+        _queue.Enqueue(new Pending { icon = icon, title = title, subtitle = subtitle, accent = accent, hold = hold });
         if (_playing == null) _playing = StartCoroutine(Drain());
     }
 
@@ -91,7 +98,7 @@ public class RewardReveal : MonoBehaviour
         while (_queue.Count > 0)
         {
             var p = _queue.Dequeue();
-            yield return Routine(p.icon, p.title, p.subtitle, p.accent);
+            yield return Routine(p.icon, p.title, p.subtitle, p.accent, p.hold);
         }
         _playing = null;
     }
@@ -225,8 +232,9 @@ public class RewardReveal : MonoBehaviour
 
     // ---- the beat ------------------------------------------------------------
 
-    private IEnumerator Routine(Sprite icon, string title, string subtitle, Color accent)
+    private IEnumerator Routine(Sprite icon, string title, string subtitle, Color accent, float hold)
     {
+        float stay = hold > 0f ? hold : holdTime;
         _icon.sprite = icon;
         // No icon is not a reason to show nothing — the name still matters, and
         // a missing sprite would otherwise render as a white box.
@@ -269,7 +277,7 @@ public class RewardReveal : MonoBehaviour
         // HOLD. The rays keep turning and the glow breathes, so the frame is
         // never static — a still image reads as the game having hung.
         t = 0f;
-        while (t < holdTime)
+        while (t < stay)
         {
             t += Time.unscaledDeltaTime;
             float breathe = 1f + Mathf.Sin(Time.unscaledTime * 3.2f) * 0.045f;

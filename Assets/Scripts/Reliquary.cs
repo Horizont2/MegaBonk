@@ -819,10 +819,14 @@ public class Reliquary : MonoBehaviour
         if (stone > 0) parts.Add($"{stone} {LocalizationManager.Tr("Stone")}");
         if (food > 0) parts.Add($"{food} {LocalizationManager.Tr("Food")}");
 
+        // Longer than an armour reveal, and longer the more there is to read.
+        // Three quantities take real time to parse, and a hoard the player never
+        // managed to read is a hoard that may as well have been a handful.
         RewardReveal.Show(icon,
             LocalizationManager.Tr(FortuneTitleKey(fortune)),
             string.Join("   ·   ", parts),
-            FortuneColour(fortune));
+            FortuneColour(fortune),
+            3.0f + parts.Count * 0.45f + (fortune >= 2 ? 0.6f : 0f));
     }
 
     private static string FortuneTitleKey(int fortune) => fortune switch
