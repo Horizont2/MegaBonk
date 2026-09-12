@@ -38,14 +38,20 @@ public class MapMarkerLayer : MonoBehaviour
     private void LateUpdate()
     {
         if (!Bind()) { HideAll(); return; }
-        if (MapEventMarker.All.Count == 0) { HideAll(); return; }
+        if (MapEventMarker.All.Count == 0)
+        {
+            // Not a fault: the camp has no events in it. Only worth a word in a
+            // region, where an empty list means nothing registered a marker.
+            HideAll();
+            return;
+        }
 
         float unitsInView = _cam.orthographic
             ? _cam.orthographicSize * 2f
             : 2f * _cam.transform.position.y * Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
         if (unitsInView <= 0.01f) { HideAll(); return; }
 
-        float pixelsPerMetre = _map.sizeDelta.x / unitsInView;
+        float pixelsPerMetre = _mapWidth / unitsInView;
         int used = 0;
 
         for (int i = 0; i < MapEventMarker.All.Count; i++)
@@ -94,6 +100,26 @@ public class MapMarkerLayer : MonoBehaviour
     // Re-finds the minimap when the scene changes. Throttled, because the failure
     // mode is a scene with no minimap at all and searching for one every frame in
     // the camp would be pure waste.
+    // SAYS WHY IT FAILED, ONCE.
+    //
+    // Silence was the whole problem with the last three features in this
+    // project: markers not appearing looked identical whether the icon set was
+    // missing, the minimap could not be found, the player had no tag, or the
+    // radius maths produced zero. Each of those is a two-second fix and an
+    // afternoon of guessing. The report is throttled to one line per distinct
+    // reason so a failure in the camp does not fill the console.
+    private string _lastComplaint;
+
+    private bool Fail(string why)
+    {
+        if (_lastComplaint != why)
+        {
+            _lastComplaint = why;
+            Debug.LogWarning("[MapIcons] No event markers are being drawn: " + why);
+        }
+        return false;
+    }
+
     private bool Bind()
     {
         if (_map != null && _cam != null && _player != null && _set != null) return true;
@@ -103,27 +129,53 @@ public class MapMarkerLayer : MonoBehaviour
         _rebind = 1f;
 
         _set = MapEventIcons.Load();
-        if (_set == null) return false;
+        if (_set == null)
+            return Fail("no MapEventIcons asset in a Resources folder. Create it with Tools > World > Map Event Icons.");
 
         var host = FindFirstObjectByType<MinimapIconTracker>();
-        if (host == null || host.minimapRect == null) return false;
+        if (host == null)
+            return Fail("no MinimapIconTracker in the scene — this layer borrows the minimap's geometry from it, " +
+                        "so without one there is nothing to draw onto.");
+        if (host.minimapRect == null)
+            return Fail("the MinimapIconTracker has no minimapRect assigned, so the marker positions cannot be " +
+                        "worked out. Wire it in the inspector.");
         _map = host.minimapRect;
+
         _cam = host.minimapCamera != null
              ? host.minimapCamera
              : FindFirstObjectByType<MinimapCamera>()?.GetComponent<Camera>();
-        if (_cam == null) return false;
+        if (_cam == null)
+            return Fail("no minimap camera found, so world metres cannot be converted to map pixels.");
 
         var p = GameObject.FindGameObjectWithTag("Player");
-        if (p == null) return false;
+        if (p == null) return Fail("no object tagged Player, so there is nothing to measure distance from.");
         _player = p.transform;
 
-        _radius = (_map.sizeDelta.x / 2f) - 10f;
+        // Off the RESOLVED rect, not sizeDelta. A minimap anchored by stretch
+        // has a sizeDelta of zero regardless of how big it looks, which made
+        // every marker pile up in the centre with a negative clamp radius — the
+        // markers were being drawn perfectly, on top of each other, invisibly.
+        float width = _map.rect.width;
+        if (width < 1f) width = _map.sizeDelta.x;
+        if (width < 1f)
+            return Fail("the minimap rect resolves to zero width, so there is nowhere to place a marker.");
+        _mapWidth = width;
+        _radius = (width / 2f) - 10f;
+
+        _lastComplaint = null;
+        Debug.Log($"[MapIcons] Bound to the minimap ({width:F0}px). Markers live: {MapEventMarker.All.Count}.");
 
         // The pool lives under the minimap, so it inherits its mask and moves
-        // with it. Anything already pooled from a previous scene is gone.
+        // with it. Icons from a previous bind are DESTROYED rather than merely
+        // forgotten: the HUD canvas is DontDestroyOnLoad, so the minimap object
+        // survives a scene change and anything left parented to it would sit
+        // there enabled, showing the last region's markers under this one's.
+        foreach (var old in _pool) if (old != null) Destroy(old.gameObject);
         _pool.Clear();
         return true;
     }
+
+    private float _mapWidth = 1f;
 
     private Image Rent(int index)
     {

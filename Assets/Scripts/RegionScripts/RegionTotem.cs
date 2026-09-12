@@ -998,14 +998,19 @@ public class RegionTotem : MonoBehaviour
         }
     }
 
-    // The last resort. Deliberately plain: no cinematic, no title card, just the
-    // bookkeeping and the door. An abrupt return to camp is enormously better
-    // than a region the player can only leave through the pause menu.
+    // The fallback for a totem that never found a manager.
+    //
+    // It used to be deliberately plain — bookkeeping and the door, nothing else
+    // — because the victory presentation lived inside RegionManager and could
+    // not run without one. That stopped being true when the cinematic was
+    // replaced by RegionVictoryScreen, which installs itself and depends on
+    // nothing, and nobody updated this path: a player who took a region through
+    // here got their resources in silence and a fade to camp, with none of the
+    // reward screen. Both routes show the same thing now.
     private IEnumerator FinishRegionWithoutManager()
     {
         Debug.LogWarning("[Totem] Region objective completed with no RegionManager in the scene. " +
-                         "Recording the capture and returning to camp directly — the victory cinematic " +
-                         "lives on RegionManager and cannot play without one.");
+                         "Recording the capture here instead.");
 
         RegionData region = GameManager.Instance != null ? GameManager.Instance.currentRegion : null;
         if (region == null) region = MissionInitializer.PendingMissionRegion;
@@ -1028,11 +1033,24 @@ public class RegionTotem : MonoBehaviour
             }
         }
 
-        // Long enough to read the world healing, short enough not to feel stuck.
-        yield return new WaitForSecondsRealtime(4f);
+        // A beat to read the world healing, then the same reward screen the
+        // managed path shows.
+        yield return new WaitForSecondsRealtime(2.5f);
 
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("CampScene");
-        else SceneLoader.LoadScene("CampScene");
+        bool leaving = false;
+        RegionVictoryScreen.Show(
+            LocalizationManager.Tr("REGION CONQUERED"),
+            LocalizationManager.Tr("THE CURSE HAS BEEN LIFTED"),
+            RegionVictoryScreen.AwardsFor(region),
+            () => leaving = true);
+
+        // The screen carries its own watchdog; this is the second one, because
+        // "the player cannot leave the region" is the failure this whole path
+        // exists to prevent and it must not be reintroduced by its own fix.
+        float guard = 0f;
+        while (!leaving && guard < 60f) { guard += Time.unscaledDeltaTime; yield return null; }
+
+        SceneLoader.LoadScene("CampScene");
     }
 
     private IEnumerator WorldHealRoutine()

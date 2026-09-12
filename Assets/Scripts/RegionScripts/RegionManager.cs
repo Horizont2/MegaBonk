@@ -382,7 +382,7 @@ public class RegionManager : MonoBehaviour
         float t = 0f;
         while (t < 0.7f) { t += Time.unscaledDeltaTime; yield return null; }
 
-        var awards = BuildAwardList();
+        var awards = RegionVictoryScreen.AwardsFor(currentRegion);
         bool leaving = false;
         RegionVictoryScreen.Show(
             LocalizationManager.Tr("REGION CONQUERED"),
@@ -404,35 +404,6 @@ public class RegionManager : MonoBehaviour
 
         Debug.Log("[RegionManager] Victory screen dismissed — loading CampScene.");
         SceneLoader.LoadScene("CampScene");
-    }
-
-    // The spoils, as rows the victory screen can show. Icons come from the
-    // exploration index because that is where the project already keeps the
-    // three resource sprites resolved for runtime; a missing one costs the row
-    // its picture and nothing else.
-    private List<RegionVictoryScreen.Award> BuildAwardList()
-    {
-        var list = new List<RegionVictoryScreen.Award>(4);
-        if (currentRegion == null) return list;
-
-        var set = ReliquarySet.Load();
-        void Add(Sprite icon, string key, int amount, Color tint)
-        {
-            if (amount <= 0) return;   // never show a reward of nothing
-            list.Add(new RegionVictoryScreen.Award
-            {
-                icon = icon,
-                label = LocalizationManager.Tr(key),
-                amount = amount,
-                tint = tint,
-            });
-        }
-
-        Add(set != null ? set.woodIcon : null, "Wood", currentRegion.woodReward, new Color(0.85f, 0.6f, 0.35f));
-        Add(set != null ? set.stoneIcon : null, "Stone", currentRegion.stoneReward, new Color(0.8f, 0.8f, 0.85f));
-        Add(set != null ? set.foodIcon : null, "Food", currentRegion.foodReward, new Color(0.7f, 0.95f, 0.5f));
-        Add(null, "Diamonds", currentRegion.diamondReward, new Color(0.7f, 0.85f, 1f));
-        return list;
     }
 
     // Marks the region taken and pays for it. Idempotent: a second call cannot

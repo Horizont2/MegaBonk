@@ -63,6 +63,42 @@ public class RegionVictoryScreen : MonoBehaviour
     private Action _onDone;
     private bool _accepting;
 
+    // The spoils of a region, as rows this screen can show.
+    //
+    // Static and shared, because there are TWO code paths that finish a region:
+    // RegionManager's, and RegionTotem's fallback for when the totem never found
+    // a manager. The second one used to be deliberately plain — "no cinematic,
+    // just the bookkeeping and the door" — which was correct while the victory
+    // presentation lived inside RegionManager and could not run without one.
+    // It does not any more, so that reasoning expired, and the player captured a
+    // region through that path and saw nothing at all.
+    public static List<Award> AwardsFor(RegionData region)
+    {
+        var list = new List<Award>(4);
+        if (region == null) return list;
+
+        // Icons come from the exploration index because that is where the
+        // project already keeps the three resource sprites resolved for runtime.
+        // A missing one costs the row its picture and nothing else.
+        var set = ReliquarySet.Load();
+        void Add(Sprite icon, string key, int amount, Color tint)
+        {
+            if (amount <= 0) return;   // never show a reward of nothing
+            list.Add(new Award { icon = icon, label = LocalizationManager.Tr(key), amount = amount, tint = tint });
+        }
+
+        Add(set != null ? set.woodIcon : null, "Wood", region.woodReward, new Color(0.85f, 0.6f, 0.35f));
+        Add(set != null ? set.stoneIcon : null, "Stone", region.stoneReward, new Color(0.8f, 0.8f, 0.85f));
+        Add(set != null ? set.foodIcon : null, "Food", region.foodReward, new Color(0.7f, 0.95f, 0.5f));
+        Add(null, "Diamonds", region.diamondReward, new Color(0.7f, 0.85f, 1f));
+
+        if (list.Count == 0)
+            Debug.LogWarning($"[Victory] Region '{region.regionID}' pays no wood, stone, food or diamonds, so the " +
+                             "victory screen has nothing to show. That is almost certainly unintended — check its " +
+                             "reward fields.");
+        return list;
+    }
+
     public static void Show(string title, string subtitle, List<Award> awards, Action onDone)
     {
         if (Instance == null)
