@@ -144,7 +144,7 @@ public class LootChest : MonoBehaviour
     private IEnumerator OpenSequence()
     {
         isInteracted = true;
-        Opened?.Invoke();
+        Raise(Opened, nameof(Opened));
 
         // Правильний звук відкриття скрині замість перевикористаного
         // звуку рубання дерева, який тут стояв раніше.
@@ -201,10 +201,33 @@ public class LootChest : MonoBehaviour
             yield return new WaitForSeconds(delayForLoot);
         }
 
-        LidOpened?.Invoke();
+        Raise(LidOpened, nameof(LidOpened));
         SpawnLoot();
 
         if (destroyDelay > 0f) Destroy(gameObject, destroyDelay);
+    }
+
+    // A SUBSCRIBER THAT THROWS MUST NOT TAKE THE CHEST WITH IT.
+    //
+    // These events are raised from inside the open coroutine, so an exception in
+    // any handler unwinds the coroutine itself — and everything after the raise
+    // simply never happens. That is a nasty failure to diagnose because it does
+    // not look like an error, it looks like a feature missing: the reward reveal
+    // does not appear, or the loot never spawns, and the chest sits there having
+    // apparently worked. Catching per-raise means one broken listener costs its
+    // own effect and nothing else, and says so by name.
+    private void Raise(System.Action evt, string which)
+    {
+        if (evt == null) return;
+        foreach (var d in evt.GetInvocationList())
+        {
+            try { ((System.Action)d)(); }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[LootChest] A '{which}' listener on '{name}' threw, so its part of the payout did " +
+                               $"not happen. The rest of the chest continues.\n{e}", this);
+            }
+        }
     }
 
     private void SpawnLoot()

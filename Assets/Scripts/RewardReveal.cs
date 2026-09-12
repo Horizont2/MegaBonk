@@ -87,20 +87,59 @@ public class RewardReveal : MonoBehaviour
     private void Enqueue(Sprite icon, string title, string subtitle, Color accent, float hold)
     {
         // A cap, because a queue with no bound is a way for one silly frame to
-        // lock the screen up for a minute.
-        if (_queue.Count >= 4) return;
+        // lock the screen up for a minute. It says so when it drops one, since a
+        // silently discarded reward is indistinguishable from a broken one.
+        if (_queue.Count >= 4)
+        {
+            Debug.LogWarning($"[Reveal] Dropped '{title}' — four reveals are already queued. Something is handing " +
+                             "out rewards faster than they can be shown.");
+            return;
+        }
         _queue.Enqueue(new Pending { icon = icon, title = title, subtitle = subtitle, accent = accent, hold = hold });
-        if (_playing == null) _playing = StartCoroutine(Drain());
+        PumpQueue();
     }
+
+    // THE LATCH THAT COULD JAM.
+    //
+    // This used to be `if (_playing == null) _playing = StartCoroutine(Drain())`,
+    // with Drain clearing _playing when it finished. That is a one-way door: if
+    // Drain ever stopped without reaching its last line — the component
+    // disabled for a frame during a load, the GameObject deactivated, an
+    // exception inside a reveal — _playing stayed non-null forever. From that
+    // moment every reward in the run was quietly appended to a queue nobody was
+    // draining, the queue filled to four, and after that nothing was shown ever
+    // again. It matches the symptom exactly: reveals work, then stop for good.
+    //
+    // A bool cleared in a finally cannot jam the same way, and the pump is
+    // re-checked from OnEnable so even a component that WAS disabled mid-drain
+    // picks its queue back up.
+    private bool _draining;
+
+    private void PumpQueue()
+    {
+        if (_draining || _queue.Count == 0) return;
+        if (!isActiveAndEnabled) return;   // OnEnable will pump it
+        _playing = StartCoroutine(Drain());
+    }
+
+    private void OnEnable() => PumpQueue();
 
     private IEnumerator Drain()
     {
-        while (_queue.Count > 0)
+        _draining = true;
+        try
         {
-            var p = _queue.Dequeue();
-            yield return Routine(p.icon, p.title, p.subtitle, p.accent, p.hold);
+            while (_queue.Count > 0)
+            {
+                var p = _queue.Dequeue();
+                yield return Routine(p.icon, p.title, p.subtitle, p.accent, p.hold);
+            }
         }
-        _playing = null;
+        finally
+        {
+            _draining = false;
+            _playing = null;
+        }
     }
 
     private void Awake()
