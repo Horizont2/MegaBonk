@@ -57,7 +57,13 @@ public class ResourceDrop : MonoBehaviour
         if (p == null) return;
 
         player = p.transform;
-        playerController = p.GetComponent<PlayerController>();
+        // In parents AND children: the tag can sit on a collider proxy or on a
+        // rig root while the controller lives one level away, and a plain
+        // GetComponent silently returns null in both cases.
+        if (playerController == null) playerController = p.GetComponent<PlayerController>();
+        if (playerController == null) playerController = p.GetComponentInParent<PlayerController>();
+        if (playerController == null) playerController = p.GetComponentInChildren<PlayerController>();
+        if (playerController == null) playerController = FindFirstObjectByType<PlayerController>();
 
         // Never collide with the player at all. A pickup is not an obstacle, and
         // letting one rest against the capsule is how it ends up parked in mid-air
@@ -84,12 +90,28 @@ public class ResourceDrop : MonoBehaviour
 
     private void Update()
     {
-        if (player == null || playerController == null)
+        // THE PLAYER CONTROLLER IS OPTIONAL. THE PLAYER TRANSFORM IS NOT.
+        //
+        // This used to return early unless BOTH were resolved, and that is the
+        // bug behind pickups hanging in the air beside the character doing
+        // nothing at all. PlayerController is fetched with GetComponent on the
+        // object tagged Player — so if the component ever sits on a child, or a
+        // different rig is spawned, it comes back null and this method does
+        // NOTHING for the rest of the drop's life. Not the magnet, not the
+        // spin, not even the retry, because the retry was behind the same
+        // return. A drop in that state is frozen forever, which is exactly what
+        // it looks like on screen.
+        //
+        // The controller is only ever needed for one number — the pickup radius
+        // — and a missing one is not a reason to abandon the resource. It is
+        // searched for properly now, and a sensible radius stands in until it
+        // turns up.
+        if (player == null)
         {
-            // Keep looking rather than giving up for good.
             if (Time.frameCount % 30 == 0) AcquirePlayer();
             return;
         }
+        if (playerController == null && Time.frameCount % 30 == 0) AcquirePlayer();
 
         if (rb.isKinematic && !isMagnetizing)
         {
@@ -97,16 +119,19 @@ public class ResourceDrop : MonoBehaviour
         }
 
         float dist = Vector3.Distance(transform.position, player.position);
+        float radius = playerController != null ? playerController.pickupRadius : 3.5f;
+        float age = Time.time - bornAt;
 
         // The failsafe: a drop that has sat around long enough is collected from
         // anywhere within arm's reach, whatever the pickup radius says. A
         // resource the player is standing inside and cannot pick up is worse than
         // one that is slightly too easy to pick up.
-        bool stale = Time.time - bornAt > giveUpAfter;
+        bool stale = age > giveUpAfter;
 
-        if (!isMagnetizing && (dist <= playerController.pickupRadius || (stale && dist <= 3f)))
+        if (!isMagnetizing && (dist <= radius || (stale && dist <= 4f)))
         {
             isMagnetizing = true;
+            magnetStartedAt = Time.time;
             rb.isKinematic = true;
             foreach (var c in myColliders) if (c != null) c.enabled = false;
         }
@@ -115,12 +140,20 @@ public class ResourceDrop : MonoBehaviour
         {
             transform.position = Vector3.MoveTowards(transform.position, player.position + Vector3.up, magnetSpeed * Time.deltaTime);
 
-            if (Vector3.Distance(transform.position, player.position + Vector3.up) < 0.5f)
+            // Distance OR patience. A magnet that has been flying at the player
+            // for two seconds and still has not arrived is not going to: it is
+            // being pushed, or the player is outrunning it, or something moved
+            // the goalposts. Paying out is always better than a resource that
+            // orbits the character forever.
+            if (Vector3.Distance(transform.position, player.position + Vector3.up) < 0.5f
+                || Time.time - magnetStartedAt > 2f)
             {
                 Collect();
             }
         }
     }
+
+    private float magnetStartedAt = -1f;
 
     // Belt and braces: if the drop somehow overlaps the player as a trigger
     // without the magnet having fired, take it anyway.
@@ -129,7 +162,10 @@ public class ResourceDrop : MonoBehaviour
         if (isCollected || other == null) return;
         if (!other.CompareTag("Player")) return;
         if (playerController == null) playerController = other.GetComponentInParent<PlayerController>();
-        if (playerController != null) Collect();
+        // Collected either way. Touching the player IS the pickup; whether the
+        // controller reference resolved is this component's problem, not the
+        // player's, and the diamond branch below already handles it being null.
+        Collect();
     }
 
     private bool isCollected = false;
@@ -163,9 +199,15 @@ public class ResourceDrop : MonoBehaviour
                 ResourceManager.Instance.AddRunResources(0, 0, amount);
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
             }
-            else if (resourceType == ResourceType.Diamond && playerController != null)
+            else if (resourceType == ResourceType.Diamond)
             {
-                playerController.GainDiamond(amount);
+                // Through the player when it can be, straight to the wallet
+                // otherwise. The controller carries the pickup flourish, but a
+                // missing reference must never mean the diamond quietly
+                // evaporates — the drop is destroyed either way, so a branch
+                // that pays nothing is a branch that steals.
+                if (playerController != null) playerController.GainDiamond(amount);
+                else ResourceManager.Instance.AddDiamonds(amount);
             }
         }
 
