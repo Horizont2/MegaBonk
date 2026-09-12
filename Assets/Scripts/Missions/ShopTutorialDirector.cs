@@ -37,17 +37,26 @@ public class ShopTutorialDirector : MonoBehaviour
     public static bool IsQuestActive =>
         PlayerPrefs.GetInt(PP_ACTIVE, 0) == 1 && PlayerPrefs.GetInt(PP_DONE, 0) == 0;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Install()
+    // CALLED BY ShopManager.Start, and that is the whole point.
+    //
+    // This was a RuntimeInitializeOnLoadMethod(AfterSceneLoad), which is the
+    // exact trap the exploration director fell into and which I documented
+    // there before walking straight back into it here: that attribute fires
+    // ONCE PER PLAY SESSION, in whichever scene starts first. The shop is a
+    // scene the player loads later, so the hook ran in the menu, found no
+    // ShopManager, returned, and was never called again. The walkthrough
+    // therefore never existed — the trail delivered the player to the shop and
+    // then nothing happened, which is exactly what was reported.
+    //
+    // A call from the shop's own Start cannot have that problem: it runs when
+    // and only when a shop exists, every time one is opened.
+    public static void InstallIfQuestActive()
     {
-        // Per scene, not once per session — the shop is entered and left many
-        // times, and a director installed in the menu would never see it. This
-        // is the same trap the exploration director fell into.
         if (!IsQuestActive) return;
         if (FindFirstObjectByType<ShopTutorialDirector>() != null) return;
-        var shop = FindFirstObjectByType<ShopManager>();
-        if (shop == null) return;
+        if (FindFirstObjectByType<ShopManager>() == null) return;
         new GameObject("[ShopTutorial]").AddComponent<ShopTutorialDirector>();
+        Debug.Log("[ShopTutorial] Guided helmet upgrade is armed — walkthrough starting.");
     }
 
     private void Start() => StartCoroutine(Run());

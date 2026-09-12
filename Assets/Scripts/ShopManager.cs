@@ -201,6 +201,13 @@ public class ShopManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
+        // Arms the guided first upgrade, if Elias has funded one. Called from
+        // here rather than from a RuntimeInitializeOnLoadMethod because that
+        // attribute fires once per play session in the first scene — see the
+        // note on InstallIfQuestActive. It no-ops unless the quest is live, so
+        // a player who wandered in for their own reasons is left alone.
+        ShopTutorialDirector.InstallIfQuestActive();
+
         if (TutorialHints.Instance != null)
             TutorialHints.Instance.ShowIfNew("Shop",
                 "Spend diamonds to unlock and upgrade weapons & armor. Higher tiers boost your Power Score, which gates harder regions.", 7f);
